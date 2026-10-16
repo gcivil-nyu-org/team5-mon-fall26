@@ -30,6 +30,11 @@ DEBUG = env("DEBUG")
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
+if DEBUG:
+    # Django's test client and manage.py test use this host; it is not
+    # a real host and is only ever reachable locally.
+    ALLOWED_HOSTS += ["testserver"]
+
 
 # Application definition
 

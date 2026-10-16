@@ -1,0 +1,22 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+header {
+  padding: 0.5rem 1rem;
+  background: #1f2a44;
+  color: #fff;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-family: sans-serif;
+}
+
+#map {
+  height: calc(100vh - 48px);
+  width: 100%;
+}

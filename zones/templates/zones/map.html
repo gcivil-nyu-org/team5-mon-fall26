@@ -1,0 +1,20 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TaxiScope NYC</title>
+  <link rel="stylesheet" href="{% static 'zones/vendor/leaflet/leaflet.css' %}">
+  <link rel="stylesheet" href="{% static 'zones/css/map.css' %}">
+</head>
+<body>
+  <header>
+    <h1>TaxiScope NYC</h1>
+  </header>
+  <div id="map"></div>
+
+  <script src="{% static 'zones/vendor/leaflet/leaflet.js' %}"></script>
+  <script src="{% static 'zones/js/map.js' %}"></script>
+</body>
+</html>
