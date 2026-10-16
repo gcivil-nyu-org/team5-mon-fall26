@@ -34,6 +34,7 @@ Web app that shows NYC riders historical taxi demand, fares, and trip duration b
 - `GET /api/routes?from=&to=&day=&hour=`: fare min/avg/max, typical duration, trip volume (`to` optional)
 - `GET /api/routes/windows?from=&to=&day=`: hours of the day ranked, best and worst windows
 - Too few trips: return an empty result and show "Not enough data"
+- `day=` convention: Monday=0 .. Sunday=6, the same as Python's `weekday()` and pandas' `dayofweek`. Same convention in the database's `day_of_week` columns.
 
 ## Stories (ZenHub issue numbers)
 US1 #3 map, US2 #4 select zones, US3 #5 heatmap, US4 #6 time filter, US5 #7 fare range, US6 #8 duration, US7 #9 best/worst, US8 #10 trip summary, US9 #11 no account. The data pipeline story is being split into pieces of 3 points or less (numbers TBD).

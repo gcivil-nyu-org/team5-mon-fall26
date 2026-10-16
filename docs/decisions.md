@@ -28,6 +28,7 @@ Add new decisions at the bottom with the date. Do not contradict one silently: c
 - **Settings layout:** a single env-driven `taxiscope/settings.py`, no `settings/base.py` + `dev.py`/`prod.py` split.
 - **Zone shapes file location:** `zones/data/`. `.gitignore` only ignores the top-level `/data/` directory and `*.parquet` files, not `zones/data/`, so the committed GeoJSON file is not accidentally excluded.
 - **Leaflet delivery:** vendored into `zones/static/`, not loaded from a CDN, so the demo does not depend on outside network access.
+- **`day_of_week` convention:** Monday=0 .. Sunday=6, the same as Python's `weekday()` and pandas' `dayofweek`. Used consistently in the database columns and in the API's `day=` parameter.
 
 ## Open (decide before the story that needs it)
 - Which AWS services host the Django app and the database. Needed before the first deploy.
