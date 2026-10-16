@@ -1,0 +1,157 @@
+<!-- Copy of the team wiki page. Update the wiki and this file together. -->
+# High Level Design: Explore Zone Demand & Fares (Epic 1)
+
+**Project:** TaxiScope NYC | **Team:** Team 5 (Monday) | **Epic covered:** Explore Zone Demand & Fares
+
+This page is the High Level Design for the epic at the center of the system. Everything else in TaxiScope NYC (saved routes, comparisons, ride-sharing, admin tools) reads the data and screens this epic produces. The earlier use-case diagram and epic breakdown are on the **High Level Analysis** page.
+
+## 1. Scope
+
+**In scope (MVP, no account required):**
+- Interactive map of NYC taxi zones, colored by demand
+- Zone selection with an hour-by-day-of-week heatmap of trip volume and trip duration
+- Fare range for the selected zone and time window
+- Day and time filters
+- Best and worst travel windows
+- Trip summary panel for a pickup and destination zone
+
+**Personas served:** Alex (daily commuter), Priya (budget-conscious visitor), Marcus (taxi-vs-rideshare decider)
+
+**Out of scope for this epic:** sign-in, saved routes, "leave by" planning, walk-to-cheaper-zone suggestions, fare reports, comparisons, ride-sharing, moderation.
+
+## 2. Technology choices
+
+The course requires **Python, a Django web application, and AWS hosting**. Within those, we chose the simplest option that fits an epic that only reads precomputed data:
+
+| Area | Choice | Why |
+|---|---|---|
+| Language and framework | Python + Django | Required by the course |
+| Hosting | AWS, two instances: **Integration** and **Production** | Required by the course. Exact AWS services to be decided by the team (see Section 10) |
+| Frontend | Django templates + Leaflet (JavaScript map library) | One codebase and one deploy, with no separate frontend app to build and host |
+| Database | PostgreSQL | Reliable, valid for the course, and handles the aggregate tables easily |
+| Zone shapes | A static GeoJSON file stored in the repo | The map only needs to draw zone boundaries, not run spatial queries, so we do not need PostGIS |
+| Data pipeline | A Django management command using pandas and pyarrow | Monthly TLC files fit on one machine once we only keep what we need, so we do not need PySpark |
+
+## 3. Why we used UML (and where we did not)
+
+We used the diagrams that explain how the pieces talk to each other:
+- **Sequence diagrams** show how a rider's click moves through the browser, the Django app, and the database. This epic is mostly request and response flows across components, which is what sequence diagrams are for.
+- **A deployment diagram** shows where each component runs, including the two AWS instances, because the system includes an offline data import as well as a live web app.
+- **Activity diagrams** are used on individual ZenHub stories where a rider flow needs explaining, rather than in this document.
+
+We did not draw detailed class diagrams. The epic is read-heavy: it moves pre-aggregated statistics from a database to a screen, with very few objects that carry behavior. A short data model table (Section 7) shows the same information with less overhead.
+
+## 4. System overview
+
+![System overview](images/01-system-overview.png)
+
+| Component | Responsibility |
+|---|---|
+| **Frontend** (Django templates + Leaflet) | Renders the zone map, heatmap, fare range, filters, and trip summary in the browser. Holds the selected zone, day, and time in the page. |
+| **Backend** (Django views) | Serves the pages and the JSON endpoints. Joins zone statistics with the zone shapes file, validates query parameters, and does no heavy computation. |
+| **Database** (PostgreSQL) | Stores zone information and precomputed zone-by-hour and route-by-hour statistics. |
+| **Zone shapes** (GeoJSON file) | Zone boundaries for the map. Loaded by the backend and joined to the statistics by zone id. |
+| **Data import** (Django management command, pandas) | Reads one monthly TLC trip file, cleans it, aggregates by zone, day of week, and hour, and loads the results into the database. |
+| **NYC TLC Trip Record Data** (external) | Public source of historical trips and the taxi zone shapes. |
+
+Riders only talk to the Django app through their browser. The app only reads from the database and the shapes file. The import command is the only thing that writes trip statistics, and an admin runs it offline.
+
+## 5. How the pieces connect
+
+Each screen element calls one backend endpoint, and each endpoint reads one table:
+
+| Frontend piece | Backend endpoint | Table read |
+|---|---|---|
+| Zone map | `GET /api/zones?day=&hour=` | `zone`, `zone_hour_stats` (plus the shapes file) |
+| Heatmap panel | `GET /api/zones/:id/heatmap` | `zone_hour_stats` |
+| Fare range and duration panels | `GET /api/routes` | `route_hour_stats` (pickup and destination), `zone_hour_stats` (pickup only) |
+| Day and hour filters | Re-call `/api/zones` and `/api/routes` with the new day and hour | same as above |
+| Trip summary and best/worst windows | `/api/routes`, `/api/routes/windows` | `route_hour_stats`, `zone_hour_stats` |
+
+## 6. Key design decision: precompute, don't query raw trips
+
+Raw TLC files hold millions of trips per month. Querying them on every click would make the map lag. Instead, the import command aggregates once per data import, and the API only reads small summary tables. Each aggregate row is keyed by zone, day of week, and hour. The same approach works for pickup-to-destination pairs.
+
+Fare ranges (minimum, average, maximum) are computed after cleaning outliers (zero or negative fares, impossible distances and durations), so a handful of extreme trips does not distort what riders see. Trip duration is derived from pickup and dropoff timestamps. The data does not contain wait time, so the app reports duration only.
+
+## 7. Data model (simplified)
+
+| Table | Key columns |
+|---|---|
+| `zone` | `zone_id`, `name`, `borough` (the boundary shape lives in the GeoJSON file, keyed by `zone_id`) |
+| `zone_hour_stats` | `zone_id`, `day_of_week`, `hour`, `trip_count`, `avg_duration_min`, `fare_min`, `fare_avg`, `fare_max` |
+| `route_hour_stats` | `pickup_zone_id`, `dropoff_zone_id`, `day_of_week`, `hour`, `trip_count`, `avg_duration_min`, `fare_min`, `fare_avg`, `fare_max` |
+
+## 8. API surface (Epic 1)
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/zones?day=&hour=` | All zones as GeoJSON (name, borough, shape) with trip volume for the selected day and hour, for the demand map. Defaults to the current day and hour. |
+| `GET /api/zones/:id/heatmap` | A 7 x 24 grid of trip volume and average trip duration for the zone |
+| `GET /api/routes?from=&to=&day=&hour=` | Minimum, average, and maximum fare, typical duration, and trip volume. `to` is optional: with only a pickup zone, it returns stats for all trips from that zone. |
+| `GET /api/routes/windows?from=&to=&day=` | The hours of the selected day ranked by fare and duration, with the best and worst windows |
+
+Every endpoint is public and read-only. When a window has too few trips, the API returns an empty result and the app shows "Not enough data".
+
+## 9. Sequence diagrams
+
+### 9.1 Select a pickup zone and view its heatmap and fare range
+
+![Select a pickup zone](images/03-seq-select-zone.png)
+
+The map loads from `/api/zones` for the current day and hour. Django reads the statistics from PostgreSQL and joins them with the zone shapes file. When the rider clicks a zone, the heatmap and the fare range with duration are requested in parallel, so the panels fill in without waiting on each other.
+
+### 9.2 Change the day or hour filter
+
+![Change the day or hour filter](images/04-seq-filter.png)
+
+Changing the day or hour refreshes the map colors and the fare and duration numbers together. The heatmap does not change, because it already covers every day and hour. If a window has too few trips, the rider sees "Not enough data" instead of a misleading number.
+
+### 9.3 View the trip summary and best/worst windows for a pickup and destination pair
+
+![Trip summary](images/05-seq-trip-summary.png)
+
+When both zones are selected, the summary panel opens automatically. It combines the fare range and duration for the trip with the best and worst windows for the selected day.
+
+### 9.4 Data import (offline)
+
+![Data import](images/06-seq-data-import.png)
+
+An admin runs the import command when a new monthly TLC file is published. It cleans and aggregates the raw trips and bulk-loads the results, so no rider request ever touches raw trip data.
+
+## 10. Deployment diagram
+
+![Deployment diagram](images/07-deployment.png)
+
+There are two AWS instances, as the course requires:
+- **Integration** runs the latest work from the `develop` branch. The team tests here and shows the Product Owner each story's acceptance criteria before it counts as done.
+- **Production** runs a tagged release from the `main` branch. The tag matches the ZenHub sprint milestone, and the sprint demo runs only here.
+
+Each instance has its own Django app and its own PostgreSQL database. The import command is run against each database when new monthly data is available.
+
+The exact AWS services (for example, how the Django app and the database are hosted) are still to be decided by the team. The diagram shows the instances and how they connect, which will not change with that choice.
+
+## 11. Risks specific to this epic
+
+| Risk | Mitigation |
+|---|---|
+| Deploying to AWS late leaves nothing to demo on Production | Set up the Integration and Production instances in the first sprint and deploy a very small slice early |
+| Schema changes across months of TLC files | Standardize column names in the import command before aggregating |
+| Outlier fares and durations skew results | Cleaning rules in the import command before min/avg/max are calculated |
+| Map feels slow | Precomputed aggregates, indexed by zone, day, and hour; zone shapes loaded once from a static file |
+| Sparse data in some zones and hours | Set a minimum trip count and show "Not enough data" instead of a misleading number |
+
+## 12. How this design maps to the user stories
+
+| Story | Components involved |
+|---|---|
+| US0: Import and prepare TLC data (enabler, split into smaller stories) | Import command, `zone`, `zone_hour_stats`, `route_hour_stats` |
+| US1: View Taxi Demand Map | Zone map, `/api/zones`, `zone`, `zone_hour_stats`, zone shapes file |
+| US2: Select Trip Zones | Zone map and page state (pickup and optional destination); no extra endpoint |
+| US3: View Demand Heatmap | Heatmap panel, `/api/zones/:id/heatmap`, `zone_hour_stats` |
+| US4: Filter by Time | Day and hour filters, which re-call `/api/zones` and `/api/routes` |
+| US5: View Fare Range | Fare panel, `/api/routes`, `route_hour_stats` or `zone_hour_stats` |
+| US6: View Trip Duration | Duration panel, `/api/routes` (same response as the fare range) |
+| US7: Find Best and Worst Travel Times | `/api/routes/windows`, `route_hour_stats` |
+| US8: View Trip Summary | Summary panel combining `/api/routes` and `/api/routes/windows` |
+| US9: Use Without an Account | No sign-in anywhere in this epic: every endpoint above is public and read-only |
