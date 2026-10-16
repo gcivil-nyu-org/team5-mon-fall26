@@ -36,3 +36,4 @@ Add new decisions at the bottom with the date. Do not contradict one silently: c
 - Exact rule for "best" and "worst" travel windows (volume only, or a mix with duration).
 - Which months of TLC data to load first.
 - CI tooling. Waiting on the remaining course slides. (Testing tool is decided above: Django's built-in test runner.)
+- Map tile provider for the demo. OpenStreetMap's public tile servers have a usage policy and are not meant for heavy production use (they already 403'd once locally over a missing Referer header). Check this before the sprint demo and be ready to switch to another tile provider (for example a paid provider, or self-hosted tiles) if it becomes a problem.

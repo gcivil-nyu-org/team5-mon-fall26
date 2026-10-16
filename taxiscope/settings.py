@@ -129,3 +129,11 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+# Referrer policy
+# Django's default ("same-origin") strips the Referer header on
+# cross-origin requests, including the browser's requests for OSM map
+# tiles. OSM's tile servers reject referrer-less requests. This still
+# withholds the full URL (query strings, etc.) from other origins.
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
