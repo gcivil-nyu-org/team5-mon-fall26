@@ -39,7 +39,7 @@ Web app that shows NYC riders historical taxi demand, fares, and trip duration b
 US1 #3 map, US2 #4 select zones, US3 #5 heatmap, US4 #6 time filter, US5 #7 fare range, US6 #8 duration, US7 #9 best/worst, US8 #10 trip summary, US9 #11 no account. The data pipeline story is being split into pieces of 3 points or less (numbers TBD).
 
 ## How to work
-- One story per branch and per pull request. Branch name: `us<N>-short-name`. Target branch: `develop`.
+- One story per branch and per pull request. Branch name: `us<N>-short-name`. Target branch: `develop`. Exception: work that is not a user story (project setup, tooling, CI) uses `setup/short-name` instead.
 - Start with a short plan, then write unit tests from the acceptance criteria, then the code.
 - Do not add a dependency or change the API contract without saying so and updating the docs.
 - A story is done only when it meets the Definition of Done on the wiki.
