@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environment
+.venv/
+
+# Environment variables (never commit real secrets)
+.env
+
+# Django
+*.sqlite3
+staticfiles/
+
+# Raw/large data files, not the zone shapes in zones/data/
+/data/
+*.parquet
+
+# macOS
+.DS_Store
