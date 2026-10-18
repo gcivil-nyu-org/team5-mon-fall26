@@ -51,7 +51,7 @@ We did not draw detailed class diagrams. The epic is read-heavy: it moves pre-ag
 | **Backend** (Django views) | Serves the pages and the JSON endpoints. Joins zone statistics with the zone shapes file, validates query parameters, and does no heavy computation. |
 | **Database** (PostgreSQL) | Stores zone information and precomputed zone-by-hour and route-by-hour statistics. |
 | **Zone shapes** (GeoJSON file) | Zone boundaries for the map. Loaded by the backend and joined to the statistics by zone id. |
-| **Data import** (Django management command, pandas) | Reads one monthly TLC trip file, cleans it, aggregates by zone, day of week, and hour, and loads the results into the database. |
+| **Data import** (Django management command, pandas) | Reads one or more monthly TLC trip files, one at a time, cleans them, aggregates by zone, day of week, and hour, and loads the results into the database. |
 | **NYC TLC Trip Record Data** (external) | Public source of historical trips and the taxi zone shapes. |
 
 Riders only talk to the Django app through their browser. The app only reads from the database and the shapes file. The import command is the only thing that writes trip statistics, and an admin runs it offline.
@@ -117,7 +117,7 @@ When both zones are selected, the summary panel opens automatically. It combines
 
 ![Data import](images/06-seq-data-import.png)
 
-An admin runs the import command when a new monthly TLC file is published. It cleans and aggregates the raw trips and bulk-loads the results, so no rider request ever touches raw trip data.
+An admin runs the import command with the months to load. It cleans and aggregates the raw trips month by month and replaces the statistics in one transaction, so no rider request ever touches raw trip data.
 
 ## 10. Deployment diagram
 

@@ -15,6 +15,27 @@ Entry format:
 
 ## Log
 
+### 2026-10-18 — US0a #20 (import_trips built)
+**What changed:**
+- `python manage.py import_trips --month YYYY-MM [--month ...] [--data-dir PATH]` in `zones/management/commands/import_trips.py`.
+- `zones/importer/` package: `read.py` (Parquet and zone lookup, raw column names), `clean.py` (7 cleaning rules), `aggregate.py` (per-month partial totals merged across months, integer cents), `load.py` (zone upsert + stats DELETE/bulk insert in one transaction, then ANALYZE), `download.py` (urllib, `.part` then rename), `report.py`, `pipeline.py`.
+- `zones/data/taxi_zone_lookup.csv` (TLC lookup, 265 zones).
+- `requirements.txt`: pandas 3.0.6, pyarrow 26.0.0, numpy 2.5.4.
+- README: "Import the trip data". HLD sections 4 and 9.4: one or more months (wiki still to update).
+- Real run, March to May 2026 on local Postgres: 11,874,527 read, 11,244,605 kept (5.30% removed; 5.67% / 4.99% / 5.25% per month), 37,949 zone cells, 1,306,474 route cells, 265 zones. About 90 to 100 s and about 1.2 GB peak memory. A second run gave identical counts, trip sums, and fare/duration checksums.
+
+**Decisions made (also in `decisions.md`, 2026-10-18 section):**
+- Removed trips counted once, under the first rule they fail (fixed order). Zone IDs not in the lookup count as unknown. Missing values fail the rule that checks them.
+- Money in integer cents; `fare_avg` rounded half up once when written. DELETE, not TRUNCATE. A repeated `--month` is an error. numpy pinned.
+
+**Tests:** `manage.py test`: 79 tests, OK. One test per cleaning rule with boundary cases, aggregation exactness across months, load/replace/rollback, download without network, report, and the command end to end on tiny Parquet files.
+
+**Next step:**
+- Open the PR for `us0a-trip-import` into `develop`; update the HLD wiki page to match sections 4 and 9.4.
+- No `payment_type` 6 trips exist in March to May 2026, so the voided rule removed 0 there (it is tested).
+- Separate small PR (team decision): the explicit index on each stats table duplicates its unique constraint's index.
+- Moving US0a to Done still needs the Integration deploy (waits on AWS). Peak memory (about 1.2 GB) means the import needs a machine with 2 GB or more.
+
 ### 2026-10-17 — US0a #20 (planning, no code yet)
 **What changed:**
 - Split US0 (#16) into US0a #20 (trip import and stats) and US0b #21 (zone shapes), as GitHub sub-issues.
