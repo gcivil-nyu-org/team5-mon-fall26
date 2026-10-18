@@ -4,7 +4,7 @@ Status on GitHub: OPEN
 As the product team, we need one or more months of cleaned TLC yellow taxi trips aggregated into zone and route statistics in the database so every map, fare, and heatmap request is fast.
 
 **Developer Tasks**
-- Download a monthly NYC TLC yellow taxi trip file (Parquet)
+- Download NYC TLC yellow taxi trip file (Parquet)
 - Load the taxi zone lookup (zone ID, name, borough) into `zone`
 - Remove outlier trips (zero or negative fares, impossible distances and durations, voided trips, unknown zones)
 - Aggregate by pickup zone, day of week, and hour into `zone_hour_stats`, and by pickup-dropoff pair into `route_hour_stats`
@@ -16,4 +16,5 @@ As the product team, we need one or more months of cleaned TLC yellow taxi trips
 - The import report shows how many rows were kept and removed
 - `zone`, `zone_hour_stats`, and `route_hour_stats` are filled and queryable
 - Running the same import twice does not create duplicate rows
+
 
