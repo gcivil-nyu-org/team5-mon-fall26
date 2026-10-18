@@ -33,6 +33,32 @@ def make_trips(*overrides):
     return trips
 
 
+def make_kept(*rows):
+    """Cleaned trips as clean_trips() returns them. Each row is
+    (pickup, dropoff, day_of_week, hour, duration_s, fare_cents)."""
+    kept = pd.DataFrame(
+        rows,
+        columns=[
+            "pickup_zone_id",
+            "dropoff_zone_id",
+            "day_of_week",
+            "hour",
+            "duration_s",
+            "fare_cents",
+        ],
+    )
+    return kept.astype(
+        {
+            "pickup_zone_id": "int16",
+            "dropoff_zone_id": "int16",
+            "day_of_week": "int8",
+            "hour": "int8",
+            "duration_s": "int64",
+            "fare_cents": "int64",
+        }
+    )
+
+
 def write_parquet(trips, path, extra_columns=None):
     """Write trips to a Parquet file with the raw TLC column names."""
     ours_to_raw = {ours: raw for raw, ours in RAW_COLUMNS.items()}
