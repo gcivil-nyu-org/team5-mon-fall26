@@ -20,8 +20,8 @@ Web app that shows NYC riders historical taxi demand, fares, and trip duration b
 ## Our stack (decided in the High Level Design)
 - Frontend: Django templates + Leaflet, calling the Django JSON endpoints (no separate React app)
 - Database: PostgreSQL, no PostGIS. Zone shapes are a static GeoJSON file joined to the stats in Django
-- Data import: a Django management command (pandas/pyarrow) that imports one monthly TLC Parquet file, cleans it, and writes the aggregate tables. No PySpark
-- Open: which AWS services to use, the minimum trip count, the best/worst rule (see `docs/decisions.md`)
+- Data import: a Django management command (pandas/pyarrow) that imports one or more monthly TLC Parquet files (one file at a time), cleans them, and writes the aggregate tables. No PySpark
+- Open: which AWS services to use, the minimum trip count (proposed 5), the best/worst rule (see `docs/decisions.md`)
 
 ## Data model
 - `zone(zone_id, name, borough)` (boundary shapes are in the GeoJSON file, keyed by `zone_id`)
@@ -37,7 +37,7 @@ Web app that shows NYC riders historical taxi demand, fares, and trip duration b
 - `day=` convention: Monday=0 .. Sunday=6, the same as Python's `weekday()` and pandas' `dayofweek`. Same convention in the database's `day_of_week` columns.
 
 ## Stories (ZenHub issue numbers)
-US1 #3 map, US2 #4 select zones, US3 #5 heatmap, US4 #6 time filter, US5 #7 fare range, US6 #8 duration, US7 #9 best/worst, US8 #10 trip summary, US9 #11 no account. The data pipeline story is being split into pieces of 3 points or less (numbers TBD).
+US1 #3 map, US2 #4 select zones, US3 #5 heatmap, US4 #6 time filter, US5 #7 fare range, US6 #8 duration, US7 #9 best/worst, US8 #10 trip summary, US9 #11 no account. The data pipeline story US0 #16 is split into US0a #20 (trip import and stats) and US0b #21 (zone shapes).
 
 ## How to work
 - One story per branch and per pull request. Branch name: `us<N>-short-name`. Target branch: `develop`. Exception: work that is not a user story (project setup, tooling, CI) uses `setup/short-name` instead.

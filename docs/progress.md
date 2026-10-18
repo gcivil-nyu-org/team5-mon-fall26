@@ -15,6 +15,25 @@ Entry format:
 
 ## Log
 
+### 2026-10-17 — US0a #20 (planning, no code yet)
+**What changed:**
+- Split US0 (#16) into US0a #20 (trip import and stats) and US0b #21 (zone shapes), as GitHub sub-issues.
+- Added `docs/stories/US0a.md` and `docs/stories/US0b.md`; updated `docs/stories/README.md` and the stack and stories lines in `CLAUDE.md`.
+- Analysed the January to August 2026 yellow taxi files with a one-off script (not committed) to choose the months, cleaning rules, and fare column.
+
+**Decisions made (also in `decisions.md`):**
+- Load March to May 2026; the import command takes one or more months.
+- Fare statistics use fare before tip (`total_amount - tip_amount`).
+- Cleaning rules, Flex Fare trips kept, zones 264/265 excluded from statistics.
+- Every cell is stored; the minimum trip count is applied in the API (proposed 5, PO to confirm).
+- Re-running the import replaces the statistics in one transaction.
+
+**Tests:** none yet, no code this session.
+
+**Next step:**
+- Plan and build `import_trips` with Claude Code on branch `us0a-trip-import`: tests from the acceptance criteria first, then the code.
+- Not blocked for coding. Moving US0a to Done needs the Integration deploy, which waits on AWS.
+
 ### 2026-10-16 — setup/django-scaffold (project setup, not a story)
 **What changed:**
 - Django project `taxiscope` + app `zones` scaffolded (Python 3.12 venv, Django 5.2.18).
