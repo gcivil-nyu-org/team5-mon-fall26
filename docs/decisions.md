@@ -30,6 +30,42 @@ Add new decisions at the bottom with the date. Do not contradict one silently: c
 - **Leaflet delivery:** vendored into `zones/static/`, not loaded from a CDN, so the demo does not depend on outside network access.
 - **`day_of_week` convention:** Monday=0 .. Sunday=6, the same as Python's `weekday()` and pandas' `dayofweek`. Used consistently in the database columns and in the API's `day=` parameter.
 
+## Our choices (data import, US0a #20, 2026-10-17)
+Backed by an analysis of the January to August 2026 yellow taxi files. The numbers below come from that analysis.
+
+- **Trip data:** yellow taxi trip records only.
+- **Months loaded:** March, April, and May 2026, combined. Why: the most trips of any 3-month window in 2026 (11.2M after cleaning); not summer, so it fits the commuter persona; and three months instead of one cut the share of trips in route cells with fewer than 5 trips from about 25% to about 13%.
+- **Import command:** `python manage.py import_trips --month 2026-03 --month 2026-04 --month 2026-05`. It takes one or more months. It still reads one Parquet file at a time and combines the per-month totals, so memory use stays at one month. Files it does not have yet are downloaded into `data/raw/` (gitignored).
+- **Fare column:** fare statistics use "fare before tip" = `total_amount - tip_amount`. Why: `fare_amount` is the meter fare only and leaves out surcharges, taxes, and the congestion fee (a median of $4.75 per trip). `total_amount` includes tips only for card payments, because cash tips are not recorded, so card and cash trips look different (median $21.94 vs $18.65, August 2026). Fare before tip makes them match ($18.90 vs $18.65).
+- **Cleaning rules:** a trip is removed if any of these is true:
+  - pickup time is outside the month of its file
+  - `fare_amount <= 0` or fare before tip `<= 0`
+  - fare before tip `> $500`
+  - `trip_distance <= 0` or `> 100` miles
+  - duration (dropoff minus pickup) `< 1` minute or `> 180` minutes
+  - `payment_type` 6 (voided trip)
+  - pickup or dropoff zone missing, or zone 264 or 265 (unknown / outside NYC)
+
+  This removes 5 to 6.5% of trips per month, mostly zero-distance trips and trips under 1 minute.
+- **Flex Fare trips are kept:** `payment_type` 0 ("Flex Fare trip" in the TLC data dictionary) is about a quarter of all trips. They are real, paid, upfront-priced trips.
+- **Day and hour:** `day_of_week` and `hour` come from the pickup timestamp as recorded (NYC local time, no time zone conversion).
+- **Pickup-based zone stats:** `zone_hour_stats` groups trips by pickup zone. `route_hour_stats` groups by pickup and dropoff zone pair.
+- **Zone list:** `zone` is filled from the TLC taxi zone lookup CSV, committed in `zones/data/`. Zones 264 and 265 are loaded into `zone` but never appear in the statistics.
+- **Every cell is stored:** the import keeps every day/hour cell, even with one trip. The minimum trip count is applied in the API (see Open), so it can change without re-importing.
+- **Running the import again:** zones are updated in place, never deleted (deleting would cascade to the statistics). Both statistics tables are emptied and refilled inside one transaction. Running the same import twice gives the same rows, and if the import fails halfway the old data stays.
+- **Import report:** for each month and in total: rows read, rows removed by each rule, rows kept. Then the number of zone and route cells, and how many have fewer than 5 trips.
+- **New dependencies:** `pandas` and `pyarrow` (already named in the HLD). Downloads use Python's standard library, so no `requests`.
+
+## Our choices (import_trips implementation, US0a #20, 2026-10-18)
+- **Removed-trip counting:** each removed trip is counted once, under the first rule it fails, in this order: pickup outside month, voided, unknown zone, fare not positive, fare over $500, distance, duration. Why: the per-rule counts add up to rows removed, and a voided trip is reported as voided, not as "fare <= 0".
+- **Unknown zone:** "zone missing" also covers a zone ID that is not in the lookup CSV. Why: such a trip cannot be stored (foreign key to zone).
+- **Money in integer cents:** fare before tip is converted to integer cents once per trip. Fare min and max are exact cents. `fare_avg` is rounded half up to 2 decimals once, when the rows are written.
+- **Replacing the statistics:** DELETE, not TRUNCATE, so the API keeps serving the old data while an import runs. The two stats tables are ANALYZEd after the commit.
+- **Months in one run:** the statistics always hold exactly the months given in the last run. Running with fewer months replaces all statistics with just those months. The import report lists the months loaded.
+- **Repeated `--month`:** giving the same month twice is an error (CommandError), so a month can never be counted twice.
+- **numpy pinned:** `numpy==2.5.4` is pinned next to pandas and pyarrow. This is a pin of a package pandas already installs, not a new dependency. Why: an unpinned numpy could change on a later `pip install`.
+- **Missing values:** a trip with a missing value in a field a rule checks is removed under that rule. A missing payment type is kept, because only type 6 (voided) is removed.
+
 ## Our choices (zone shapes, US0b, 2026-10-18)
 - **Source:** the official TLC taxi zone shapefile, https://d37ci6vzurychx.cloudfront.net/misc/taxi_zones.zip (linked from the TLC Trip Record Data page).
 - **Build tool:** `scripts/build_zone_shapes.py` using pyshp==3.1.6 and pyproj==3.8.0. Needed only to rebuild the file, so they are not in `requirements.txt`.
@@ -39,8 +75,8 @@ Add new decisions at the bottom with the date. Do not contradict one silently: c
 
 ## Open (decide before the story that needs it)
 - Which AWS services host the Django app and the database. Needed before the first deploy.
-- Minimum trip count for a window to be shown (suggested starting point: decide with the PO).
+- Minimum trip count for a window to be shown. **Proposed: 5** (2026-10-17). With March to May loaded, cells under 5 trips hold about 0.1% of zone trips and 13% of route trips. Confirm with the PO before US5, US6, and US7.
 - Exact rule for "best" and "worst" travel windows (volume only, or a mix with duration).
-- Which months of TLC data to load first.
+- ~~Which months of TLC data to load first.~~ Decided 2026-10-17: March to May 2026, see "Our choices (data import)" above.
 - CI tooling. Waiting on the remaining course slides. (Testing tool is decided above: Django's built-in test runner.)
 - Map tile provider for the demo. OpenStreetMap's public tile servers have a usage policy and are not meant for heavy production use (they already 403'd once locally over a missing Referer header). Check this before the sprint demo and be ready to switch to another tile provider (for example a paid provider, or self-hosted tiles) if it becomes a problem.
