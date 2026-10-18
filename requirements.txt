@@ -1,3 +1,6 @@
 Django==5.2.18
 django-environ==0.14.0
 psycopg[binary]==3.3.6
+pandas==3.0.6
+pyarrow==26.0.0
+numpy==2.5.4

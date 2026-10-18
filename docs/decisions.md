@@ -56,6 +56,15 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - **Import report:** for each month and in total: rows read, rows removed by each rule, rows kept. Then the number of zone and route cells, and how many have fewer than 5 trips.
 - **New dependencies:** `pandas` and `pyarrow` (already named in the HLD). Downloads use Python's standard library, so no `requests`.
 
+## Our choices (import_trips implementation, US0a #20, 2026-10-18)
+- **Removed-trip counting:** each removed trip is counted once, under the first rule it fails, in this order: pickup outside month, voided, unknown zone, fare not positive, fare over $500, distance, duration. Why: the per-rule counts add up to rows removed, and a voided trip is reported as voided, not as "fare <= 0".
+- **Unknown zone:** "zone missing" also covers a zone ID that is not in the lookup CSV. Why: such a trip cannot be stored (foreign key to zone).
+- **Money in integer cents:** fare before tip is converted to integer cents once per trip. Fare min and max are exact cents. `fare_avg` is rounded half up to 2 decimals once, when the rows are written.
+- **Replacing the statistics:** DELETE, not TRUNCATE, so the API keeps serving the old data while an import runs. The two stats tables are ANALYZEd after the commit.
+- **Months in one run:** the statistics always hold exactly the months given in the last run. Running with fewer months replaces all statistics with just those months. The import report lists the months loaded.
+- **Repeated `--month`:** giving the same month twice is an error (CommandError), so a month can never be counted twice.
+- **numpy pinned:** `numpy==2.5.4` is pinned next to pandas and pyarrow. This is a pin of a package pandas already installs, not a new dependency. Why: an unpinned numpy could change on a later `pip install`.
+
 ## Open (decide before the story that needs it)
 - Which AWS services host the Django app and the database. Needed before the first deploy.
 - Minimum trip count for a window to be shown. **Proposed: 5** (2026-10-17). With March to May loaded, cells under 5 trips hold about 0.1% of zone trips and 13% of route trips. Confirm with the PO before US5, US6, and US7.
