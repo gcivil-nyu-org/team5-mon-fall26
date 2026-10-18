@@ -64,6 +64,7 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - **Months in one run:** the statistics always hold exactly the months given in the last run. Running with fewer months replaces all statistics with just those months. The import report lists the months loaded.
 - **Repeated `--month`:** giving the same month twice is an error (CommandError), so a month can never be counted twice.
 - **numpy pinned:** `numpy==2.5.4` is pinned next to pandas and pyarrow. This is a pin of a package pandas already installs, not a new dependency. Why: an unpinned numpy could change on a later `pip install`.
+- **Missing values:** a trip with a missing value in a field a rule checks is removed under that rule. A missing payment type is kept, because only type 6 (voided) is removed.
 
 ## Open (decide before the story that needs it)
 - Which AWS services host the Django app and the database. Needed before the first deploy.
