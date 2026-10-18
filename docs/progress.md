@@ -47,3 +47,21 @@ Entry format:
 - Start US1 (#3, demand map): `GET /api/zones?day=&hour=` and wiring real zone data (shapes + stats) into the map page.
 - Still open, needed soon: which AWS services host the app/DB (before first deploy), the minimum trip count for a window to show, the exact best/worst rule for travel windows, which TLC months to load first, and CI tooling.
 - Nothing pushed yet; this branch (`setup/django-scaffold`) has not been opened as a PR.
+
+### 2026-10-18 — us0b-zone-shapes (US0b, #21)
+**What changed:**
+- Downloaded the official TLC taxi zone shapefile (`https://d37ci6vzurychx.cloudfront.net/misc/taxi_zones.zip`, sha256 `f6d71191…5adf17`) outside the repo.
+- Added `scripts/build_zone_shapes.py` (pyshp + pyproj). It reads the CRS from the `.prj` (found: NAD83 / New York Long Island (ftUS), EPSG:2263), converts to WGS84 [lon, lat], rounds to 6 decimals, does no simplification, checks that the LocationIDs are unique and exactly 1..263, then writes the file.
+- Generated `zones/data/taxi_zones.geojson`: 263 features (240 Polygon, 23 MultiPolygon), properties `LocationID`, `zone`, `borough`, 2,275,317 bytes (2.17 MB). The ID check passed on the first run; the current shapefile no longer has the old duplicate IDs (56/57, 103/104/105).
+- Added `zones/tests/test_zone_shapes.py` (SimpleTestCase, no DB or network): FeatureCollection shape, 263 unique IDs = 1..263, required properties and Polygon/MultiPolygon geometry, every coordinate inside an NYC lon/lat box.
+- README: "Regenerate the zone shapes" section. `docs/decisions.md`: zone shapes section.
+- pyshp 3.1.6 and pyproj 3.8.0 installed in the local `.venv` only. Not in `requirements.txt`.
+
+**Decisions made (also in `decisions.md`):** shapefile source link, build tool and pinned versions, CRS read from `.prj`, output format and 6-decimal rounding, the 1..263 ID rule.
+
+**Tests:** `manage.py test`, 7 tests, OK (3 existing + 4 new).
+
+**Next step:**
+- Acceptance criterion 3 (zones line up in Leaflet): **passed (2026-10-18).** The user checked it by eye on a throwaway Leaflet page (vendored Leaflet over OpenStreetMap, outside the repo). Zones line up with the streets at Central Park, the Manhattan edges, JFK, LaGuardia, Newark and Staten Island. Popups show the right ID, zone and borough. Mention this in the PR.
+- US1 (#3): serve the shapes joined with `zone_hour_stats` from `GET /api/zones`. Load the file once at startup. At 2.2 MB, check the response size and consider gzip.
+- Not pushed; the user does all the git.

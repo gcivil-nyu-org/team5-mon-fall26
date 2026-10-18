@@ -30,6 +30,13 @@ Add new decisions at the bottom with the date. Do not contradict one silently: c
 - **Leaflet delivery:** vendored into `zones/static/`, not loaded from a CDN, so the demo does not depend on outside network access.
 - **`day_of_week` convention:** Monday=0 .. Sunday=6, the same as Python's `weekday()` and pandas' `dayofweek`. Used consistently in the database columns and in the API's `day=` parameter.
 
+## Our choices (zone shapes, US0b, 2026-10-18)
+- **Source:** the official TLC taxi zone shapefile, https://d37ci6vzurychx.cloudfront.net/misc/taxi_zones.zip (linked from the TLC Trip Record Data page).
+- **Build tool:** `scripts/build_zone_shapes.py` using pyshp==3.1.6 and pyproj==3.8.0. Needed only to rebuild the file, so they are not in `requirements.txt`.
+- **Coordinate system:** read from the shapefile's `.prj`, never assumed; converted to WGS84 [longitude, latitude] (EPSG:4326).
+- **Output:** `zones/data/taxi_zones.geojson`, one feature per zone with `LocationID` (int), `zone`, `borough`. Coordinates rounded to 6 decimals (~10 cm), no simplification. Size: 2.17 MB.
+- **IDs:** LocationIDs must be unique and exactly 1..263; the script stops otherwise. Zones 264 and 265 (Unknown / Outside of NYC) have no shape.
+
 ## Open (decide before the story that needs it)
 - Which AWS services host the Django app and the database. Needed before the first deploy.
 - Minimum trip count for a window to be shown (suggested starting point: decide with the PO).
