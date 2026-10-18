@@ -66,6 +66,13 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - **numpy pinned:** `numpy==2.5.4` is pinned next to pandas and pyarrow. This is a pin of a package pandas already installs, not a new dependency. Why: an unpinned numpy could change on a later `pip install`.
 - **Missing values:** a trip with a missing value in a field a rule checks is removed under that rule. A missing payment type is kept, because only type 6 (voided) is removed.
 
+## Our choices (zone shapes, US0b, 2026-10-18)
+- **Source:** the official TLC taxi zone shapefile, https://d37ci6vzurychx.cloudfront.net/misc/taxi_zones.zip (linked from the TLC Trip Record Data page).
+- **Build tool:** `scripts/build_zone_shapes.py` using pyshp==3.1.6 and pyproj==3.8.0. Needed only to rebuild the file, so they are not in `requirements.txt`.
+- **Coordinate system:** read from the shapefile's `.prj`, never assumed; converted to WGS84 [longitude, latitude] (EPSG:4326).
+- **Output:** `zones/data/taxi_zones.geojson`, one feature per zone with `LocationID` (int), `zone`, `borough`. Coordinates rounded to 6 decimals (~10 cm), no simplification. Size: 2.17 MB.
+- **IDs:** LocationIDs must be unique and exactly 1..263; the script stops otherwise. Zones 264 and 265 (Unknown / Outside of NYC) have no shape.
+
 ## Open (decide before the story that needs it)
 - Which AWS services host the Django app and the database. Needed before the first deploy.
 - Minimum trip count for a window to be shown. **Proposed: 5** (2026-10-17). With March to May loaded, cells under 5 trips hold about 0.1% of zone trips and 13% of route trips. Confirm with the PO before US5, US6, and US7.

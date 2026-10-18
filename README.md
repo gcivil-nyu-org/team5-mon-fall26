@@ -21,6 +21,27 @@ Run tests with:
 python manage.py test
 ```
 
+## Regenerate the zone shapes
+
+`zones/data/taxi_zones.geojson` is committed, so you only need this if TLC publishes new zone boundaries. It is built from the official TLC taxi zone shapefile by `scripts/build_zone_shapes.py`.
+
+The script needs two packages that the app does not use, so they are not in `requirements.txt`. Install these exact versions:
+
+```bash
+pip install pyshp==3.1.6 pyproj==3.8.0
+```
+
+Download and unzip the shapefile outside the repo (this link is the "Taxi Zone Shapefile" link on the [TLC Trip Record Data page](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page)), then run the script from the repo root:
+
+```bash
+mkdir -p ~/Downloads/taxi_zones && cd ~/Downloads/taxi_zones
+curl -fLO https://d37ci6vzurychx.cloudfront.net/misc/taxi_zones.zip && unzip taxi_zones.zip
+cd -   # back to the repo root
+python scripts/build_zone_shapes.py ~/Downloads/taxi_zones/taxi_zones/taxi_zones.shp
+python manage.py test zones.tests.test_zone_shapes
+```
+
+The script reads the coordinate system from the `.prj` file, converts to WGS84 longitude/latitude, rounds to 6 decimals, and writes one feature per zone (`LocationID`, `zone`, `borough`). It stops without writing anything if the LocationIDs are not unique and exactly 1..263. See `docs/decisions.md` (zone shapes).
 ## Import the trip data
 
 ```bash
