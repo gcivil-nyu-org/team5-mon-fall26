@@ -38,27 +38,81 @@ header {
   color: #4c5565;
 }
 
-.zone-stats {
+.zone-selection {
   position: absolute;
   z-index: 500;
   top: 112px;
-  left: 12px;
-  width: min(250px, calc(100vw - 48px));
+  left: 50px;
+  width: min(280px, calc(100vw - 48px));
   padding: 0.7rem 0.9rem;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.95);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
   font: 14px/1.4 sans-serif;
-  pointer-events: none;
 }
 
-.zone-stats h2,
-.zone-stats p {
+.zone-selection p {
   margin: 0 0 0.35rem;
 }
 
-.zone-stats h2 {
-  font-size: 1rem;
+.selection-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.selection-label {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pickup-label {
+  color: #0057b8;
+}
+
+.dropoff-label {
+  color: #00804a;
+}
+
+.selection-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clear-btn {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid #aaa;
+  border-radius: 50%;
+  background: #eee;
+  font-size: 14px;
+  line-height: 18px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.clear-btn:hover {
+  background: #ddd;
+}
+
+.clear-all-btn {
+  display: block;
+  margin-top: 0.4rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid #aaa;
+  border-radius: 3px;
+  background: #f0f0f0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.clear-all-btn:hover {
+  background: #e0e0e0;
 }
 
 header h1 {
@@ -116,7 +170,7 @@ header h1 {
     margin-left: 0;
   }
 
-  .zone-stats {
+  .zone-selection {
     top: 150px;
   }
 

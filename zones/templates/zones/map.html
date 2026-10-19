@@ -28,10 +28,20 @@
     <output id="hour-value" for="hour-filter">{{ current_hour }}:00–{{ current_hour }}:59</output>
     <span id="filter-status" role="status" aria-live="polite"></span>
   </section>
-  <aside class="zone-stats" aria-live="polite" aria-label="Selected zone statistics">
-    <h2 id="selected-zone">Select a zone</h2>
+  <aside class="zone-selection" aria-live="polite" aria-label="Selected zone information">
+    <div class="selection-row">
+      <span class="selection-label pickup-label">Pickup:</span>
+      <span id="pickup-zone" class="selection-name">Click a zone</span>
+      <button id="clear-pickup" class="clear-btn" hidden aria-label="Clear pickup">&times;</button>
+    </div>
+    <div class="selection-row">
+      <span class="selection-label dropoff-label">Dropoff:</span>
+      <span id="dropoff-zone" class="selection-name">—</span>
+      <button id="clear-dropoff" class="clear-btn" hidden aria-label="Clear dropoff">&times;</button>
+    </div>
     <p>Fare range: <strong id="fare-range">—</strong></p>
     <p>Average trip duration: <strong id="trip-duration">—</strong></p>
+    <button id="clear-selection" class="clear-all-btn" hidden>Clear selection</button>
   </aside>
   <div id="map"></div>
 

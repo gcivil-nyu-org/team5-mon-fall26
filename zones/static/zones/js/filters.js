@@ -1,37 +1,43 @@
-// US4 #6: extend the demand map with time filters and selected-zone statistics.
+// US4 #6 + US2 #4: time filters and two-zone selection (pickup + optional dropoff).
 const dayFilter = document.getElementById("day-filter");
 const hourFilter = document.getElementById("hour-filter");
 const hourValue = document.getElementById("hour-value");
 const filterStatus = document.getElementById("filter-status");
-const selectedZone = document.getElementById("selected-zone");
+const pickupZoneEl = document.getElementById("pickup-zone");
+const dropoffZoneEl = document.getElementById("dropoff-zone");
 const fareRange = document.getElementById("fare-range");
 const tripDuration = document.getElementById("trip-duration");
+const clearPickupBtn = document.getElementById("clear-pickup");
+const clearDropoffBtn = document.getElementById("clear-dropoff");
+const clearSelectionBtn = document.getElementById("clear-selection");
 
 let demandMap;
 let zonesLayer;
 let legendControl;
 let displayedTime;
-let selectedZoneId = null;
+let pickupZoneId = null;
+let dropoffZoneId = null;
 let currentBreaks = [];
 let requestSequence = 0;
 let hourRequestTimer = null;
 const zoneLayers = new Map();
+
+const PICKUP_COLOR = "#0057b8";
+const DROPOFF_COLOR = "#00804a";
 
 function updateHourLabel() {
   const hour = Number(hourFilter.value);
   hourValue.textContent = `${hour}:00–${hour}:59`;
 }
 
-function updateSelectedZone(feature) {
+function updatePickupStats(feature) {
   if (!feature) {
-    selectedZone.textContent = "Select a zone";
     fareRange.textContent = "—";
     tripDuration.textContent = "—";
     return;
   }
 
   const props = feature.properties;
-  selectedZone.textContent = `${props.name} (${props.borough})`;
   if (props.trip_count === 0 || props.fare_min === null) {
     fareRange.textContent = "Not enough data";
     tripDuration.textContent = "Not enough data";
@@ -42,14 +48,105 @@ function updateSelectedZone(feature) {
   tripDuration.textContent = `${Number(props.avg_duration_min).toFixed(1)} min`;
 }
 
+function updateSelectionPanel() {
+  const pickupLayer = zoneLayers.get(pickupZoneId);
+  const dropoffLayer = zoneLayers.get(dropoffZoneId);
+
+  if (pickupLayer) {
+    const p = pickupLayer.feature.properties;
+    pickupZoneEl.textContent = `${p.name} (${p.borough})`;
+    clearPickupBtn.hidden = false;
+  } else {
+    pickupZoneEl.textContent = "Click a zone";
+    clearPickupBtn.hidden = true;
+  }
+
+  if (dropoffLayer) {
+    const p = dropoffLayer.feature.properties;
+    dropoffZoneEl.textContent = `${p.name} (${p.borough})`;
+    clearDropoffBtn.hidden = false;
+  } else {
+    dropoffZoneEl.textContent = pickupZoneId ? "Click another zone (optional)" : "—";
+    clearDropoffBtn.hidden = true;
+  }
+
+  clearSelectionBtn.hidden = pickupZoneId === null;
+  updatePickupStats(pickupLayer ? pickupLayer.feature : null);
+}
+
 function styleZone(feature) {
-  const selected = feature.properties.zone_id === selectedZoneId;
+  const zoneId = feature.properties.zone_id;
+  const isPickup = zoneId === pickupZoneId;
+  const isDropoff = zoneId === dropoffZoneId;
+
+  if (isPickup) {
+    return {
+      fillColor: colorFor(feature.properties.trip_count, currentBreaks),
+      fillOpacity: 0.9,
+      color: PICKUP_COLOR,
+      weight: 3,
+    };
+  }
+  if (isDropoff) {
+    return {
+      fillColor: colorFor(feature.properties.trip_count, currentBreaks),
+      fillOpacity: 0.9,
+      color: DROPOFF_COLOR,
+      weight: 3,
+    };
+  }
   return {
     fillColor: colorFor(feature.properties.trip_count, currentBreaks),
-    fillOpacity: selected ? 0.9 : 0.7,
-    color: selected ? "#000" : "#555",
-    weight: selected ? 3 : 1,
+    fillOpacity: 0.7,
+    color: "#555",
+    weight: 1,
   };
+}
+
+function selectZone(zoneId) {
+  if (zoneId === pickupZoneId) {
+    pickupZoneId = null;
+    dropoffZoneId = null;
+  } else if (zoneId === dropoffZoneId) {
+    dropoffZoneId = null;
+  } else if (pickupZoneId === null) {
+    pickupZoneId = zoneId;
+  } else {
+    dropoffZoneId = zoneId;
+  }
+
+  zonesLayer.setStyle(styleZone);
+  if (pickupZoneId) zoneLayers.get(pickupZoneId)?.bringToFront();
+  if (dropoffZoneId) zoneLayers.get(dropoffZoneId)?.bringToFront();
+  updateSelectionPanel();
+  document.dispatchEvent(
+    new CustomEvent("taxiscope:zones-selected", {
+      detail: { pickup: pickupZoneId, dropoff: dropoffZoneId },
+    })
+  );
+}
+
+function clearPickup() {
+  pickupZoneId = null;
+  dropoffZoneId = null;
+  zonesLayer.setStyle(styleZone);
+  updateSelectionPanel();
+  document.dispatchEvent(
+    new CustomEvent("taxiscope:zones-selected", {
+      detail: { pickup: null, dropoff: null },
+    })
+  );
+}
+
+function clearDropoff() {
+  dropoffZoneId = null;
+  zonesLayer.setStyle(styleZone);
+  updateSelectionPanel();
+  document.dispatchEvent(
+    new CustomEvent("taxiscope:zones-selected", {
+      detail: { pickup: pickupZoneId, dropoff: null },
+    })
+  );
 }
 
 async function reloadZones() {
@@ -80,7 +177,7 @@ async function reloadZones() {
 
     demandMap.removeControl(legendControl);
     legendControl = addLegend(currentBreaks, data.day, data.hour);
-    updateSelectedZone(zoneLayers.get(selectedZoneId)?.feature);
+    updateSelectionPanel();
     displayedTime = { day: data.day, hour: data.hour };
     filterStatus.textContent = `Showing ${DAYS[data.day]} ${data.hour}:00–${data.hour}:59`;
     document.querySelector(".map-error")?.remove();
@@ -109,14 +206,14 @@ document.addEventListener("taxiscope:map-ready", (event) => {
   zonesLayer.eachLayer((zoneLayer) => {
     const zoneId = zoneLayer.feature.properties.zone_id;
     zoneLayers.set(zoneId, zoneLayer);
-    zoneLayer.on("click", () => {
-      selectedZoneId = zoneId;
-      zonesLayer.setStyle(styleZone);
-      updateSelectedZone(zoneLayer.feature);
-    });
+    zoneLayer.on("click", () => selectZone(zoneId));
   });
   zonesLayer.options.style = styleZone;
   zonesLayer.setStyle(styleZone);
+
+  clearPickupBtn.addEventListener("click", clearPickup);
+  clearDropoffBtn.addEventListener("click", clearDropoff);
+  clearSelectionBtn.addEventListener("click", clearPickup);
 
   dayFilter.addEventListener("change", () => {
     window.clearTimeout(hourRequestTimer);

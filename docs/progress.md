@@ -15,6 +15,23 @@ Entry format:
 
 ## Log
 
+### 2026-10-19 — US2 #4 (select trip zones)
+**What changed:**
+- Replaced single-zone selection with two-zone selection: first click sets pickup (blue `#0057b8` border), second click sets dropoff (green `#00804a` border).
+- Updated `zones/templates/zones/map.html`: the zone-stats aside is now a selection panel showing pickup and dropoff zone names, individual clear (×) buttons, fare range, duration, and a "Clear selection" button. Buttons are hidden by default via the `hidden` attribute.
+- Updated `zones/static/zones/js/filters.js`: `pickupZoneId` and `dropoffZoneId` replace `selectedZoneId`. `selectZone()` handles the click state machine (first click=pickup, second=dropoff, click pickup again=clear all, click dropoff=clear dropoff, click third zone=change dropoff). `clearPickup()` and `clearDropoff()` handle button actions. A `taxiscope:zones-selected` custom event is dispatched so other components can react.
+- Updated `zones/static/zones/css/map.css`: `.zone-selection` panel (was `.zone-stats`), pickup/dropoff label colors, `.clear-btn`, `.clear-all-btn` styles. Removed `pointer-events: none` so buttons are clickable.
+- Updated `zones/tests/test_views.py`: added tests for pickup/dropoff elements and clear buttons.
+- Added `zones/tests/test_zone_selection.py`: 25 tests covering template elements, default hidden state, JS function/variable presence, CSS classes, and custom event dispatch.
+
+**Decisions made:** Pickup border is blue (`#0057b8`), dropoff border is green (`#00804a`). Clearing pickup also clears dropoff (a trip without a pickup is meaningless). Destination is optional as required by the acceptance criteria.
+
+**Tests:** `manage.py test`: 119 tests, OK. JavaScript syntax check passed.
+
+**Next step:**
+- Push branch and open PR into `develop`.
+- Verify UI behavior in a browser with real data (PostgreSQL with imported trips).
+
 ### 2026-10-19 — US4 #6 (time filters)
 **What changed:**
 - Added weekday and hour filters to the map; changes refresh the map statistics and selected-zone summary.
