@@ -18,7 +18,12 @@ NYC_TZ = ZoneInfo("America/New_York")
 
 def map_view(request):
     """The main page: a Leaflet map of NYC taxi zones colored by demand."""
-    return render(request, "zones/map.html")
+    now = datetime.now(NYC_TZ)
+    return render(
+        request,
+        "zones/map.html",
+        {"current_day": now.weekday(), "current_hour": now.hour},
+    )
 
 
 @lru_cache(maxsize=1)
@@ -55,17 +60,24 @@ def zones_api(request):
         )
 
     names = {z.zone_id: (z.name, z.borough) for z in Zone.objects.all()}
-    counts = dict(
-        ZoneHourStats.objects.filter(day_of_week=day, hour=hour).values_list(
-            "zone_id", "trip_count"
+    stats = {
+        row["zone_id"]: row
+        for row in ZoneHourStats.objects.filter(day_of_week=day, hour=hour).values(
+            "zone_id",
+            "trip_count",
+            "avg_duration_min",
+            "fare_min",
+            "fare_avg",
+            "fare_max",
         )
-    )
+    }
 
     features = []
     for shape in load_zone_shapes()["features"]:
         props = shape["properties"]
         zone_id = props["LocationID"]
         name, borough = names.get(zone_id, (props["zone"], props["borough"]))
+        zone_stats = stats.get(zone_id)
         features.append(
             {
                 "type": "Feature",
@@ -74,7 +86,11 @@ def zones_api(request):
                     "zone_id": zone_id,
                     "name": name,
                     "borough": borough,
-                    "trip_count": counts.get(zone_id, 0),
+                    "trip_count": zone_stats["trip_count"] if zone_stats else 0,
+                    "avg_duration_min": zone_stats["avg_duration_min"] if zone_stats else None,
+                    "fare_min": zone_stats["fare_min"] if zone_stats else None,
+                    "fare_avg": zone_stats["fare_avg"] if zone_stats else None,
+                    "fare_max": zone_stats["fare_max"] if zone_stats else None,
                 },
             }
         )

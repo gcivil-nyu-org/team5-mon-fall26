@@ -62,7 +62,7 @@ Each screen element calls one backend endpoint, and each endpoint reads one tabl
 
 | Frontend piece | Backend endpoint | Table read |
 |---|---|---|
-| Zone map | `GET /api/zones?day=&hour=` | `zone`, `zone_hour_stats` (plus the shapes file) |
+| Zone map and selected-zone summary | `GET /api/zones?day=&hour=` | `zone`, `zone_hour_stats` (plus the shapes file) |
 | Heatmap panel | `GET /api/zones/:id/heatmap` | `zone_hour_stats` |
 | Fare range and duration panels | `GET /api/routes` | `route_hour_stats` (pickup and destination), `zone_hour_stats` (pickup only) |
 | Day and hour filters | Re-call `/api/zones` and `/api/routes` with the new day and hour | same as above |
@@ -86,7 +86,7 @@ Fare ranges (minimum, average, maximum) are computed after cleaning outliers (ze
 
 | Endpoint | Returns |
 |---|---|
-| `GET /api/zones?day=&hour=` | All zones as GeoJSON (name, borough, shape) with trip volume for the selected day and hour, for the demand map. Defaults to the current day and hour. |
+| `GET /api/zones?day=&hour=` | All zones as GeoJSON (name, borough, shape) with trip volume, fare min/average/max, and average duration for the selected day and hour. Defaults to current NYC day and hour. Missing zone-hour stats have a trip count of 0 and null fare/duration values. |
 | `GET /api/zones/:id/heatmap` | A 7 x 24 grid of trip volume and average trip duration for the zone |
 | `GET /api/routes?from=&to=&day=&hour=` | Minimum, average, and maximum fare, typical duration, and trip volume. `to` is optional: with only a pickup zone, it returns stats for all trips from that zone. |
 | `GET /api/routes/windows?from=&to=&day=` | The hours of the selected day ranked by fare and duration, with the best and worst windows |
@@ -106,6 +106,8 @@ The map loads from `/api/zones` for the current day and hour. Django reads the s
 ![Change the day or hour filter](images/04-seq-filter.png)
 
 Changing the day or hour refreshes the map colors and the fare and duration numbers together. The heatmap does not change, because it already covers every day and hour. If a window has too few trips, the rider sees "Not enough data" instead of a misleading number.
+
+Clicking a zone selects it for the fare-range and average-duration summary. Changing either time filter reloads the zone statistics for the selected zone as well as the map; if the selected zone has no trips for that time, the summary shows "Not enough data".
 
 ### 9.3 View the trip summary and best/worst windows for a pickup and destination pair
 
