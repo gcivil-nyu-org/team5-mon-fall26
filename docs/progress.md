@@ -147,3 +147,24 @@ Entry format:
    **Tests:** new `zones/tests/test_zones_api.py`. `manage.py test`: 91 tests, OK.
 
    **Next step:** the response is about 2.5 MB; consider Django's `GZipMiddleware`. US4 (time filter) can reuse `/api/zones` with `day` and `hour`.
+
+### 2026-10-19 — us3-demand-heatmap (US3, #5)
+**What changed:**
+- Added `GET /api/zones/:id/heatmap` endpoint returning 7x24 grid (trip_count, avg_duration_min per cell)
+- Added heatmap panel (zones/templates/zones/map.html) with toggle between trip volume and avg duration
+- Created heatmap.js: renders 7x24 grid, blue-to-red color scale, hover shows exact values, listens to zone-selected events
+- Added heatmap CSS: responsive layout, hatched pattern for no-data cells
+- All 4 acceptance criteria met: 7x24 display, metric toggle, hover values, no-data marking
+
+**Tests:** 4 new heatmap API tests. Full suite: 123 tests, OK.
+
+**Decisions made:** 
+- Heatmap appears when pickup zone selected, hides when cleared
+- Color scale: blue (low) to red (high) with intensity based on min/max normalization
+- No-data cells use CSS repeating-linear-gradient hatched pattern
+- Heatmap positioned on right side, moves below selection panel on mobile
+
+**Next step:**
+- Manual test with real zone data (currently using test data for zone 100)
+- Update progress.md and open PR
+- Consider adding heatmap tests for UI behavior (future story)
