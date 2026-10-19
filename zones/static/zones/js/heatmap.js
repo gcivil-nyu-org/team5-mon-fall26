@@ -12,16 +12,15 @@
 
   const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-  // Listen for pickup zone selection
-  document.addEventListener('zone-selected', function (e) {
-    if (e.detail.type === 'pickup' && e.detail.zoneId) {
-      loadHeatmap(e.detail.zoneId, e.detail.zoneName);
-    }
-  });
-
-  // Listen for pickup zone clear
-  document.addEventListener('zone-cleared', function (e) {
-    if (e.detail.type === 'pickup') {
+  // Listen for zone selection changes
+  document.addEventListener('taxiscope:zones-selected', function (e) {
+    if (e.detail.pickup) {
+      // Pickup zone selected - load its heatmap
+      // Get zone name from the pickup display element
+      const zoneName = document.getElementById('pickup-zone').textContent;
+      loadHeatmap(e.detail.pickup, zoneName);
+    } else {
+      // Pickup cleared
       hideHeatmap();
     }
   });
