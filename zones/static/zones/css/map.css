@@ -10,6 +10,57 @@ header {
   color: #fff;
 }
 
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 1rem;
+  background: #f4f6f9;
+  font: 14px sans-serif;
+}
+
+.filters select {
+  min-height: 2rem;
+  padding: 0.2rem 0.45rem;
+}
+
+.filters input[type="range"] {
+  width: min(220px, 30vw);
+}
+
+#hour-value {
+  min-width: 7.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+#filter-status {
+  margin-left: auto;
+  color: #4c5565;
+}
+
+.zone-stats {
+  position: absolute;
+  z-index: 500;
+  top: 112px;
+  left: 12px;
+  width: min(250px, calc(100vw - 48px));
+  padding: 0.7rem 0.9rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  font: 14px/1.4 sans-serif;
+  pointer-events: none;
+}
+
+.zone-stats h2,
+.zone-stats p {
+  margin: 0 0 0.35rem;
+}
+
+.zone-stats h2 {
+  font-size: 1rem;
+}
+
 header h1 {
   margin: 0;
   font-size: 1.1rem;
@@ -17,8 +68,12 @@ header h1 {
 }
 
 #map {
-  height: calc(100vh - 48px);
+  height: calc(100vh - 105px);
   width: 100%;
+}
+
+.is-loading #filter-status {
+  color: #8a4b00;
 }
 
 .legend {
@@ -48,4 +103,24 @@ header h1 {
   border: 1px solid #c00;
   padding: 6px 12px;
   font: 14px sans-serif;
+}
+
+@media (max-width: 600px) {
+  .filters {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  #filter-status {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+
+  .zone-stats {
+    top: 150px;
+  }
+
+  #map {
+    height: calc(100vh - 140px);
+  }
 }

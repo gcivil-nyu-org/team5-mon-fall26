@@ -47,6 +47,7 @@ function addLegend(breaks, day, hour) {
     return div;
   };
   legend.addTo(map);
+  return legend;
 }
 
 function showError(message) {
@@ -83,6 +84,9 @@ fetch("/api/zones")
     }).addTo(map);
 
     map.fitBounds(layer.getBounds());
-    addLegend(breaks, data.day, data.hour);
+    const legend = addLegend(breaks, data.day, data.hour);
+    document.dispatchEvent(
+      new CustomEvent("taxiscope:map-ready", { detail: { map, layer, legend, data } })
+    );
   })
   .catch(() => showError("Could not load taxi zones. Please refresh the page."));

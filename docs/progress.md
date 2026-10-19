@@ -15,6 +15,20 @@ Entry format:
 
 ## Log
 
+### 2026-10-19 — US4 #6 (time filters)
+**What changed:**
+- Added weekday and hour filters to the map; changes refresh the map statistics and selected-zone summary.
+- Extended `GET /api/zones` with each zone's fare range and average duration.
+- Updated the HLD and `decisions.md`.
+
+**Decisions made (also in `decisions.md`):** filters default to the current NYC weekday and hour; selecting a zone shows its summary.
+
+**Tests:** `manage.py check` and the JavaScript syntax check passed. Django tests could not run because PostgreSQL is not listening on `localhost:5432`.
+
+**Next step:** 
+- start PostgreSQL and run the Django tests.
+- Open the PR for `us4-filter-time` into `develop`
+
 ### 2026-10-18 — US0a #20 (import_trips built)
 **What changed:**
 - `python manage.py import_trips --month YYYY-MM [--month ...] [--data-dir PATH]` in `zones/management/commands/import_trips.py`.

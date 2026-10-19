@@ -12,9 +12,31 @@
   <header>
     <h1>TaxiScope NYC</h1>
   </header>
+  <section class="filters" aria-label="Taxi trip time filters">
+    <label for="day-filter">Day of week</label>
+    <select id="day-filter">
+      <option value="0" {% if current_day == 0 %}selected{% endif %}>Monday</option>
+      <option value="1" {% if current_day == 1 %}selected{% endif %}>Tuesday</option>
+      <option value="2" {% if current_day == 2 %}selected{% endif %}>Wednesday</option>
+      <option value="3" {% if current_day == 3 %}selected{% endif %}>Thursday</option>
+      <option value="4" {% if current_day == 4 %}selected{% endif %}>Friday</option>
+      <option value="5" {% if current_day == 5 %}selected{% endif %}>Saturday</option>
+      <option value="6" {% if current_day == 6 %}selected{% endif %}>Sunday</option>
+    </select>
+    <label for="hour-filter">Hour</label>
+    <input id="hour-filter" type="range" min="0" max="23" value="{{ current_hour }}">
+    <output id="hour-value" for="hour-filter">{{ current_hour }}:00–{{ current_hour }}:59</output>
+    <span id="filter-status" role="status" aria-live="polite"></span>
+  </section>
+  <aside class="zone-stats" aria-live="polite" aria-label="Selected zone statistics">
+    <h2 id="selected-zone">Select a zone</h2>
+    <p>Fare range: <strong id="fare-range">—</strong></p>
+    <p>Average trip duration: <strong id="trip-duration">—</strong></p>
+  </aside>
   <div id="map"></div>
 
   <script src="{% static 'zones/vendor/leaflet/leaflet.js' %}"></script>
   <script src="{% static 'zones/js/map.js' %}"></script>
+  <script src="{% static 'zones/js/filters.js' %}"></script>
 </body>
 </html>
