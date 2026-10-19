@@ -25,7 +25,9 @@ Entry format:
 
 **Tests:** `manage.py check` and the JavaScript syntax check passed. Django tests could not run because PostgreSQL is not listening on `localhost:5432`.
 
-**Next step:** start PostgreSQL and run the Django tests.
+**Next step:** 
+- start PostgreSQL and run the Django tests.
+- Open the PR for `us4-filter-time` into `develop`
 
 ### 2026-10-18 — US0a #20 (import_trips built)
 **What changed:**
