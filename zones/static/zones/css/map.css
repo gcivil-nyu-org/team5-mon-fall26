@@ -42,7 +42,7 @@ header {
   position: absolute;
   z-index: 500;
   top: 112px;
-  left: 12px;
+  left: 50px;
   width: min(280px, calc(100vw - 48px));
   padding: 0.7rem 0.9rem;
   border-radius: 4px;
