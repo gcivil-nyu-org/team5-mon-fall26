@@ -105,3 +105,14 @@ Entry format:
 - Acceptance criterion 3 (zones line up in Leaflet): **passed (2026-10-18).** The user checked it by eye on a throwaway Leaflet page (vendored Leaflet over OpenStreetMap, outside the repo). Zones line up with the streets at Central Park, the Manhattan edges, JFK, LaGuardia, Newark and Staten Island. Popups show the right ID, zone and borough. Mention this in the PR.
 - US1 (#3): serve the shapes joined with `zone_hour_stats` from `GET /api/zones`. Load the file once at startup. At 2.2 MB, check the response size and consider gzip.
 - Not pushed; the user does all the git.
+
+### 2026-10-18 — us1-demand-map (US1, #3)
+   **What changed:**
+   - Added `GET /api/zones?day=&hour=` in `zones/views.py` and `zones/urls.py`. Returns all 263 zones as GeoJSON with `zone_id`, `name`, `borough`, `trip_count`. Defaults to the current NYC day and hour. Returns 400 for a bad day or hour.
+   - Map page (`zones/static/zones/js/map.js`, `map.css`) colors zones by pickups in 5 groups, grey for no trips, with a legend and a hover box showing name, borough and pickups.
+
+   **Decisions made (also in `decisions.md`):** default day/hour use NYC time; colors split zones into 5 equal-sized groups.
+
+   **Tests:** new `zones/tests/test_zones_api.py`. `manage.py test`: 91 tests, OK.
+
+   **Next step:** the response is about 2.5 MB; consider Django's `GZipMiddleware`. US4 (time filter) can reuse `/api/zones` with `day` and `hour`.

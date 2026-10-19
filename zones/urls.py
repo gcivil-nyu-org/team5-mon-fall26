@@ -6,4 +6,5 @@ app_name = "zones"
 
 urlpatterns = [
     path("", views.map_view, name="map"),
+    path("api/zones", views.zones_api, name="zones_api"),
 ]

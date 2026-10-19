@@ -20,3 +20,32 @@ header h1 {
   height: calc(100vh - 48px);
   width: 100%;
 }
+
+.legend {
+  background: #fff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  font: 13px/18px sans-serif;
+}
+
+.legend i {
+  display: inline-block;
+  width: 16px;
+  height: 12px;
+  margin-right: 6px;
+  vertical-align: middle;
+  border: 1px solid #999;
+}
+
+.map-error {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: #fff3f3;
+  border: 1px solid #c00;
+  padding: 6px 12px;
+  font: 14px sans-serif;
+}

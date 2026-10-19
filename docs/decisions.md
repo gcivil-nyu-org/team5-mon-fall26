@@ -80,3 +80,7 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - ~~Which months of TLC data to load first.~~ Decided 2026-10-17: March to May 2026, see "Our choices (data import)" above.
 - CI tooling. Waiting on the remaining course slides. (Testing tool is decided above: Django's built-in test runner.)
 - Map tile provider for the demo. OpenStreetMap's public tile servers have a usage policy and are not meant for heavy production use (they already 403'd once locally over a missing Referer header). Check this before the sprint demo and be ready to switch to another tile provider (for example a paid provider, or self-hosted tiles) if it becomes a problem.
+
+   ## Our choices (demand map, US1 #3, 2026-10-18)
+   - **Default day and hour:** `/api/zones` uses the current NYC day and hour when none is given, because trip times are recorded in NYC time.
+   - **Map colors:** zones with trips are split into 5 equal-sized groups by pickup count (yellow = quiet, dark red = busy). Zones with no trips are grey.
