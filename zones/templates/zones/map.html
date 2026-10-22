@@ -43,10 +43,25 @@
     <p>Average trip duration: <strong id="trip-duration">—</strong></p>
     <button id="clear-selection" class="clear-all-btn" hidden>Clear selection</button>
   </aside>
+  <aside id="heatmap-panel" class="heatmap-panel" hidden aria-label="Zone demand heatmap">
+    <h2 id="heatmap-title">Zone Heatmap</h2>
+    <div class="heatmap-controls">
+      <label>
+        <input type="radio" name="heatmap-metric" value="trip_count" checked>
+        Trip Volume
+      </label>
+      <label>
+        <input type="radio" name="heatmap-metric" value="avg_duration_min">
+        Avg Duration
+      </label>
+    </div>
+    <div id="heatmap-container"></div>
+  </aside>
   <div id="map"></div>
 
   <script src="{% static 'zones/vendor/leaflet/leaflet.js' %}"></script>
   <script src="{% static 'zones/js/map.js' %}"></script>
   <script src="{% static 'zones/js/filters.js' %}"></script>
+  <script src="{% static 'zones/js/heatmap.js' %}"></script>
 </body>
 </html>

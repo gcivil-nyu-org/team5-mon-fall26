@@ -98,3 +98,45 @@ def zones_api(request):
     return JsonResponse(
         {"type": "FeatureCollection", "day": day, "hour": hour, "features": features}
     )
+
+
+@require_GET
+def heatmap_api(request, zone_id):
+    """GET /api/zones/:id/heatmap
+
+    Returns a 7x24 grid (7 days x 24 hours) of trip volume and average
+    trip duration for the zone. Cells with no data have null values.
+    """
+    try:
+        zone = Zone.objects.get(zone_id=zone_id)
+    except Zone.DoesNotExist:
+        return JsonResponse({"error": "Zone not found"}, status=404)
+
+    # Fetch all stats for this zone
+    stats = ZoneHourStats.objects.filter(zone=zone).values(
+        "day_of_week", "hour", "trip_count", "avg_duration_min"
+    )
+    stats_dict = {(s["day_of_week"], s["hour"]): s for s in stats}
+
+    # Build 7x24 grid with null for missing cells
+    heatmap = []
+    for day in range(7):
+        day_data = []
+        for hour in range(24):
+            cell = stats_dict.get((day, hour))
+            day_data.append(
+                {
+                    "trip_count": cell["trip_count"] if cell else None,
+                    "avg_duration_min": cell["avg_duration_min"] if cell else None,
+                }
+            )
+        heatmap.append(day_data)
+
+    return JsonResponse(
+        {
+            "zone_id": zone_id,
+            "zone_name": zone.name,
+            "borough": zone.borough,
+            "heatmap": heatmap,
+        }
+    )

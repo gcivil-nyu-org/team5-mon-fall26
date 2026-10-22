@@ -178,3 +178,110 @@ header h1 {
     height: calc(100vh - 140px);
   }
 }
+
+/* Heatmap panel (US3) */
+.heatmap-panel {
+  position: absolute;
+  z-index: 500;
+  top: 112px;
+  right: 50px;
+  width: min(650px, calc(100vw - 420px));
+  max-height: calc(100vh - 160px);
+  padding: 0.9rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  font: 14px/1.4 sans-serif;
+  overflow-y: auto;
+}
+
+.heatmap-panel h2 {
+  margin: 0 0 0.6rem;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.heatmap-controls {
+  margin-bottom: 0.7rem;
+  display: flex;
+  gap: 1.2rem;
+}
+
+.heatmap-controls label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+}
+
+.heatmap-grid {
+  display: table;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.heatmap-row {
+  display: table-row;
+}
+
+.heatmap-header {
+  font-weight: 600;
+}
+
+.heatmap-day-label,
+.heatmap-hour-label,
+.heatmap-cell {
+  display: table-cell;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.heatmap-day-label {
+  padding: 0.25rem 0.4rem;
+  font-weight: 600;
+  text-align: right;
+}
+
+.heatmap-hour-label {
+  padding: 0.2rem 0.15rem;
+  font-size: 10px;
+}
+
+.heatmap-cell {
+  width: 20px;
+  height: 20px;
+  border: 1px solid #ddd;
+  cursor: help;
+}
+
+.heatmap-cell.no-data {
+  background: repeating-linear-gradient(
+    45deg,
+    #f5f5f5,
+    #f5f5f5 2px,
+    #e0e0e0 2px,
+    #e0e0e0 4px
+  );
+}
+
+.heatmap-panel .error {
+  color: #c00;
+  margin: 0.5rem 0;
+}
+
+@media (max-width: 1100px) {
+  .heatmap-panel {
+    top: 380px;
+    right: 50px;
+    left: 50px;
+    width: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .heatmap-panel {
+    top: 420px;
+    right: 10px;
+    left: 10px;
+  }
+}
