@@ -99,3 +99,7 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - **Money in JSON:** fares are strings with two decimals (Django's encoder for `Decimal`), as in `/api/zones`. `fare_avg` is the stored value, never recomputed.
 - **`/api/zones` is unchanged:** it still returns each zone's fare and duration with no minimum trip count (US4). The selection panel's fare line now reads `/api/routes` and is labeled "fare before tip". The duration line still reads `/api/zones` until US6. This replaces the fare part of the US4 "Selected-zone summary" decision.
 - **Refresh timing:** the fare refreshes when the zones change, and when the map has loaded a new day or hour. A newer request always wins over an older response.
+
+## Our choices (trip duration, US6 #8, 2026-10-23)
+- **Duration line reads `/api/routes`, not `/api/zones`:** the duration line now comes from the same `avg_duration_min` and `enough_data` as the fare line, instead of the pickup zone's duration from `/api/zones` (which ignored `MIN_TRIP_COUNT` and a selected dropoff). This is the fix for the fare/duration mismatch Aleena flagged in the US5 notes.
+- **One response, one file:** `fare.js` writes both the fare line and the duration line from the single `/api/routes` fetch it already makes, in the same `enough_data` branch, so the two lines are never computed from different responses. `filters.js` no longer writes the duration line. No new endpoint, no API contract change.

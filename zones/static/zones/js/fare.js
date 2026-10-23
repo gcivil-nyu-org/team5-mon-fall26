@@ -1,9 +1,12 @@
-// Fare range component for US5 #7: View Fare Range
+// Fare range and trip duration component for US5 #7 and US6 #8.
+// Both lines come from the same /api/routes response so they never
+// disagree about whether there is enough data.
 (function () {
   'use strict';
 
   const fareRange = document.getElementById('fare-range');
   const fareScope = document.getElementById('fare-scope');
+  const tripDuration = document.getElementById('trip-duration');
 
   let pickup = null;
   let dropoff = null;
@@ -21,6 +24,7 @@
     if (pickup === null || day === null) {
       fareRange.textContent = '—';
       fareScope.textContent = '';
+      tripDuration.textContent = '—';
       return;
     }
 
@@ -30,6 +34,7 @@
       ? 'All trips from this pickup zone'
       : 'Trips from the pickup to the dropoff zone';
     fareRange.textContent = 'Loading…';
+    tripDuration.textContent = 'Loading…';
 
     fetch(`/api/routes?${params}`)
       .then(response => {
@@ -40,14 +45,19 @@
       })
       .then(data => {
         if (sequence !== fareSequence) return;
-        fareRange.textContent = data.enough_data
-          ? `min ${dollars(data.fare_min)} · avg ${dollars(data.fare_avg)} · max ${dollars(data.fare_max)}`
-          : 'Not enough data';
+        if (data.enough_data) {
+          fareRange.textContent = `min ${dollars(data.fare_min)} · avg ${dollars(data.fare_avg)} · max ${dollars(data.fare_max)}`;
+          tripDuration.textContent = `${Number(data.avg_duration_min).toFixed(1)} min`;
+        } else {
+          fareRange.textContent = 'Not enough data';
+          tripDuration.textContent = 'Not enough data';
+        }
       })
       .catch(error => {
         if (sequence !== fareSequence) return;
         console.error('Fare error:', error);
         fareRange.textContent = 'Could not load fare';
+        tripDuration.textContent = 'Could not load duration';
       });
   }
 

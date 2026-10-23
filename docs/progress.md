@@ -15,6 +15,25 @@ Entry format:
 
 ## Log
 
+### 2026-10-23 — US6 #8 (trip duration)
+**What changed:**
+- `docs/stories/US6.md` refreshed with implementation notes.
+- No new endpoint or API field: `/api/routes` already returned `avg_duration_min` and `enough_data` (US5 #7).
+- `zones/static/zones/js/fare.js`: now writes both the fare line and the duration line (`#trip-duration`) from the same `/api/routes` response, in the same `enough_data` branch, guarded by the existing `fareSequence` staleness check.
+- `zones/static/zones/js/filters.js`: removed `updatePickupStats()` and the `tripDuration` reference — it no longer reads duration from `/api/zones`. No other behavior changed (US2 selection, US4 filters, map styling untouched).
+- `zones/templates/zones/map.html`: unchanged (the `#trip-duration` element already existed).
+
+**Decisions made (also in `decisions.md`):** the duration line reads `/api/routes` (not `/api/zones`), and one file (`fare.js`) owns both the fare and duration lines from a single response so they can't disagree.
+
+**Tests:** `zones/tests/test_fare_panel.py` updated — `FareJsTests` gained duration assertions (writes `avg_duration_min`/`trip-duration`, shares the `enough_data` branch and the `fareSequence` guard with the fare line); `FiltersJsFareTests` flipped to assert filters.js no longer writes the duration line. `manage.py test`: 161 tests, OK. `node --check` on both edited JS files passed.
+- Manual check against the real March–May 2026 database (Django test client + direct `psycopg` queries, both matching exactly):
+  - Busy route, 237 Upper East Side South -> 236 Upper East Side North, Wednesday 14:00: 1279 trips, 9.91 min (same cell checked for fare in US5).
+  - Pickup only, 132 JFK Airport, Friday 17:00: 3453 trips, 55.49 min.
+  - Thin cell, 132 JFK Airport -> 1 Newark Airport, Monday 16:00: 4 trips (`enough_data: false`); the underlying row has a real duration (78.96 min) that the UI correctly withholds as "Not enough data".
+- Also checked over HTTP with `manage.py runserver`: the map page loads `trip-duration` and the script order (map.js, filters.js, fare.js, heatmap.js) is unchanged; `/api/routes` returns the same values as the DB.
+
+**Next step:** open the PR into `develop`. After merging, `/api/zones`'s per-zone `avg_duration_min`/`fare_*` fields are no longer read by any frontend code (kept for the API contract per the US5 decision — not removed).
+
 ### 2026-10-22 — US5 #7 (fare range)
 **What changed:**
 - `docs/stories/US5.md` refreshed from issue #7.
