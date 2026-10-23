@@ -9,7 +9,7 @@ from django.shortcuts import render
 from django.views.decorators.http import require_GET
 
 from .models import Zone, ZoneHourStats
-from .stats import route_stats, unknown_zone_ids
+from .stats import route_stats, route_windows, unknown_zone_ids
 
 ZONE_SHAPES_PATH = Path(__file__).resolve().parent / "data" / "taxi_zones.geojson"
 
@@ -185,4 +185,38 @@ def routes_api(request):
             "hour": hour,
             **route_stats(pickup, dropoff, day, hour),
         }
+    )
+
+
+@require_GET
+def route_windows_api(request):
+    """GET /api/routes/windows?from=&to=&day=
+
+    The hours of one day of week (Monday=0 .. Sunday=6, default the current
+    NYC day) ranked by average fare and by average duration, with the best
+    (cheapest, fastest) and worst (most expensive, slowest) hour. With `to`,
+    for that route; without it, for all trips from the pickup zone. Hours
+    below settings.MIN_TRIP_COUNT trips are left out; fewer than 2 hours
+    left gives enough_data false and empty results.
+    """
+    pickup = _parse_int(request.GET.get("from"), 1, MAX_ZONE_ID)
+    raw_dropoff = request.GET.get("to", "")
+    dropoff = _parse_int(raw_dropoff, 1, MAX_ZONE_ID) if raw_dropoff != "" else None
+    day = _parse_int(request.GET.get("day", datetime.now(NYC_TZ).weekday()), 0, 6)
+    if (
+        pickup is None
+        or (raw_dropoff != "" and dropoff is None)
+        or day is None
+        or unknown_zone_ids(pickup, dropoff)
+    ):
+        return JsonResponse(
+            {
+                "error": "from must be a known zone id; to, if given, must be a "
+                "known zone id; day must be 0-6 (Monday=0)"
+            },
+            status=400,
+        )
+
+    return JsonResponse(
+        {"from": pickup, "to": dropoff, "day": day, **route_windows(pickup, dropoff, day)}
     )
