@@ -15,6 +15,18 @@ Entry format:
 
 ## Log
 
+### 2026-10-23 — US3 #5 (heatmap error fix, review note on PR #29)
+**What changed:**
+- `zones/static/zones/js/heatmap.js`: the `.catch` in `loadHeatmap()` now calls `showHeatmap()`, so "Failed to load heatmap data" is visible. Before, the message went into the hidden panel and the user saw nothing (Aleena's review note on PR #29).
+- `zones/tests/test_heatmap_js.py`: new, checks the `.catch` writes the message and shows the panel.
+
+**Tests:** `manage.py test`: 163 tests, OK. Browser check: page loaded, database stopped (`docker stop taxiscope-db`), Midtown Center selected; the panel shows "Failed to load heatmap data".
+- Real-data test of US3 done on the March–May 2026 database (Aleena on PR #29, and again here): heatmap, toggle, hover values, and striped no-data cells all work.
+
+**Note:** an earlier local setup had a second Postgres container (`postgres-team5`) filled with made-up stats, which made the heatmap look wrong. Use only the real import (`import_trips`), never seeded data.
+
+**Next step:** US3 waits only on the Integration deploy (AWS) and the PO demo. Next story: US7 #9 (best and worst times); the best/worst rule still needs the PO.
+
 ### 2026-10-23 — US6 #8 (trip duration)
 **What changed:**
 - `docs/stories/US6.md` refreshed with implementation notes.
@@ -203,6 +215,6 @@ Entry format:
 - Heatmap positioned on right side, moves below selection panel on mobile
 
 **Next step:**
-- Manual test with real zone data (currently using test data for zone 100)
-- Update progress.md and open PR
+- ~~Manual test with real zone data~~ Done 2026-10-23 on the real March–May 2026 data (see the US3 heatmap error fix entry above).
+- ~~Update progress.md and open PR~~ Done (PR #29, merged).
 - Consider adding heatmap tests for UI behavior (future story)
