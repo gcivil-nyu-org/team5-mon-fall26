@@ -41,6 +41,17 @@
     </div>
     <p>Fare before tip: <strong id="fare-range">—</strong><br><small id="fare-scope"></small></p>
     <p>Average trip duration: <strong id="trip-duration">—</strong></p>
+    <section id="windows" class="windows" hidden aria-label="Best and worst times">
+      <h2 class="windows-title">Best and worst times, <span id="windows-day"></span></h2>
+      <p id="windows-status"></p>
+      <ul id="windows-list" class="windows-list">
+        <li class="window-best"><span class="window-tag">Best</span> Cheapest: <strong id="best-fare">—</strong></li>
+        <li class="window-best"><span class="window-tag">Best</span> Fastest: <strong id="best-duration">—</strong></li>
+        <li class="window-worst"><span class="window-tag">Worst</span> Most expensive: <strong id="worst-fare">—</strong></li>
+        <li class="window-worst"><span class="window-tag">Worst</span> Slowest: <strong id="worst-duration">—</strong></li>
+      </ul>
+      <small class="windows-note">Based on past trips (March–May 2026), not a guarantee.</small>
+    </section>
     <button id="clear-selection" class="clear-all-btn" hidden>Clear selection</button>
   </aside>
   <aside id="heatmap-panel" class="heatmap-panel" hidden aria-label="Zone demand heatmap">
@@ -63,6 +74,7 @@
   <script src="{% static 'zones/js/map.js' %}"></script>
   <script src="{% static 'zones/js/filters.js' %}"></script>
   <script src="{% static 'zones/js/fare.js' %}"></script>
+  <script src="{% static 'zones/js/windows.js' %}"></script>
   <script src="{% static 'zones/js/heatmap.js' %}"></script>
 </body>
 </html>
