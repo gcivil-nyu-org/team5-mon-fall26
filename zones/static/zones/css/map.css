@@ -55,6 +55,59 @@ header {
   margin: 0 0 0.35rem;
 }
 
+/* US7 #9: best and worst times */
+.windows {
+  margin: 0.5rem 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid #ddd;
+}
+
+.windows-title {
+  margin: 0 0 0.3rem;
+  font-size: 14px;
+}
+
+.windows-list {
+  margin: 0 0 0.3rem;
+  padding: 0;
+  list-style: none;
+}
+
+.windows-list li {
+  margin-bottom: 0.2rem;
+  padding: 0.15rem 0.4rem;
+  border-left: 4px solid;
+  border-radius: 2px;
+}
+
+.window-tag {
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.window-best {
+  border-color: #00804a;
+  background: #e6f4ec;
+}
+
+.window-best .window-tag {
+  color: #00804a;
+}
+
+.window-worst {
+  border-color: #b3261e;
+  background: #fbeaea;
+}
+
+.window-worst .window-tag {
+  color: #b3261e;
+}
+
+.windows-note {
+  color: #555;
+}
+
 .selection-row {
   display: flex;
   align-items: center;
