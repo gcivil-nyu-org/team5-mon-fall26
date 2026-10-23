@@ -33,7 +33,7 @@ Web app that shows NYC riders historical taxi demand, fares, and trip duration b
 - `GET /api/zones/:id/heatmap`: 7 x 24 trip volume and average duration
 - `GET /api/routes?from=&to=&day=&hour=`: fare min/avg/max, typical duration, trip volume (`to` optional)
 - `GET /api/routes/windows?from=&to=&day=`: hours of the day ranked, best and worst windows
-- Too few trips: return an empty result and show "Not enough data"
+- Too few trips (fewer than MIN_TRIP_COUNT = 5 in settings.py): the API returns 200 with "enough_data": false and null stats, and the UI shows "Not enough data"
 - `day=` convention: Monday=0 .. Sunday=6, the same as Python's `weekday()` and pandas' `dayofweek`. Same convention in the database's `day_of_week` columns.
 
 ## Stories (ZenHub issue numbers)

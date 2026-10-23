@@ -88,7 +88,7 @@ Fare ranges (minimum, average, maximum) are computed after cleaning outliers (ze
 |---|---|
 | `GET /api/zones?day=&hour=` | All zones as GeoJSON (name, borough, shape) with trip volume, fare min/average/max, and average duration for the selected day and hour. Defaults to current NYC day and hour. Missing zone-hour stats have a trip count of 0 and null fare/duration values. |
 | `GET /api/zones/:id/heatmap` | A 7 x 24 grid of trip volume and average trip duration for the zone |
-| `GET /api/routes?from=&to=&day=&hour=` | Minimum, average, and maximum fare, typical duration, and trip volume. `to` is optional: with only a pickup zone, it returns stats for all trips from that zone. |
+| `GET /api/routes?from=&to=&day=&hour=` | Fare before tip (minimum, average, maximum), average duration, and trip count for one day and hour. `from` is required; `to` is optional. With only a pickup zone, it covers all trips from that zone (`zone_hour_stats`); with both, that route (`route_hour_stats`). Defaults to current NYC day and hour. Below the minimum trip count (5), `enough_data` is false and the stats are null. Bad or unknown parameters give 400. |
 | `GET /api/routes/windows?from=&to=&day=` | The hours of the selected day ranked by fare and duration, with the best and worst windows |
 
 Every endpoint is public and read-only. When a window has too few trips, the API returns an empty result and the app shows "Not enough data".

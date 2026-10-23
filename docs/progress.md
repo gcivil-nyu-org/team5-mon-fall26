@@ -15,6 +15,25 @@ Entry format:
 
 ## Log
 
+### 2026-10-22 — US5 #7 (fare range)
+**What changed:**
+- `docs/stories/US5.md` refreshed from issue #7.
+- `MIN_TRIP_COUNT = 5` in `taxiscope/settings.py`.
+- `GET /api/routes?from=&to=&day=&hour=`: `routes_api` in `zones/views.py`, query logic in `zones/stats.py` (`route_stats`, `unknown_zone_ids`).
+- Selection panel: the fare line shows min/avg/max fare before tip from `/api/routes`, with an "all trips from this pickup zone" note when there is no dropoff (`zones/static/zones/js/fare.js`). `filters.js` no longer writes the fare line; it dispatches `taxiscope:time-changed`. The duration line is unchanged (US6).
+
+**Decisions made (also in `decisions.md`):** minimum trip count 5 as one setting; the `/api/routes` response shape with `enough_data`; no fallback from route to zone stats; `from == to` allowed; unknown zone gives 400; `/api/zones` unchanged.
+
+**Tests:** `test_routes_api.py`, `test_fare_panel.py`. `manage.py test`: 158 tests, OK. AC4 manual check: 4 cells matched (details below).
+- AC4 check, March to May 2026 data: for each cell, the API values, the database row (psql) and an independent pandas recount of the raw Parquet files (same cleaning rules, written separately; fares in integer cents, average = cent sum / count rounded half up once) all match. The API values were taken in-process with Django's test client against the real database (the dev server was not reachable at the time); the displayed values were checked in the browser.
+  - Busy route, 237 Upper East Side South -> 236 Upper East Side North, Wednesday 14:00: 1279 trips, fare $7.70 / $14.44 / $58.25, 9.91 min.
+  - Pickup only, 132 JFK Airport, Friday 17:00: 3453 trips, fare $9.80 / $77.97 / $193.91, 55.49 min.
+  - Sparse route, 132 JFK Airport -> 1 Newark Airport, Monday 16:00: 4 trips. The API returns `enough_data: false` with null stats and the UI shows "Not enough data" (the row holds $165.97 / $179.84 / $192.81, 78.96 min, matching pandas).
+  - Exactly 5 trips, 132 JFK Airport -> 1 Newark Airport, Monday 12:00: 5 trips, fare $183.11 / $209.13 / $294.71, 60.92 min, shown.
+- After pulling this change, hard-reload the browser (Cmd+Shift+R): a cached old `filters.js` mixes the old and new fare lines.
+
+**Next step:** browser check on Integration, open the PR into `develop`, update the HLD wiki page. US6 can read `avg_duration_min` from the same response.
+
 ### 2026-10-19 — US2 #4 (select trip zones)
 **What changed:**
 - Replaced single-zone selection with two-zone selection: first click sets pickup (blue `#0057b8` border), second click sets dropoff (green `#00804a` border).
