@@ -9,11 +9,15 @@ from django.shortcuts import render
 from django.views.decorators.http import require_GET
 
 from .models import Zone, ZoneHourStats
+from .stats import route_stats, unknown_zone_ids
 
 ZONE_SHAPES_PATH = Path(__file__).resolve().parent / "data" / "taxi_zones.geojson"
 
 # Trip times are recorded in NYC local time, so "now" must be NYC time too.
 NYC_TZ = ZoneInfo("America/New_York")
+
+# Largest value of a PostgreSQL integer column such as zone.zone_id.
+MAX_ZONE_ID = 2**31 - 1
 
 
 def map_view(request):
@@ -138,5 +142,47 @@ def heatmap_api(request, zone_id):
             "zone_name": zone.name,
             "borough": zone.borough,
             "heatmap": heatmap,
+        }
+    )
+
+
+@require_GET
+def routes_api(request):
+    """GET /api/routes?from=&to=&day=&hour=
+
+    Fare before tip (min/avg/max), average duration and trip count for one
+    day of week (Monday=0 .. Sunday=6) and hour (0-23), defaulting to the
+    current NYC day and hour. With `to`, for that route; without it, for
+    all trips from the pickup zone. Below settings.MIN_TRIP_COUNT trips,
+    enough_data is false and the stats are null.
+    """
+    now = datetime.now(NYC_TZ)
+    pickup = _parse_int(request.GET.get("from"), 1, MAX_ZONE_ID)
+    raw_dropoff = request.GET.get("to", "")
+    dropoff = _parse_int(raw_dropoff, 1, MAX_ZONE_ID) if raw_dropoff != "" else None
+    day = _parse_int(request.GET.get("day", now.weekday()), 0, 6)
+    hour = _parse_int(request.GET.get("hour", now.hour), 0, 23)
+    if (
+        pickup is None
+        or (raw_dropoff != "" and dropoff is None)
+        or day is None
+        or hour is None
+        or unknown_zone_ids(pickup, dropoff)
+    ):
+        return JsonResponse(
+            {
+                "error": "from must be a known zone id; to, if given, must be a "
+                "known zone id; day must be 0-6 (Monday=0) and hour must be 0-23"
+            },
+            status=400,
+        )
+
+    return JsonResponse(
+        {
+            "from": pickup,
+            "to": dropoff,
+            "day": day,
+            "hour": hour,
+            **route_stats(pickup, dropoff, day, hour),
         }
     )

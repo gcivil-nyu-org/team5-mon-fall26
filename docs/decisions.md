@@ -75,7 +75,7 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 
 ## Open (decide before the story that needs it)
 - Which AWS services host the Django app and the database. Needed before the first deploy.
-- Minimum trip count for a window to be shown. **Proposed: 5** (2026-10-17). With March to May loaded, cells under 5 trips hold about 0.1% of zone trips and 13% of route trips. Confirm with the PO before US5, US6, and US7.
+- ~~Minimum trip count for a window to be shown.~~ Decided 2026-10-22: 5 trips, see "Our choices (fare range, US5 #7)" below.
 - Exact rule for "best" and "worst" travel windows (volume only, or a mix with duration).
 - ~~Which months of TLC data to load first.~~ Decided 2026-10-17: March to May 2026, see "Our choices (data import)" above.
 - CI tooling. Waiting on the remaining course slides. (Testing tool is decided above: Django's built-in test runner.)
@@ -89,3 +89,13 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - **Filter defaults:** use the current NYC weekday and hour for the controls and first map request.
 - **Selected-zone summary:** selecting a zone shows its fare range and average duration. Changing the filters refreshes the summary with the map; zones without statistics show "Not enough data".
 - **Zone API fields:** each zone includes its fare minimum, average, maximum, and average duration alongside its trip count.
+
+## Our choices (fare range, US5 #7, 2026-10-22)
+- **Minimum trip count:** 5 trips (team decision, 2026-10-22). One setting, `MIN_TRIP_COUNT = 5` in `settings.py`, shared by US5, US6 and US7. It is applied in the API; the import still stores every cell.
+- **`/api/routes` response:** always HTTP 200 for valid parameters, with the keys `from, to, day, hour, enough_data, trip_count, fare_min, fare_avg, fare_max, avg_duration_min`. If there is no row or `trip_count < MIN_TRIP_COUNT`, then `enough_data` is false, `trip_count` is the real count (0 if no row) and the four stats are null. This is how "the API returns an empty result" (HLD decisions above) is done for this endpoint: the stats are empty, and the count stays so the UI can explain it.
+- **Which table:** with `to`, `route_hour_stats` only. A sparse route never falls back to the pickup zone's numbers. Without `to` (or with `to` empty), `zone_hour_stats` for the pickup zone: all trips from that zone.
+- **`from == to`** (a trip within one zone) is a valid route.
+- **Validation:** `from` is required. Day 0-6 (Monday=0) and hour 0-23 default to the current NYC time. A missing, non-integer or unknown zone id, or a bad day or hour, gives 400. Why 400 and not 404: the endpoint exists and only a query parameter is wrong, the same as `day=7`. The heatmap's 404 is for an id in the path.
+- **Money in JSON:** fares are strings with two decimals (Django's encoder for `Decimal`), as in `/api/zones`. `fare_avg` is the stored value, never recomputed.
+- **`/api/zones` is unchanged:** it still returns each zone's fare and duration with no minimum trip count (US4). The selection panel's fare line now reads `/api/routes` and is labeled "fare before tip". The duration line still reads `/api/zones` until US6. This replaces the fare part of the US4 "Selected-zone summary" decision.
+- **Refresh timing:** the fare refreshes when the zones change, and when the map has loaded a new day or hour. A newer request always wins over an older response.

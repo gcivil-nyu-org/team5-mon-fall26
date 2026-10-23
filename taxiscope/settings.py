@@ -137,3 +137,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # tiles. OSM's tile servers reject referrer-less requests. This still
 # withholds the full URL (query strings, etc.) from other origins.
 SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+
+
+# Minimum trips in a day/hour cell before the API shows its statistics
+# (see docs/decisions.md, US5 #7). Shared by US5, US6 and US7.
+MIN_TRIP_COUNT = 5

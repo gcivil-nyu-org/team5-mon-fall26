@@ -5,7 +5,6 @@ const hourValue = document.getElementById("hour-value");
 const filterStatus = document.getElementById("filter-status");
 const pickupZoneEl = document.getElementById("pickup-zone");
 const dropoffZoneEl = document.getElementById("dropoff-zone");
-const fareRange = document.getElementById("fare-range");
 const tripDuration = document.getElementById("trip-duration");
 const clearPickupBtn = document.getElementById("clear-pickup");
 const clearDropoffBtn = document.getElementById("clear-dropoff");
@@ -30,21 +29,19 @@ function updateHourLabel() {
   hourValue.textContent = `${hour}:00–${hour}:59`;
 }
 
+// The fare line is written by fare.js from /api/routes (US5 #7).
 function updatePickupStats(feature) {
   if (!feature) {
-    fareRange.textContent = "—";
     tripDuration.textContent = "—";
     return;
   }
 
   const props = feature.properties;
   if (props.trip_count === 0 || props.fare_min === null) {
-    fareRange.textContent = "Not enough data";
     tripDuration.textContent = "Not enough data";
     return;
   }
 
-  fareRange.textContent = `$${Number(props.fare_min).toFixed(2)}–$${Number(props.fare_max).toFixed(2)}`;
   tripDuration.textContent = `${Number(props.avg_duration_min).toFixed(1)} min`;
 }
 
@@ -179,6 +176,7 @@ async function reloadZones() {
     legendControl = addLegend(currentBreaks, data.day, data.hour);
     updateSelectionPanel();
     displayedTime = { day: data.day, hour: data.hour };
+    document.dispatchEvent(new CustomEvent("taxiscope:time-changed", { detail: { ...displayedTime } }));
     filterStatus.textContent = `Showing ${DAYS[data.day]} ${data.hour}:00–${data.hour}:59`;
     document.querySelector(".map-error")?.remove();
   } catch {
