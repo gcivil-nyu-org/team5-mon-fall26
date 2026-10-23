@@ -51,6 +51,16 @@ class WindowsJsTests(SimpleTestCase):
     def test_calls_windows_api(self):
         self.assertIn("/api/routes/windows", self.js)
 
+    def test_needs_a_dropoff(self):
+        # Team decision 2026-10-23: best and worst are for a trip, so the
+        # section stays hidden until both zones are selected.
+        load = self.js.split("function loadWindows", 1)[1].split("fetch(", 1)[0]
+        early_return = load.split("return;", 1)[0]
+        self.assertIn("dropoff === null", early_return)
+        self.assertIn("section.hidden = true", early_return)
+        # With a dropoff always present, `to` is always sent.
+        self.assertIn("to: dropoff", load)
+
     def test_writes_best_and_worst_lines(self):
         for name in ("best", "worst"):
             self.assertIn(f"data.{name}.fare", self.js)

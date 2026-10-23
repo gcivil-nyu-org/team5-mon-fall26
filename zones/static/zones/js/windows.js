@@ -1,5 +1,5 @@
 // Best and worst times component for US7 #9: Find Best and Worst Travel Times.
-// Reads /api/routes/windows for the selected zones and day.
+// Reads /api/routes/windows for the selected pickup, dropoff and day.
 (function () {
   'use strict';
 
@@ -40,13 +40,13 @@
 
   function loadWindows() {
     const sequence = ++windowsSequence;
-    if (pickup === null || day === null) {
+    // Best and worst are for a trip, so both zones are needed.
+    if (pickup === null || dropoff === null || day === null) {
       section.hidden = true;
       return;
     }
 
-    const params = new URLSearchParams({ from: pickup, day: day });
-    if (dropoff !== null) params.set('to', dropoff);
+    const params = new URLSearchParams({ from: pickup, to: dropoff, day: day });
     dayLabel.textContent = DAYS[day];
     section.hidden = false;
     showStatus('Loading…');

@@ -18,13 +18,13 @@ Entry format:
 ### 2026-10-23 — US7 #9 (best and worst times)
 **What changed:**
 - `GET /api/routes/windows?from=&to=&day=` (`zones/stats.py` `route_windows()`, `zones/views.py`, `zones/urls.py`): ranks the day's hours by average fare and by average duration; best = cheapest and fastest hour, worst = most expensive and slowest. Same tables and `MIN_TRIP_COUNT` (5) as `/api/routes`; fewer than 2 qualifying hours gives `enough_data` false.
-- `zones/static/zones/js/windows.js` (new), `zones/templates/zones/map.html`, `zones/static/zones/css/map.css`: "Best and worst times" section in the selection panel. Best rows green, worst rows red, with "Based on past trips (March–May 2026), not a guarantee." Reloads on zone or day change.
+- `zones/static/zones/js/windows.js` (new), `zones/templates/zones/map.html`, `zones/static/zones/css/map.css`: "Best and worst times" section in the selection panel. Best rows green, worst rows red, with "Based on past trips (March–May 2026), not a guarantee." Reloads on zone or day change. Shown only once a pickup and a dropoff are both selected (team decision, 2026-10-23: the story is about a trip, and pickup-only results mix every destination).
 - `docs/decisions.md`, `docs/design/High-Level-Design.md` (API row), `docs/stories/US7.md`.
 
-**Decisions made (also in `decisions.md`):** fare and duration ranked separately, no combined score; one-hour windows; ties go to the earlier hour. **Proposed, to confirm with the PO** (the story's task "agree with the PO").
+**Decisions made (also in `decisions.md`):** fare and duration ranked separately, no combined score; one-hour windows; ties go to the earlier hour. **Proposed, to confirm with the PO** (the story's task "agree with the PO"). Agreed by the team: the section needs a dropoff.
 
-**Tests:** `zones/tests/test_windows_api.py` (17: ranking, best/worst, ties, minimum, table choice, contract, 400s) and `zones/tests/test_windows_panel.py` (13: labels, distinct classes, historical note, JS events, stale guard, errors). `manage.py test`: 193 tests, OK (after merging `develop` with the US3 fix, PR #32).
-- Real data, Upper East Side South -> North (237 -> 236), Wednesday: cheapest and fastest 3:00 ($11.08, 3.9 min), most expensive 16:00 ($15.85), slowest 15:00 (10.1 min). Monday: cheapest 6:00 ($11.69), most expensive 0:00 ($16.86), slowest 14:00 (9.3 min). All match `route_hour_stats` in psql. Arden Heights -> Midtown Monday shows "Not enough data".
+**Tests:** `zones/tests/test_windows_api.py` (17: ranking, best/worst, ties, minimum, table choice, contract, 400s) and `zones/tests/test_windows_panel.py` (14: labels, distinct classes, historical note, needs a dropoff, JS events, stale guard, errors). `manage.py test`: 194 tests, OK (after merging `develop` with the US3 fix, PR #32).
+- Real data, Upper East Side South -> North (237 -> 236), Wednesday: cheapest and fastest 3:00 ($11.08, 3.9 min), most expensive 16:00 ($15.85), slowest 15:00 (10.1 min). Monday: cheapest 6:00 ($11.69), most expensive 0:00 ($16.86), slowest 14:00 (9.3 min). All match `route_hour_stats` in psql. Arden Heights -> Midtown Monday shows "Not enough data". Pickup only: section hidden; adding a dropoff shows it; clearing the dropoff hides it.
 
 **Known limitation:** below 1100 px wide, the US3 heatmap panel sits at a fixed `top: 380px` and covers the bottom of the now taller selection panel. Fine at laptop width (1440 px: side by side).
 
