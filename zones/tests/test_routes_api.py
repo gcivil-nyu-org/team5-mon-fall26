@@ -244,6 +244,7 @@ class RoutesApiTests(RouteData, TestCase):
             {"from": "", "day": 0, "hour": 8},
             {"from": "abc", "day": 0, "hour": 8},
             {"from": 999, "day": 0, "hour": 8},          # unknown zone
+            {"from": 99999999999, "day": 0, "hour": 8},  # above MAX_ZONE_ID
             {"from": 161, "to": "abc", "day": 0, "hour": 8},
             {"from": 161, "to": 999, "day": 0, "hour": 8},
             {"from": 161, "day": 7, "hour": 8},

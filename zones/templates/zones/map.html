@@ -39,7 +39,7 @@
       <span id="dropoff-zone" class="selection-name">—</span>
       <button id="clear-dropoff" class="clear-btn" hidden aria-label="Clear dropoff">&times;</button>
     </div>
-    <p>Fare range: <strong id="fare-range">—</strong></p>
+    <p>Fare before tip: <strong id="fare-range">—</strong><br><small id="fare-scope"></small></p>
     <p>Average trip duration: <strong id="trip-duration">—</strong></p>
     <button id="clear-selection" class="clear-all-btn" hidden>Clear selection</button>
   </aside>
@@ -62,6 +62,7 @@
   <script src="{% static 'zones/vendor/leaflet/leaflet.js' %}"></script>
   <script src="{% static 'zones/js/map.js' %}"></script>
   <script src="{% static 'zones/js/filters.js' %}"></script>
+  <script src="{% static 'zones/js/fare.js' %}"></script>
   <script src="{% static 'zones/js/heatmap.js' %}"></script>
 </body>
 </html>
