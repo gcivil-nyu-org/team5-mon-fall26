@@ -5,7 +5,6 @@ const hourValue = document.getElementById("hour-value");
 const filterStatus = document.getElementById("filter-status");
 const pickupZoneEl = document.getElementById("pickup-zone");
 const dropoffZoneEl = document.getElementById("dropoff-zone");
-const tripDuration = document.getElementById("trip-duration");
 const clearPickupBtn = document.getElementById("clear-pickup");
 const clearDropoffBtn = document.getElementById("clear-dropoff");
 const clearSelectionBtn = document.getElementById("clear-selection");
@@ -29,22 +28,8 @@ function updateHourLabel() {
   hourValue.textContent = `${hour}:00–${hour}:59`;
 }
 
-// The fare line is written by fare.js from /api/routes (US5 #7).
-function updatePickupStats(feature) {
-  if (!feature) {
-    tripDuration.textContent = "—";
-    return;
-  }
-
-  const props = feature.properties;
-  if (props.trip_count === 0 || props.fare_min === null) {
-    tripDuration.textContent = "Not enough data";
-    return;
-  }
-
-  tripDuration.textContent = `${Number(props.avg_duration_min).toFixed(1)} min`;
-}
-
+// The fare line and the duration line are both written by fare.js from
+// the same /api/routes response (US5 #7, US6 #8).
 function updateSelectionPanel() {
   const pickupLayer = zoneLayers.get(pickupZoneId);
   const dropoffLayer = zoneLayers.get(dropoffZoneId);
@@ -68,7 +53,6 @@ function updateSelectionPanel() {
   }
 
   clearSelectionBtn.hidden = pickupZoneId === null;
-  updatePickupStats(pickupLayer ? pickupLayer.feature : null);
 }
 
 function styleZone(feature) {
