@@ -23,12 +23,24 @@ Entry format:
 
 **Decisions made (also in `decisions.md`):** fare and duration ranked separately, no combined score; one-hour windows; ties go to the earlier hour. **Proposed, to confirm with the PO** (the story's task "agree with the PO").
 
-**Tests:** `zones/tests/test_windows_api.py` (17: ranking, best/worst, ties, minimum, table choice, contract, 400s) and `zones/tests/test_windows_panel.py` (13: labels, distinct classes, historical note, JS events, stale guard, errors). `manage.py test`: 191 tests, OK.
+**Tests:** `zones/tests/test_windows_api.py` (17: ranking, best/worst, ties, minimum, table choice, contract, 400s) and `zones/tests/test_windows_panel.py` (13: labels, distinct classes, historical note, JS events, stale guard, errors). `manage.py test`: 193 tests, OK (after merging `develop` with the US3 fix, PR #32).
 - Real data, Upper East Side South -> North (237 -> 236), Wednesday: cheapest and fastest 3:00 ($11.08, 3.9 min), most expensive 16:00 ($15.85), slowest 15:00 (10.1 min). Monday: cheapest 6:00 ($11.69), most expensive 0:00 ($16.86), slowest 14:00 (9.3 min). All match `route_hour_stats` in psql. Arden Heights -> Midtown Monday shows "Not enough data".
 
 **Known limitation:** below 1100 px wide, the US3 heatmap panel sits at a fixed `top: 380px` and covers the bottom of the now taller selection panel. Fine at laptop width (1440 px: side by side).
 
 **Next step:** confirm the rule with the PO; update the wiki's HLD API row to match `docs/design/High-Level-Design.md`; PR into `develop`. US8 (trip summary) can reuse `/api/routes/windows`.
+
+### 2026-10-23 — US3 #5 (heatmap error fix, review note on PR #29)
+**What changed:**
+- `zones/static/zones/js/heatmap.js`: the `.catch` in `loadHeatmap()` now calls `showHeatmap()`, so "Failed to load heatmap data" is visible. Before, the message went into the hidden panel and the user saw nothing (Aleena's review note on PR #29).
+- `zones/tests/test_heatmap_js.py`: new, checks the `.catch` writes the message and shows the panel.
+
+**Tests:** `manage.py test`: 163 tests, OK. Browser check: page loaded, database stopped (`docker stop taxiscope-db`), Midtown Center selected; the panel shows "Failed to load heatmap data".
+- Real-data test of US3 done on the March–May 2026 database (Aleena on PR #29, and again here): heatmap, toggle, hover values, and striped no-data cells all work.
+
+**Note:** an earlier local setup had a second Postgres container (`postgres-team5`) filled with made-up stats, which made the heatmap look wrong. Use only the real import (`import_trips`), never seeded data.
+
+**Next step:** US3 waits only on the Integration deploy (AWS) and the PO demo. Next story: US7 #9 (best and worst times); the best/worst rule still needs the PO.
 
 ### 2026-10-23 — US6 #8 (trip duration)
 **What changed:**
@@ -218,6 +230,6 @@ Entry format:
 - Heatmap positioned on right side, moves below selection panel on mobile
 
 **Next step:**
-- Manual test with real zone data (currently using test data for zone 100)
-- Update progress.md and open PR
+- ~~Manual test with real zone data~~ Done 2026-10-23 on the real March–May 2026 data (see the US3 heatmap error fix entry above).
+- ~~Update progress.md and open PR~~ Done (PR #29, merged).
 - Consider adding heatmap tests for UI behavior (future story)

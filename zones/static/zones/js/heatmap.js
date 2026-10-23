@@ -54,6 +54,7 @@
       .catch(error => {
         console.error('Heatmap error:', error);
         heatmapContainer.innerHTML = '<p class="error">Failed to load heatmap data</p>';
+        showHeatmap();
       });
   }
 
