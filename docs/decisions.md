@@ -76,7 +76,7 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 ## Open (decide before the story that needs it)
 - Which AWS services host the Django app and the database. Needed before the first deploy.
 - ~~Minimum trip count for a window to be shown.~~ Decided 2026-10-22: 5 trips, see "Our choices (fare range, US5 #7)" below.
-- Exact rule for "best" and "worst" travel windows (volume only, or a mix with duration).
+- ~~Exact rule for "best" and "worst" travel windows.~~ Proposed 2026-10-23: fare and duration ranked separately, see "Our choices (best and worst times, US7 #9)" below. To confirm with the PO.
 - ~~Which months of TLC data to load first.~~ Decided 2026-10-17: March to May 2026, see "Our choices (data import)" above.
 - CI tooling. Waiting on the remaining course slides. (Testing tool is decided above: Django's built-in test runner.)
 - Map tile provider for the demo. OpenStreetMap's public tile servers have a usage policy and are not meant for heavy production use (they already 403'd once locally over a missing Referer header). Check this before the sprint demo and be ready to switch to another tile provider (for example a paid provider, or self-hosted tiles) if it becomes a problem.
@@ -103,3 +103,11 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 ## Our choices (trip duration, US6 #8, 2026-10-23)
 - **Duration line reads `/api/routes`, not `/api/zones`:** the duration line now comes from the same `avg_duration_min` and `enough_data` as the fare line, instead of the pickup zone's duration from `/api/zones` (which ignored `MIN_TRIP_COUNT` and a selected dropoff). This is the fix for the fare/duration mismatch Aleena flagged in the US5 notes.
 - **One response, one file:** `fare.js` writes both the fare line and the duration line from the single `/api/routes` fetch it already makes, in the same `enough_data` branch, so the two lines are never computed from different responses. `filters.js` no longer writes the duration line. No new endpoint, no API contract change.
+
+## Our choices (best and worst times, US7 #9, 2026-10-23)
+- **Rule (proposed, to confirm with the PO):** the story's own example, "lowest/highest fare and duration". The hours of the selected day are ranked twice, once by average fare and once by average duration. Best = the cheapest hour and the fastest hour. Worst = the most expensive hour and the slowest hour. No combined score, so no weighting to agree on, and every result can be checked against one column of the data. Why not one score: on real data the most expensive and the slowest hour are often different (Upper East Side South -> North, Wednesday: most expensive 16:00, slowest 15:00).
+- **A window is one hour** (`H:00–H:59`), the grain of the stats tables.
+- **Which hours count:** only hours with at least `MIN_TRIP_COUNT` (5) trips, the same rule as US5 and US6. Fewer than 2 such hours on that day gives `enough_data` false and no best or worst.
+- **Ties:** the earlier hour wins, for best and for worst.
+- **Which table:** the same as `/api/routes`: with `to`, `route_hour_stats` for that route; without `to`, `zone_hour_stats` for all trips from the pickup zone.
+- **Labeled as historical:** the UI says the times come from past trips (March to May 2026) and are not a guarantee.
