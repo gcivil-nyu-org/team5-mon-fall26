@@ -1,11 +1,11 @@
 // Fare range and trip duration component for US5 #7 and US6 #8.
 // Both lines come from the same /api/routes response so they never
 // disagree about whether there is enough data.
+// also used in US8 #10
 (function () {
   'use strict';
 
   const fareRange = document.getElementById('fare-range');
-  const fareScope = document.getElementById('fare-scope');
   const tripDuration = document.getElementById('trip-duration');
 
   let pickup = null;
@@ -21,18 +21,14 @@
 
   function loadFare() {
     const sequence = ++fareSequence;
-    if (pickup === null || day === null) {
+    if (pickup === null || day === null || hour === null) {
       fareRange.textContent = '—';
-      fareScope.textContent = '';
       tripDuration.textContent = '—';
       return;
     }
 
     const params = new URLSearchParams({ from: pickup, day: day, hour: hour });
     if (dropoff !== null) params.set('to', dropoff);
-    fareScope.textContent = dropoff === null
-      ? 'All trips from this pickup zone'
-      : 'Trips from the pickup to the dropoff zone';
     fareRange.textContent = 'Loading…';
     tripDuration.textContent = 'Loading…';
 
@@ -46,7 +42,7 @@
       .then(data => {
         if (sequence !== fareSequence) return;
         if (data.enough_data) {
-          fareRange.textContent = `min ${dollars(data.fare_min)} · avg ${dollars(data.fare_avg)} · max ${dollars(data.fare_max)}`;
+          fareRange.textContent = `${dollars(data.fare_min)} / ${dollars(data.fare_avg)} / ${dollars(data.fare_max)}`;
           tripDuration.textContent = `${Number(data.avg_duration_min).toFixed(1)} min`;
         } else {
           fareRange.textContent = 'Not enough data';

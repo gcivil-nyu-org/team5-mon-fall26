@@ -11,16 +11,16 @@ STATIC_DIR = Path(__file__).resolve().parent.parent / "static" / "zones"
 
 
 class WindowsPanelTemplateTests(TestCase):
-    """The selection panel has a labeled best and worst times section."""
+    """The shared summary has labeled best and worst rows."""
 
     def setUp(self):
         self.response = self.client.get(reverse("zones:map"))
 
-    def test_section_present_and_hidden_until_a_zone_is_selected(self):
-        self.assertContains(self.response, 'id="windows"')
+    def test_rows_hidden_until_a_route_is_selected(self):
         html = self.response.content.decode()
-        section = html[html.index('id="windows"'):]
-        self.assertIn("hidden", section[:section.index(">")])
+        for row_id in ("best-row", "worst-row"):
+            row = html[html.index(f'id="{row_id}"'):]
+            self.assertIn("hidden", row[:row.index(">")])
 
     def test_best_and_worst_are_labeled(self):
         for text in ("Best", "Worst", "Cheapest", "Fastest", "Most expensive", "Slowest"):
@@ -33,8 +33,8 @@ class WindowsPanelTemplateTests(TestCase):
         self.assertContains(self.response, "window-worst")
 
     def test_labeled_as_historical_not_guaranteed(self):
-        self.assertContains(self.response, "Based on past trips")
-        self.assertContains(self.response, "not a guarantee")
+        self.assertContains(self.response, "Based on historical taxi data")
+        self.assertContains(self.response, "actual fares and travel times may vary")
 
     def test_windows_js_loaded_after_filters_js(self):
         html = self.response.content.decode()
@@ -57,7 +57,8 @@ class WindowsJsTests(SimpleTestCase):
         load = self.js.split("function loadWindows", 1)[1].split("fetch(", 1)[0]
         early_return = load.split("return;", 1)[0]
         self.assertIn("dropoff === null", early_return)
-        self.assertIn("section.hidden = true", early_return)
+        self.assertIn("bestRow.hidden = true", early_return)
+        self.assertIn("worstRow.hidden = true", early_return)
         # With a dropoff always present, `to` is always sent.
         self.assertIn("to: dropoff", load)
 

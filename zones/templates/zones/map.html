@@ -39,18 +39,21 @@
       <span id="dropoff-zone" class="selection-name">—</span>
       <button id="clear-dropoff" class="clear-btn" hidden aria-label="Clear dropoff">&times;</button>
     </div>
-    <p>Fare before tip: <strong id="fare-range">—</strong><br><small id="fare-scope"></small></p>
-    <p>Average trip duration: <strong id="trip-duration">—</strong></p>
-    <section id="windows" class="windows" hidden aria-label="Best and worst times">
-      <h2 class="windows-title">Best and worst times, <span id="windows-day"></span></h2>
-      <p id="windows-status"></p>
-      <ul id="windows-list" class="windows-list">
-        <li class="window-best"><span class="window-tag">Best</span> Cheapest: <strong id="best-fare">—</strong></li>
-        <li class="window-best"><span class="window-tag">Best</span> Fastest: <strong id="best-duration">—</strong></li>
-        <li class="window-worst"><span class="window-tag">Worst</span> Most expensive: <strong id="worst-fare">—</strong></li>
-        <li class="window-worst"><span class="window-tag">Worst</span> Slowest: <strong id="worst-duration">—</strong></li>
-      </ul>
-      <small class="windows-note">Based on past trips (March–May 2026), not a guarantee.</small>
+    <button id="summary-toggle" class="summary-toggle" type="button" hidden
+            aria-expanded="false" aria-controls="summary-panel">
+      Trip summary <span class="summary-chevron" aria-hidden="true">▾</span>
+    </button>
+    <section id="summary-panel" class="summary-panel" hidden aria-labelledby="summary-toggle">
+      <p id="summary-route" class="summary-route"></p>
+      <p id="summary-time" class="summary-route"></p>
+      <dl class="summary-values">
+        <div><dt>Fare before tip (min / avg / max)</dt><dd id="fare-range">—</dd></div>
+        <div><dt>Typical trip duration</dt><dd id="trip-duration">—</dd></div>
+        <div id="best-row" class="window-best" hidden><dt>Best time</dt><dd>Cheapest: <span id="best-fare">—</span>; Fastest: <span id="best-duration">—</span></dd></div>
+        <div id="worst-row" class="window-worst" hidden><dt>Worst time</dt><dd>Most expensive: <span id="worst-fare">—</span>; Slowest: <span id="worst-duration">—</span></dd></div>
+      </dl>
+      <p id="windows-status" class="summary-status" role="status" aria-live="polite"></p>
+      <p class="summary-disclaimer">Based on historical taxi data; actual fares and travel times may vary.</p>
     </section>
     <button id="clear-selection" class="clear-all-btn" hidden>Clear selection</button>
   </aside>
@@ -73,8 +76,9 @@
   <script src="{% static 'zones/vendor/leaflet/leaflet.js' %}"></script>
   <script src="{% static 'zones/js/map.js' %}"></script>
   <script src="{% static 'zones/js/filters.js' %}"></script>
+  <script src="{% static 'zones/js/heatmap.js' %}"></script>
+  <script src="{% static 'zones/js/trip-summary.js' %}"></script>
   <script src="{% static 'zones/js/fare.js' %}"></script>
   <script src="{% static 'zones/js/windows.js' %}"></script>
-  <script src="{% static 'zones/js/heatmap.js' %}"></script>
 </body>
 </html>
