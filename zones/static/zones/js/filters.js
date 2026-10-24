@@ -8,6 +8,7 @@ const dropoffZoneEl = document.getElementById("dropoff-zone");
 const clearPickupBtn = document.getElementById("clear-pickup");
 const clearDropoffBtn = document.getElementById("clear-dropoff");
 const clearSelectionBtn = document.getElementById("clear-selection");
+const sameZoneBtn = document.getElementById("same-zone-trip");
 
 let demandMap;
 let zonesLayer;
@@ -18,6 +19,7 @@ let dropoffZoneId = null;
 let currentBreaks = [];
 let requestSequence = 0;
 let hourRequestTimer = null;
+let sameZoneOutline = null;
 const zoneLayers = new Map();
 
 const PICKUP_COLOR = "#0057b8";
@@ -43,7 +45,10 @@ function updateSelectionPanel() {
     clearPickupBtn.hidden = true;
   }
 
-  if (dropoffLayer) {
+  if (dropoffLayer && dropoffZoneId === pickupZoneId) {
+    dropoffZoneEl.textContent = "same zone";
+    clearDropoffBtn.hidden = false;
+  } else if (dropoffLayer) {
     const p = dropoffLayer.feature.properties;
     dropoffZoneEl.textContent = `${p.name} (${p.borough})`;
     clearDropoffBtn.hidden = false;
@@ -52,6 +57,7 @@ function updateSelectionPanel() {
     clearDropoffBtn.hidden = true;
   }
 
+  sameZoneBtn.hidden = !(pickupZoneId !== null && dropoffZoneId === null);
   clearSelectionBtn.hidden = pickupZoneId === null;
 }
 
@@ -60,6 +66,16 @@ function styleZone(feature) {
   const isPickup = zoneId === pickupZoneId;
   const isDropoff = zoneId === dropoffZoneId;
 
+  // Trip within one zone: a thicker pickup border; the dashed dropoff
+  // border is drawn on top by updateSameZoneOutline().
+  if (isPickup && isDropoff) {
+    return {
+      fillColor: colorFor(feature.properties.trip_count, currentBreaks),
+      fillOpacity: 0.9,
+      color: PICKUP_COLOR,
+      weight: 5,
+    };
+  }
   if (isPickup) {
     return {
       fillColor: colorFor(feature.properties.trip_count, currentBreaks),
@@ -99,6 +115,7 @@ function selectZone(zoneId) {
   zonesLayer.setStyle(styleZone);
   if (pickupZoneId) zoneLayers.get(pickupZoneId)?.bringToFront();
   if (dropoffZoneId) zoneLayers.get(dropoffZoneId)?.bringToFront();
+  updateSameZoneOutline();
   updateSelectionPanel();
   document.dispatchEvent(
     new CustomEvent("taxiscope:zones-selected", {
@@ -111,6 +128,7 @@ function clearPickup() {
   pickupZoneId = null;
   dropoffZoneId = null;
   zonesLayer.setStyle(styleZone);
+  updateSameZoneOutline();
   updateSelectionPanel();
   document.dispatchEvent(
     new CustomEvent("taxiscope:zones-selected", {
@@ -122,12 +140,44 @@ function clearPickup() {
 function clearDropoff() {
   dropoffZoneId = null;
   zonesLayer.setStyle(styleZone);
+  updateSameZoneOutline();
   updateSelectionPanel();
   document.dispatchEvent(
     new CustomEvent("taxiscope:zones-selected", {
       detail: { pickup: pickupZoneId, dropoff: null },
     })
   );
+}
+
+// US5 #7 follow-up: "Trip within this zone" sets the dropoff to the pickup.
+function selectSameZone() {
+  if (pickupZoneId === null) return;
+  dropoffZoneId = pickupZoneId;
+  zonesLayer.setStyle(styleZone);
+  zoneLayers.get(pickupZoneId)?.bringToFront();
+  updateSameZoneOutline();
+  updateSelectionPanel();
+  document.dispatchEvent(
+    new CustomEvent("taxiscope:zones-selected", {
+      detail: { pickup: pickupZoneId, dropoff: dropoffZoneId },
+    })
+  );
+}
+
+// A dashed dropoff border over the pickup border when both are the same
+// zone. It sits in its own pane above the zones, so hovering a zone
+// (which brings it to the front) never covers it.
+function updateSameZoneOutline() {
+  if (sameZoneOutline) {
+    sameZoneOutline.remove();
+    sameZoneOutline = null;
+  }
+  if (pickupZoneId === null || pickupZoneId !== dropoffZoneId) return;
+  sameZoneOutline = L.geoJSON(zoneLayers.get(pickupZoneId).feature, {
+    pane: "sameZonePane",
+    interactive: false,
+    style: { color: DROPOFF_COLOR, weight: 3, dashArray: "6 6", fill: false },
+  }).addTo(demandMap);
 }
 
 async function reloadZones() {
@@ -193,9 +243,15 @@ document.addEventListener("taxiscope:map-ready", (event) => {
   zonesLayer.options.style = styleZone;
   zonesLayer.setStyle(styleZone);
 
+  // Above the zones (overlayPane, 400), below tooltips; clicks pass through.
+  const sameZonePane = demandMap.createPane("sameZonePane");
+  sameZonePane.style.zIndex = 450;
+  sameZonePane.style.pointerEvents = "none";
+
   clearPickupBtn.addEventListener("click", clearPickup);
   clearDropoffBtn.addEventListener("click", clearDropoff);
   clearSelectionBtn.addEventListener("click", clearPickup);
+  sameZoneBtn.addEventListener("click", selectSameZone);
 
   dayFilter.addEventListener("change", () => {
     window.clearTimeout(hourRequestTimer);

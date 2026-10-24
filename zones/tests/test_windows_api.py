@@ -157,6 +157,20 @@ class RouteWindowsApiTests(WindowData, TestCase):
         self.assertIsNone(data["to"])
         self.assertEqual(data["by_fare"], [8, 10])
 
+    def test_from_equals_to_reads_that_route_row(self):
+        # A trip within one zone (US5 #7 follow-up) reads the 161 -> 161
+        # route rows, not the zone rows for all trips from 161 (8:00, 10:00).
+        add_route_stats(self.midtown, self.midtown, 0, 12, 20, fare_avg="9.00", avg_duration_min=6.0)
+        add_route_stats(self.midtown, self.midtown, 0, 22, 8, fare_avg="11.00", avg_duration_min=5.0)
+
+        data = self.get(**{"from": 161, "to": 161, "day": 0}).json()
+
+        self.assertEqual((data["from"], data["to"]), (161, 161))
+        self.assertIs(data["enough_data"], True)
+        self.assertEqual(data["by_fare"], [12, 22])
+        self.assertEqual(data["by_duration"], [22, 12])
+        self.assertEqual(data["best"]["fare"]["fare_avg"], "9.00")
+
     def test_not_enough_data_is_200_and_empty(self):
         response = self.get(**{"from": 132, "to": 237, "day": 0})
 
