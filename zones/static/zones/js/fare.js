@@ -32,7 +32,9 @@
     if (dropoff !== null) params.set('to', dropoff);
     fareScope.textContent = dropoff === null
       ? 'All trips from this pickup zone'
-      : 'Trips from the pickup to the dropoff zone';
+      : dropoff === pickup
+        ? 'Trips within this zone'
+        : 'Trips from the pickup to the dropoff zone';
     fareRange.textContent = 'Loading…';
     tripDuration.textContent = 'Loading…';
 

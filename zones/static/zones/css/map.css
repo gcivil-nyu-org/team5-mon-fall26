@@ -153,6 +153,24 @@ header {
   background: #ddd;
 }
 
+/* US5 #7 follow-up: trip within one zone. No `display` here, so the
+   hidden attribute still hides the button. */
+.same-zone-btn {
+  flex-shrink: 0;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid #00804a;
+  border-radius: 3px;
+  background: #fff;
+  color: #00804a;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.same-zone-btn:hover {
+  background: #f0f0f0;
+}
+
 .clear-all-btn {
   display: block;
   margin-top: 0.4rem;
