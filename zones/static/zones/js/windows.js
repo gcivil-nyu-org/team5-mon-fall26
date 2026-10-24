@@ -1,18 +1,14 @@
-// Best and worst times component for US7 #9: Find Best and Worst Travel Times.
-// Reads /api/routes/windows for the selected pickup, dropoff and day.
+// US7 best and worst times, displayed in the US8 trip summary.
 (function () {
   'use strict';
 
-  const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
-  const section = document.getElementById('windows');
-  const dayLabel = document.getElementById('windows-day');
-  const status = document.getElementById('windows-status');
-  const list = document.getElementById('windows-list');
+  const bestRow = document.getElementById('best-row');
+  const worstRow = document.getElementById('worst-row');
   const bestFare = document.getElementById('best-fare');
   const bestDuration = document.getElementById('best-duration');
   const worstFare = document.getElementById('worst-fare');
   const worstDuration = document.getElementById('worst-duration');
+  const status = document.getElementById('windows-status');
 
   let pickup = null;
   let dropoff = null;
@@ -21,7 +17,7 @@
   let windowsSequence = 0;
 
   function hourRange(hour) {
-    return `${hour}:00–${hour}:59`;
+    return `${String(hour).padStart(2, '0')}:00–${String(hour).padStart(2, '0')}:59`;
   }
 
   function fareText(slot) {
@@ -32,24 +28,31 @@
     return `${hourRange(slot.hour)} (${Number(slot.avg_duration_min).toFixed(1)} min)`;
   }
 
-  function showStatus(message) {
+  function showStatus(message, isError = false) {
     status.textContent = message;
-    status.hidden = false;
-    list.hidden = true;
+    status.classList.toggle('error', isError);
   }
 
   function loadWindows() {
     const sequence = ++windowsSequence;
     // Best and worst are for a trip, so both zones are needed.
     if (pickup === null || dropoff === null || day === null) {
-      section.hidden = true;
+      bestRow.hidden = true;
+      worstRow.hidden = true;
+      for (const value of [bestFare, bestDuration, worstFare, worstDuration]) {
+        value.textContent = '—';
+      }
+      showStatus('');
       return;
     }
 
     const params = new URLSearchParams({ from: pickup, to: dropoff, day: day });
-    dayLabel.textContent = DAYS[day];
-    section.hidden = false;
-    showStatus('Loading…');
+    bestRow.hidden = false;
+    worstRow.hidden = false;
+    for (const value of [bestFare, bestDuration, worstFare, worstDuration]) {
+      value.textContent = 'Loading…';
+    }
+    showStatus('');
 
     fetch(`/api/routes/windows?${params}`)
       .then(response => {
@@ -61,20 +64,23 @@
       .then(data => {
         if (sequence !== windowsSequence) return;
         if (!data.enough_data) {
-          showStatus('Not enough data');
+          for (const value of [bestFare, bestDuration, worstFare, worstDuration]) {
+            value.textContent = 'Not enough data';
+          }
           return;
         }
         bestFare.textContent = fareText(data.best.fare);
         bestDuration.textContent = durationText(data.best.duration);
         worstFare.textContent = fareText(data.worst.fare);
         worstDuration.textContent = durationText(data.worst.duration);
-        status.hidden = true;
-        list.hidden = false;
       })
       .catch(error => {
         if (sequence !== windowsSequence) return;
         console.error('Windows error:', error);
-        showStatus('Could not load best and worst times');
+        for (const value of [bestFare, bestDuration, worstFare, worstDuration]) {
+          value.textContent = 'Unavailable';
+        }
+        showStatus('Could not load best and worst times', true);
       });
   }
 

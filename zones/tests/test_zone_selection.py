@@ -54,9 +54,25 @@ class ZoneSelectionTemplateTests(TestCase):
     def test_selection_panel_has_aria_live(self):
         self.assertContains(self.response, 'aria-live="polite"')
 
-    def test_fare_and_duration_still_present(self):
-        self.assertContains(self.response, 'id="fare-range"')
-        self.assertContains(self.response, 'id="trip-duration"')
+    def test_trip_summary_is_inside_selection_panel(self):
+        html = self.response.content.decode()
+        selection = html[html.index('<aside class="zone-selection"'):]
+        selection = selection[:selection.index('</aside>')]
+        self.assertIn('id="summary-toggle"', selection)
+        self.assertIn('id="summary-panel"', selection)
+        for field in ('fare-range', 'trip-duration', 'best-fare',
+                      'best-duration', 'worst-fare', 'worst-duration'):
+            self.assertIn(f'id="{field}"', selection)
+        for label in ('Cheapest:', 'Fastest:', 'Most expensive:', 'Slowest:'):
+            self.assertIn(label, selection)
+
+    def test_existing_components_write_to_one_summary(self):
+        html = self.response.content.decode()
+        for field in ('fare-range', 'trip-duration', 'best-fare',
+                      'best-duration', 'worst-fare', 'worst-duration'):
+            self.assertEqual(html.count(f'id="{field}"'), 1)
+        self.assertIn('zones/js/fare.js', html)
+        self.assertIn('zones/js/windows.js', html)
 
 
 class FiltersJsSyntaxTests(SimpleTestCase):

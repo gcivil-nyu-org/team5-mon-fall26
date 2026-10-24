@@ -40,10 +40,12 @@ header {
 
 .zone-selection {
   position: absolute;
-  z-index: 500;
+  z-index: 510;
   top: 112px;
   left: 50px;
-  width: min(280px, calc(100vw - 48px));
+  width: min(340px, calc(100vw - 48px));
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
   padding: 0.7rem 0.9rem;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.95);
@@ -53,59 +55,6 @@ header {
 
 .zone-selection p {
   margin: 0 0 0.35rem;
-}
-
-/* US7 #9: best and worst times */
-.windows {
-  margin: 0.5rem 0;
-  padding-top: 0.5rem;
-  border-top: 1px solid #ddd;
-}
-
-.windows-title {
-  margin: 0 0 0.3rem;
-  font-size: 14px;
-}
-
-.windows-list {
-  margin: 0 0 0.3rem;
-  padding: 0;
-  list-style: none;
-}
-
-.windows-list li {
-  margin-bottom: 0.2rem;
-  padding: 0.15rem 0.4rem;
-  border-left: 4px solid;
-  border-radius: 2px;
-}
-
-.window-tag {
-  font-size: 11px;
-  font-weight: bold;
-  text-transform: uppercase;
-}
-
-.window-best {
-  border-color: #00804a;
-  background: #e6f4ec;
-}
-
-.window-best .window-tag {
-  color: #00804a;
-}
-
-.window-worst {
-  border-color: #b3261e;
-  background: #fbeaea;
-}
-
-.window-worst .window-tag {
-  color: #b3261e;
-}
-
-.windows-note {
-  color: #555;
 }
 
 .selection-row {
@@ -243,6 +192,7 @@ header h1 {
 
   .zone-selection {
     top: 150px;
+    max-height: calc(100vh - 170px);
   }
 
   #map {
@@ -355,4 +305,97 @@ header h1 {
     right: 10px;
     left: 10px;
   }
+}
+
+/* Trip summary panel (US8) */
+.summary-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin: 0.55rem 0 0;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #b8c8de;
+  border-radius: 4px;
+  background: #eef4ff;
+  color: #1f2a44;
+  font: 600 14px sans-serif;
+  cursor: pointer;
+}
+
+.summary-chevron {
+  transition: transform 0.15s ease;
+}
+
+.summary-toggle[aria-expanded=true] .summary-chevron {
+  transform: rotate(180deg);
+}
+
+.summary-panel {
+  margin-top: 0.55rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid #ddd;
+}
+
+#summary-panel[hidden],
+#summary-toggle[hidden] {
+  display: none;
+}
+
+.summary-route {
+  margin: 0.2rem 0 0;
+  color: #4c5565;
+}
+
+.summary-status {
+  margin: 0.55rem 0 0;
+  color: #4c5565;
+}
+
+.summary-status:empty {
+  display: none;
+}
+
+.summary-status.error {
+  color: #a40000;
+}
+
+.summary-values {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.55rem 0;
+}
+
+.summary-values dt {
+  color: #4c5565;
+  font-size: 12px;
+}
+
+.summary-values dd {
+  margin: 0.15rem 0 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-values .window-best,
+.summary-values .window-worst {
+  padding: 0.35rem 0.5rem;
+  border-left: 4px solid;
+  border-radius: 2px;
+}
+
+.summary-values .window-best {
+  border-color: #00804a;
+  background: #e6f4ec;
+}
+
+.summary-values .window-worst {
+  border-color: #b3261e;
+  background: #fbeaea;
+}
+
+.summary-disclaimer {
+  margin: 0.6rem 0 0;
+  color: #4c5565;
+  font-size: 12px;
 }

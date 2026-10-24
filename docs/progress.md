@@ -1,6 +1,6 @@
 # Progress and handoff
 
-Newest entry at the top. Every working session ends by adding an entry.
+Keep one consolidated entry per story. Update it only when the user explicitly asks to summarize the work; routine edits do not create entries.
 
 Entry format:
 - Date and story (for example, US1 #3)
@@ -14,6 +14,18 @@ Entry format:
 - Milestone: TBD
 
 ## Log
+
+### 2026-10-23 — US8 #10 (trip summary)
+**What changed:**
+- Combined fare range, typical duration, and US7 best/worst windows in one collapsible summary below pickup and dropoff in the selection panel. Removed the duplicate fare/duration lines, separate windows section, and floating summary.
+- The summary uses `/api/routes` for fare and duration and `/api/routes/windows` for the selected day's cheapest, fastest, most expensive, and slowest hours. Pickup-only selection shows zone-wide fare and duration; best/worst rows appear after a dropoff is selected.
+- The disclosure button collapses and reopens the summary. Zone changes refresh immediately; time changes refresh after a successful map update. Older responses are ignored, and insufficient data is distinguished from request errors. The empty status line and redundant day phrase were removed.
+
+**Decisions made (also in `docs/decisions.md`):** US8 owns the single summary UI and reuses US5/US6 data and US7 rankings without changing either API contract or the ranking rule.
+
+**Tests:** With `PYTHONUTF8=1`, the full Django suite passed (166 tests) after obsolete panel tests were removed. Four Node interaction tests, JavaScript syntax, and `git diff --check` passed. The local March–May 2026 database returned expected values for route 237 to 236 on Wednesday at 14:00: fare $7.70 / $14.44 / $58.25, duration 9.91 min, cheapest/fastest 03:00, most expensive 16:00, slowest 15:00. Browser visual review remains open.
+
+**Next step:** The user reviews the UI at desktop and narrow widths and creates the consolidated local commit. Confirm US7's proposed ranking rule with the PO/team before remote submission.
 
 ### 2026-10-23 — US5 #7 (trip within one zone, follow-up)
 **What changed:**
@@ -94,7 +106,6 @@ Entry format:
 - After pulling this change, hard-reload the browser (Cmd+Shift+R): a cached old `filters.js` mixes the old and new fare lines.
 
 **Next step:** browser check on Integration, open the PR into `develop`, update the HLD wiki page. US6 can read `avg_duration_min` from the same response.
-
 ### 2026-10-19 — US2 #4 (select trip zones)
 **What changed:**
 - Replaced single-zone selection with two-zone selection: first click sets pickup (blue `#0057b8` border), second click sets dropoff (green `#00804a` border).

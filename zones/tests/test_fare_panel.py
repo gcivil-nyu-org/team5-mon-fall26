@@ -12,22 +12,23 @@ STATIC_DIR = Path(__file__).resolve().parent.parent / "static" / "zones"
 
 
 class FarePanelTemplateTests(TestCase):
-    """The selection panel has the fare line and loads fare.js."""
+    """The shared summary has fare and duration values and loads fare.js."""
 
     def setUp(self):
         self.response = self.client.get(reverse("zones:map"))
 
     def test_fare_line_is_labeled_fare_before_tip(self):
-        self.assertContains(self.response, "Fare before tip:")
+        self.assertContains(self.response, "Fare before tip (min / avg / max)")
         self.assertContains(self.response, 'id="fare-range"')
 
-    def test_fare_scope_element_present(self):
-        self.assertContains(self.response, 'id="fare-scope"')
+    def test_summary_shows_route_and_time_context(self):
+        self.assertContains(self.response, 'id="summary-route"')
+        self.assertContains(self.response, 'id="summary-time"')
 
-    def test_duration_line_unchanged(self):
+    def test_duration_is_in_the_summary(self):
         self.assertContains(
             self.response,
-            '<p>Average trip duration: <strong id="trip-duration">—</strong></p>',
+            '<div><dt>Typical trip duration</dt><dd id="trip-duration">—</dd></div>',
             html=True,
         )
 
