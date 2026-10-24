@@ -28,8 +28,6 @@ Entry format:
 **Tests:** `zones/tests/test_same_zone_trip.py` (18: button, hidden by default, same-zone logic, outline, US2 rules unchanged, fare scope, CSS) and `test_from_equals_to_reads_that_route_row` in `test_windows_api.py`. `manage.py test`: 213 tests, OK. `node --check` on `filters.js` and `fare.js` passed.
 - Browser check on the March–May 2026 data passed on every checklist item: button only with a pickup and no dropoff, "same zone" label, blue border with green dashes that stays on hover and on time changes, "Trips within this zone", panel values match `/api/routes?from=161&to=161&day=0&hour=8`, best/worst section appears, every way of clearing works, sparse zone shows "Not enough data", no console errors.
 
-**Known issue (not fixed here):** `.clear-all-btn { display: block }` overrides `hidden`, so "Clear selection" may show before any zone is picked. Browser check on first page load: **TODO: visible / not visible**.
-
 **Next step:** PR into `develop` (follow-up for #7).
 
 ### 2026-10-23 — US7 #9 (best and worst times)
