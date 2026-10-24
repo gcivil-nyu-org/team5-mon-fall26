@@ -134,6 +134,20 @@ test('an hour change refreshes fare without refetching day-wide windows', async 
   assert.match(ui.elements['summary-time'].textContent, /15:00/);
 });
 
+test('a trip within one zone keeps the US5 label and route request', async () => {
+  const urls = [];
+  const ui = setup(url => {
+    urls.push(url);
+    return response(url.startsWith('/api/routes/windows') ? windowsResult() : routeResult());
+  });
+  ui.emit('taxiscope:map-ready', { data: { day: 0, hour: 8 } });
+  ui.select(161, 161);
+  await settle();
+  assert.match(ui.elements['summary-route'].textContent, /Trips within this zone/);
+  assert.match(urls[0], /from=161&day=0&hour=8&to=161/);
+  assert.equal(ui.elements['best-row'].hidden, false);
+});
+
 test('an older response cannot overwrite a changed route', async () => {
   const pending = [];
   const ui = setup(url => new Promise(resolve => pending.push({ url, resolve })));

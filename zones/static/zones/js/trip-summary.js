@@ -25,7 +25,9 @@
   function updateRouteLabel() {
     const pickup = document.getElementById("pickup-zone").textContent;
     const dropoff = document.getElementById("dropoff-zone").textContent;
-    routeLabel.textContent = `${pickup} → ${hasRoute() ? dropoff : "all destinations"}`;
+    routeLabel.textContent = hasRoute() && pickupZoneId === dropoffZoneId
+      ? `${pickup} — Trips within this zone`
+      : `${pickup} → ${hasRoute() ? dropoff : "all destinations"}`;
   }
 
   function updateTimeLabel() {

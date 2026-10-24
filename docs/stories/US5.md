@@ -13,6 +13,7 @@ Developer Tasks
 - Display the minimum, average, and maximum fare in dollars in the selection panel, using `/api/routes`
 - Set a minimum number of trips needed before showing a fare range: 5 trips, as one setting (`MIN_TRIP_COUNT`) that US6 and US7 can share
 - Refresh the fare range when the zones or the day and hour change.
+- Let the rider choose a trip within the same zone as pickup: a "Trip within this zone" button in the panel sets the dropoff to the pickup zone (the API already supports `from == to`)
 
 Acceptance Criteria
 - With both zones selected, the min/avg/max fare for that trip and time is shown.
