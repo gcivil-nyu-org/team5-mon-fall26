@@ -15,6 +15,23 @@ Entry format:
 
 ## Log
 
+### 2026-10-23 — US5 #7 (trip within one zone, follow-up)
+**What changed:**
+- `docs/stories/US5.md` refreshed from issue #7 (new developer task; issue reopened).
+- `zones/templates/zones/map.html`, `zones/static/zones/css/map.css`: "Trip within this zone" button in the Dropoff row, hidden until a pickup is selected with no dropoff. Its CSS sets no `display`, so `hidden` still hides it.
+- `zones/static/zones/js/filters.js`: `selectSameZone()`, `updateSameZoneOutline()` (dashed dropoff outline in its own pane, `sameZonePane`), a both-pickup-and-dropoff case in `styleZone`, "same zone" in `updateSelectionPanel`. `selectZone` rules unchanged.
+- `zones/static/zones/js/fare.js`: the fare scope line reads "Trips within this zone" when the dropoff equals the pickup.
+- No API change; `windows.js`, `heatmap.js` unchanged.
+
+**Decisions made (also in `decisions.md`):** button rule, "same zone" label, "Trips within this zone" scope wording, look of the zone.
+
+**Tests:** `zones/tests/test_same_zone_trip.py` (18: button, hidden by default, same-zone logic, outline, US2 rules unchanged, fare scope, CSS) and `test_from_equals_to_reads_that_route_row` in `test_windows_api.py`. `manage.py test`: 213 tests, OK. `node --check` on `filters.js` and `fare.js` passed.
+- Browser check on the March–May 2026 data passed on every checklist item: button only with a pickup and no dropoff, "same zone" label, blue border with green dashes that stays on hover and on time changes, "Trips within this zone", panel values match `/api/routes?from=161&to=161&day=0&hour=8`, best/worst section appears, every way of clearing works, sparse zone shows "Not enough data", no console errors.
+
+**Known issue (not fixed here):** `.clear-all-btn { display: block }` overrides `hidden`, so "Clear selection" may show before any zone is picked. Browser check on first page load: **TODO: visible / not visible**.
+
+**Next step:** PR into `develop` (follow-up for #7).
+
 ### 2026-10-23 — US7 #9 (best and worst times)
 **What changed:**
 - `GET /api/routes/windows?from=&to=&day=` (`zones/stats.py` `route_windows()`, `zones/views.py`, `zones/urls.py`): ranks the day's hours by average fare and by average duration; best = cheapest and fastest hour, worst = most expensive and slowest. Same tables and `MIN_TRIP_COUNT` (5) as `/api/routes`; fewer than 2 qualifying hours gives `enough_data` false.
