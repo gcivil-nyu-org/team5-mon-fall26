@@ -112,16 +112,16 @@ class SameZoneJsTests(SimpleTestCase):
         self.assertNotIn("pickupZoneId = null", clear_dropoff)
 
 
-class SameZoneFareJsTests(SimpleTestCase):
-    """fare.js labels a trip within one zone as such."""
+class SameZoneSummaryJsTests(SimpleTestCase):
+    """The shared summary labels a trip within one zone as such."""
 
     def setUp(self):
-        self.js = (STATIC_DIR / "js" / "fare.js").read_text()
+        self.js = (STATIC_DIR / "js" / "trip-summary.js").read_text()
 
-    def test_fare_scope_for_trip_within_one_zone(self):
-        scope = self.js.split("fareScope.textContent =", 2)[2].split(";", 1)[0]
-        self.assertIn("dropoff === pickup", scope)
-        self.assertIn("'Trips within this zone'", scope)
+    def test_summary_route_for_trip_within_one_zone(self):
+        route_label = function_body(self.js, "updateRouteLabel")
+        self.assertIn("pickupZoneId === dropoffZoneId", route_label)
+        self.assertIn("Trips within this zone", route_label)
 
 
 class SameZoneCssTests(SimpleTestCase):
