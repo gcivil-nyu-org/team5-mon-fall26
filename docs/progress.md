@@ -15,6 +15,18 @@ Entry format:
 
 ## Log
 
+### 2026-10-25 — docs/release-prep (release prep, not a story)
+**What changed:**
+- `docs/decisions.md`: the Product Owner (Shyam) confirmed the US7 best/worst ranking rule (fare and duration ranked separately) and the US5/US6 `MIN_TRIP_COUNT = 5` setting. Added a US9 note on why "no personal data collected" holds: OpenStreetMap tile requests and hosting access logs see visitor IPs, but the app itself stores none.
+- `README.md`: documented how to run the JS tests (`node --test zones/tests/trip_summary.test.js`, `node --check` per JS file) next to `python manage.py test`.
+- `taxiscope/settings.py`: added `GZipMiddleware` to `MIDDLEWARE` so the ~2.5 MB `/api/zones` response is compressed (the suggestion left open in the US1 #3 entry below). New `ZonesApiGZipTests` in `zones/tests/test_zones_api.py` proves gzip is applied when accepted and plain JSON otherwise.
+
+**Decisions made (also in `decisions.md`):** US7's ranking rule and the `MIN_TRIP_COUNT` of 5 are now confirmed by the PO, not just proposed.
+
+**Tests:** `manage.py test`: 221 tests, OK (219 + 2 new gzip tests). `node --test zones/tests/trip_summary.test.js`: 7 tests, OK.
+
+**Next step:** PR into `develop` for teammate review.
+
 ### 2026-10-23 — US8 #10 (trip summary)
 **What changed:**
 - Combined fare range, typical duration, and US7 best/worst windows in one collapsible summary below pickup and dropoff in the selection panel. Removed the duplicate fare/duration lines, separate windows section, and floating summary.
