@@ -76,7 +76,7 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 ## Open (decide before the story that needs it)
 - Which AWS services host the Django app and the database. Needed before the first deploy.
 - ~~Minimum trip count for a window to be shown.~~ Decided 2026-10-22: 5 trips, see "Our choices (fare range, US5 #7)" below.
-- ~~Exact rule for "best" and "worst" travel windows.~~ Proposed 2026-10-23: fare and duration ranked separately, see "Our choices (best and worst times, US7 #9)" below. To confirm with the PO.
+- ~~Exact rule for "best" and "worst" travel windows.~~ Decided 2026-10-23, confirmed by the Product Owner (Shyam) 2026-10-25: fare and duration ranked separately, see "Our choices (best and worst times, US7 #9)" below.
 - ~~Which months of TLC data to load first.~~ Decided 2026-10-17: March to May 2026, see "Our choices (data import)" above.
 - CI tooling. Waiting on the remaining course slides. (Testing tool is decided above: Django's built-in test runner.)
 - Map tile provider for the demo. OpenStreetMap's public tile servers have a usage policy and are not meant for heavy production use (they already 403'd once locally over a missing Referer header). Check this before the sprint demo and be ready to switch to another tile provider (for example a paid provider, or self-hosted tiles) if it becomes a problem.
@@ -91,7 +91,7 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - **Zone API fields:** each zone includes its fare minimum, average, maximum, and average duration alongside its trip count.
 
 ## Our choices (fare range, US5 #7, 2026-10-22)
-- **Minimum trip count:** 5 trips (team decision, 2026-10-22). One setting, `MIN_TRIP_COUNT = 5` in `settings.py`, shared by US5, US6 and US7. It is applied in the API; the import still stores every cell.
+- **Minimum trip count:** 5 trips (team decision, 2026-10-22; confirmed by the Product Owner (Shyam) 2026-10-25). One setting, `MIN_TRIP_COUNT = 5` in `settings.py`, shared by US5, US6 and US7. It is applied in the API; the import still stores every cell.
 - **`/api/routes` response:** always HTTP 200 for valid parameters, with the keys `from, to, day, hour, enough_data, trip_count, fare_min, fare_avg, fare_max, avg_duration_min`. If there is no row or `trip_count < MIN_TRIP_COUNT`, then `enough_data` is false, `trip_count` is the real count (0 if no row) and the four stats are null. This is how "the API returns an empty result" (HLD decisions above) is done for this endpoint: the stats are empty, and the count stays so the UI can explain it.
 - **Which table:** with `to`, `route_hour_stats` only. A sparse route never falls back to the pickup zone's numbers. Without `to` (or with `to` empty), `zone_hour_stats` for the pickup zone: all trips from that zone.
 - **`from == to`** (a trip within one zone) is a valid route.
@@ -106,7 +106,7 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - **One response, one file:** `fare.js` writes both the fare line and the duration line from the single `/api/routes` fetch it already makes, in the same `enough_data` branch, so the two lines are never computed from different responses. `filters.js` no longer writes the duration line. No new endpoint, no API contract change.
 
 ## Our choices (best and worst times, US7 #9, 2026-10-23)
-- **Rule (proposed, to confirm with the PO):** the story's own example, "lowest/highest fare and duration". The hours of the selected day are ranked twice, once by average fare and once by average duration. Best = the cheapest hour and the fastest hour. Worst = the most expensive hour and the slowest hour. No combined score, so no weighting to agree on, and every result can be checked against one column of the data. Why not one score: on real data the most expensive and the slowest hour are often different (Upper East Side South -> North, Wednesday: most expensive 16:00, slowest 15:00).
+- **Rule (confirmed by the Product Owner (Shyam), 2026-10-25):** the story's own example, "lowest/highest fare and duration". The hours of the selected day are ranked twice, once by average fare and once by average duration. Best = the cheapest hour and the fastest hour. Worst = the most expensive hour and the slowest hour. No combined score, so no weighting to agree on, and every result can be checked against one column of the data. Why not one score: on real data the most expensive and the slowest hour are often different (Upper East Side South -> North, Wednesday: most expensive 16:00, slowest 15:00).
 - **A window is one hour** (`H:00–H:59`), the grain of the stats tables.
 - **Which hours count:** only hours with at least `MIN_TRIP_COUNT` (5) trips, the same rule as US5 and US6. Fewer than 2 such hours on that day gives `enough_data` false and no best or worst.
 - **Ties:** the earlier hour wins, for best and for worst.
@@ -121,3 +121,6 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - **Data sources and ownership:** `fare.js` supplies fare and duration from `/api/routes`; `windows.js` supplies US7's `best.fare`, `best.duration`, `worst.fare`, and `worst.duration` from `/api/routes/windows`. Both write into the shared panel managed by `trip-summary.js`. The API contracts and US7 ranking calculation are unchanged. US7's ranking rule still awaits PO confirmation.
 - **Pickup-only and route views:** Selecting a pickup expands the summary with zone-wide fare and duration from `/api/routes` without `to`. Selecting a dropoff expands it with route fare, duration, and best/worst rows. The best/worst rows stay hidden without a dropoff, as agreed for US7. A disclosure button collapses and reopens the summary; clearing the pickup hides it.
 - **Refresh and missing data:** Zone changes refresh immediately. Time changes refresh only after the map confirms the new day and hour. Responses with too few trips show "Not enough data"; failed requests show a separate error.
+
+## Our choices (use without an account, US9 #11, 2026-10-25)
+- US9: map tiles load from OpenStreetMap, which sees visitor IPs; hosting access logs also record IPs; the app itself stores no personal data.
