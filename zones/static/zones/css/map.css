@@ -1,0 +1,401 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+header {
+  padding: 0.5rem 1rem;
+  background: #1f2a44;
+  color: #fff;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 1rem;
+  background: #f4f6f9;
+  font: 14px sans-serif;
+}
+
+.filters select {
+  min-height: 2rem;
+  padding: 0.2rem 0.45rem;
+}
+
+.filters input[type="range"] {
+  width: min(220px, 30vw);
+}
+
+#hour-value {
+  min-width: 7.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+#filter-status {
+  margin-left: auto;
+  color: #4c5565;
+}
+
+.zone-selection {
+  position: absolute;
+  z-index: 510;
+  top: 112px;
+  left: 50px;
+  width: min(340px, calc(100vw - 48px));
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
+  padding: 0.7rem 0.9rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  font: 14px/1.4 sans-serif;
+}
+
+.zone-selection p {
+  margin: 0 0 0.35rem;
+}
+
+.selection-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.selection-label {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pickup-label {
+  color: #0057b8;
+}
+
+.dropoff-label {
+  color: #00804a;
+}
+
+.selection-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clear-btn {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid #aaa;
+  border-radius: 50%;
+  background: #eee;
+  font-size: 14px;
+  line-height: 18px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.clear-btn:hover {
+  background: #ddd;
+}
+
+/* US5 #7 follow-up: trip within one zone. No `display` here, so the
+   hidden attribute still hides the button. */
+.same-zone-btn {
+  flex-shrink: 0;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid #00804a;
+  border-radius: 3px;
+  background: #fff;
+  color: #00804a;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.same-zone-btn:hover {
+  background: #f0f0f0;
+}
+
+.clear-all-btn {
+  display: block;
+  margin-top: 0.4rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid #aaa;
+  border-radius: 3px;
+  background: #f0f0f0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.clear-all-btn:hover {
+  background: #e0e0e0;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-family: sans-serif;
+}
+
+#map {
+  height: calc(100vh - 105px);
+  width: 100%;
+}
+
+.is-loading #filter-status {
+  color: #8a4b00;
+}
+
+.legend {
+  background: #fff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  font: 13px/18px sans-serif;
+}
+
+.legend i {
+  display: inline-block;
+  width: 16px;
+  height: 12px;
+  margin-right: 6px;
+  vertical-align: middle;
+  border: 1px solid #999;
+}
+
+.map-error {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: #fff3f3;
+  border: 1px solid #c00;
+  padding: 6px 12px;
+  font: 14px sans-serif;
+}
+
+@media (max-width: 600px) {
+  .filters {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  #filter-status {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+
+  .zone-selection {
+    top: 150px;
+    max-height: calc(100vh - 170px);
+  }
+
+  #map {
+    height: calc(100vh - 140px);
+  }
+}
+
+/* Heatmap panel (US3) */
+.heatmap-panel {
+  position: absolute;
+  z-index: 500;
+  top: 112px;
+  right: 50px;
+  width: min(650px, calc(100vw - 420px));
+  max-height: calc(100vh - 160px);
+  padding: 0.9rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  font: 14px/1.4 sans-serif;
+  overflow-y: auto;
+}
+
+.heatmap-panel h2 {
+  margin: 0 0 0.6rem;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.heatmap-controls {
+  margin-bottom: 0.7rem;
+  display: flex;
+  gap: 1.2rem;
+}
+
+.heatmap-controls label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+}
+
+.heatmap-grid {
+  display: table;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.heatmap-row {
+  display: table-row;
+}
+
+.heatmap-header {
+  font-weight: 600;
+}
+
+.heatmap-day-label,
+.heatmap-hour-label,
+.heatmap-cell {
+  display: table-cell;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.heatmap-day-label {
+  padding: 0.25rem 0.4rem;
+  font-weight: 600;
+  text-align: right;
+}
+
+.heatmap-hour-label {
+  padding: 0.2rem 0.15rem;
+  font-size: 10px;
+}
+
+.heatmap-cell {
+  width: 20px;
+  height: 20px;
+  border: 1px solid #ddd;
+  cursor: help;
+}
+
+.heatmap-cell.no-data {
+  background: repeating-linear-gradient(
+    45deg,
+    #f5f5f5,
+    #f5f5f5 2px,
+    #e0e0e0 2px,
+    #e0e0e0 4px
+  );
+}
+
+.heatmap-panel .error {
+  color: #c00;
+  margin: 0.5rem 0;
+}
+
+@media (max-width: 1100px) {
+  .heatmap-panel {
+    top: 380px;
+    right: 50px;
+    left: 50px;
+    width: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .heatmap-panel {
+    top: 420px;
+    right: 10px;
+    left: 10px;
+  }
+}
+
+/* Trip summary panel (US8) */
+.summary-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin: 0.55rem 0 0;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #b8c8de;
+  border-radius: 4px;
+  background: #eef4ff;
+  color: #1f2a44;
+  font: 600 14px sans-serif;
+  cursor: pointer;
+}
+
+.summary-chevron {
+  transition: transform 0.15s ease;
+}
+
+.summary-toggle[aria-expanded=true] .summary-chevron {
+  transform: rotate(180deg);
+}
+
+.summary-panel {
+  margin-top: 0.55rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid #ddd;
+}
+
+#summary-panel[hidden],
+#summary-toggle[hidden] {
+  display: none;
+}
+
+.summary-route {
+  margin: 0.2rem 0 0;
+  color: #4c5565;
+}
+
+.summary-status {
+  margin: 0.55rem 0 0;
+  color: #4c5565;
+}
+
+.summary-status:empty {
+  display: none;
+}
+
+.summary-status.error {
+  color: #a40000;
+}
+
+.summary-values {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.55rem 0;
+}
+
+.summary-values dt {
+  color: #4c5565;
+  font-size: 12px;
+}
+
+.summary-values dd {
+  margin: 0.15rem 0 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-values .window-best,
+.summary-values .window-worst {
+  padding: 0.35rem 0.5rem;
+  border-left: 4px solid;
+  border-radius: 2px;
+}
+
+.summary-values .window-best {
+  border-color: #00804a;
+  background: #e6f4ec;
+}
+
+.summary-values .window-worst {
+  border-color: #b3261e;
+  background: #fbeaea;
+}
+
+.summary-disclaimer {
+  margin: 0.6rem 0 0;
+  color: #4c5565;
+  font-size: 12px;
+}

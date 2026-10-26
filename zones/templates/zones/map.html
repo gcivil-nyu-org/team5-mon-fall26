@@ -1,0 +1,85 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TaxiScope NYC</title>
+  <link rel="stylesheet" href="{% static 'zones/vendor/leaflet/leaflet.css' %}">
+  <link rel="stylesheet" href="{% static 'zones/css/map.css' %}">
+</head>
+<body>
+  <header>
+    <h1>TaxiScope NYC</h1>
+  </header>
+  <section class="filters" aria-label="Taxi trip time filters">
+    <label for="day-filter">Day of week</label>
+    <select id="day-filter">
+      <option value="0" {% if current_day == 0 %}selected{% endif %}>Monday</option>
+      <option value="1" {% if current_day == 1 %}selected{% endif %}>Tuesday</option>
+      <option value="2" {% if current_day == 2 %}selected{% endif %}>Wednesday</option>
+      <option value="3" {% if current_day == 3 %}selected{% endif %}>Thursday</option>
+      <option value="4" {% if current_day == 4 %}selected{% endif %}>Friday</option>
+      <option value="5" {% if current_day == 5 %}selected{% endif %}>Saturday</option>
+      <option value="6" {% if current_day == 6 %}selected{% endif %}>Sunday</option>
+    </select>
+    <label for="hour-filter">Hour</label>
+    <input id="hour-filter" type="range" min="0" max="23" value="{{ current_hour }}">
+    <output id="hour-value" for="hour-filter">{{ current_hour }}:00–{{ current_hour }}:59</output>
+    <span id="filter-status" role="status" aria-live="polite"></span>
+  </section>
+  <aside class="zone-selection" aria-live="polite" aria-label="Selected zone information">
+    <div class="selection-row">
+      <span class="selection-label pickup-label">Pickup:</span>
+      <span id="pickup-zone" class="selection-name">Click a zone</span>
+      <button id="clear-pickup" class="clear-btn" hidden aria-label="Clear pickup">&times;</button>
+    </div>
+    <div class="selection-row">
+      <span class="selection-label dropoff-label">Dropoff:</span>
+      <span id="dropoff-zone" class="selection-name">—</span>
+      <button type="button" id="same-zone-trip" class="same-zone-btn" hidden>Trip within this zone</button>
+      <button id="clear-dropoff" class="clear-btn" hidden aria-label="Clear dropoff">&times;</button>
+    </div>
+    <button id="summary-toggle" class="summary-toggle" type="button" hidden
+            aria-expanded="false" aria-controls="summary-panel">
+      Trip summary <span class="summary-chevron" aria-hidden="true">▾</span>
+    </button>
+    <section id="summary-panel" class="summary-panel" hidden aria-labelledby="summary-toggle">
+      <p id="summary-route" class="summary-route"></p>
+      <p id="summary-time" class="summary-route"></p>
+      <dl class="summary-values">
+        <div><dt>Fare before tip (min / avg / max)</dt><dd id="fare-range">—</dd></div>
+        <div><dt>Typical trip duration</dt><dd id="trip-duration">—</dd></div>
+        <div id="best-row" class="window-best" hidden><dt>Best time</dt><dd>Cheapest: <span id="best-fare">—</span>; Fastest: <span id="best-duration">—</span></dd></div>
+        <div id="worst-row" class="window-worst" hidden><dt>Worst time</dt><dd>Most expensive: <span id="worst-fare">—</span>; Slowest: <span id="worst-duration">—</span></dd></div>
+      </dl>
+      <p id="windows-status" class="summary-status" role="status" aria-live="polite"></p>
+      <p class="summary-disclaimer">Based on historical taxi data; actual fares and travel times may vary.</p>
+    </section>
+    <button id="clear-selection" class="clear-all-btn" hidden>Clear selection</button>
+  </aside>
+  <aside id="heatmap-panel" class="heatmap-panel" hidden aria-label="Zone demand heatmap">
+    <h2 id="heatmap-title">Zone Heatmap</h2>
+    <div class="heatmap-controls">
+      <label>
+        <input type="radio" name="heatmap-metric" value="trip_count" checked>
+        Trip Volume
+      </label>
+      <label>
+        <input type="radio" name="heatmap-metric" value="avg_duration_min">
+        Avg Duration
+      </label>
+    </div>
+    <div id="heatmap-container"></div>
+  </aside>
+  <div id="map"></div>
+
+  <script src="{% static 'zones/vendor/leaflet/leaflet.js' %}"></script>
+  <script src="{% static 'zones/js/map.js' %}"></script>
+  <script src="{% static 'zones/js/filters.js' %}"></script>
+  <script src="{% static 'zones/js/heatmap.js' %}"></script>
+  <script src="{% static 'zones/js/trip-summary.js' %}"></script>
+  <script src="{% static 'zones/js/fare.js' %}"></script>
+  <script src="{% static 'zones/js/windows.js' %}"></script>
+</body>
+</html>
