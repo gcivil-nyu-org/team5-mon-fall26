@@ -1,3 +1,5 @@
+import gzip
+import json
 from decimal import Decimal
 
 from django.test import TestCase
@@ -84,3 +86,26 @@ class ZonesApiTests(TestCase):
         response = self.client.post(reverse("zones:zones_api"))
 
         self.assertEqual(response.status_code, 405)
+
+
+class ZonesApiGZipTests(TestCase):
+    """The ~2.5 MB /api/zones response is served gzip-compressed when the
+    client accepts it (GZipMiddleware), and as plain JSON otherwise."""
+
+    def test_gzip_accept_encoding_returns_compressed_response(self):
+        response = self.client.get(reverse("zones:zones_api"), HTTP_ACCEPT_ENCODING="gzip")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get("Content-Encoding"), "gzip")
+        data = json.loads(gzip.decompress(response.content))
+        self.assertEqual(data["type"], "FeatureCollection")
+        self.assertEqual(len(data["features"]), 263)
+
+    def test_without_gzip_accept_encoding_returns_plain_json(self):
+        response = self.client.get(reverse("zones:zones_api"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("Content-Encoding", response.headers)
+        data = response.json()
+        self.assertEqual(data["type"], "FeatureCollection")
+        self.assertEqual(len(data["features"]), 263)

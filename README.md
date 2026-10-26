@@ -21,6 +21,13 @@ Run tests with:
 python manage.py test
 ```
 
+The frontend's JavaScript has its own tests, run with Node (requires no install — Node's built-in test runner):
+
+```bash
+node --test zones/tests/trip_summary.test.js
+for f in zones/static/zones/js/*.js; do node --check "$f" || break; done   # syntax-check all the JS
+```
+
 ## Regenerate the zone shapes
 
 `zones/data/taxi_zones.geojson` is committed, so you only need this if TLC publishes new zone boundaries. It is built from the official TLC taxi zone shapefile by `scripts/build_zone_shapes.py`.
