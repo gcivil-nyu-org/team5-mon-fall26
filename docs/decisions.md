@@ -79,6 +79,7 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - ~~Exact rule for "best" and "worst" travel windows.~~ Decided 2026-10-23, confirmed by the Product Owner (Shyam) 2026-10-25: fare and duration ranked separately, see "Our choices (best and worst times, US7 #9)" below.
 - ~~Which months of TLC data to load first.~~ Decided 2026-10-17: March to May 2026, see "Our choices (data import)" above.
 - ~~CI tooling.~~ Decided 2026-10-27: Travis CI + Coveralls, see "Our choices (CI, setup/ci)" below. (Testing tool is decided above: Django's built-in test runner.)
+- HTTPS on the Integration and Production environments. Both are plain `http://` Elastic Beanstalk URLs, so sign-up and sign-in (US10, US11) would send passwords unencrypted. Needed before real users create accounts.
 - Map tile provider for the demo. OpenStreetMap's public tile servers have a usage policy and are not meant for heavy production use (they already 403'd once locally over a missing Referer header). Check this before the sprint demo and be ready to switch to another tile provider (for example a paid provider, or self-hosted tiles) if it becomes a problem.
 
 ## Our choices (demand map, US1 #3, 2026-10-18)
@@ -140,3 +141,12 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - **Migrate and collectstatic:** `.ebextensions/02_django.config` `container_commands` (migrate `leader_only`), not the bundle's `.platform/hooks` scripts. Travis builds its own zip, and hooks only run if executable, so they could be skipped silently.
 - **New dependency:** `gunicorn==26.2.0` in `requirements.txt`. The Procfile uses it, and before this it came only from the platform.
 - **Release rule:** nobody merges into `main` unless the latest `develop` deploy to Integration succeeded.
+
+## Our choices (sign up, US10 #39, 2026-10-27)
+- **User model:** Django's built-in `User` (`django.contrib.auth`), no custom model. New `accounts` app for the account pages, mounted at `/accounts/`.
+- **Email as the sign-in name:** the email, trimmed and lowercased, is stored in both `username` and `email`. `username` is unique, so one account per email, and Django's username-based sign-in (US11) works unchanged. `Alex@Example.com` and `alex@example.com` are the same account. Max length 150 (the `username` limit).
+- **Password rules:** the `AUTH_PASSWORD_VALIDATORS` already in `settings.py` (similar to the email, at least 8 characters, not common, not all numbers). The form shows every reason that applies. A "Confirm password" field catches typos.
+- **Email already registered:** "An account with this email already exists." This says the email has an account, which a sign-up form cannot avoid. Sign-in (US11) uses one generic error instead. Two sign-ups with the same email at the same moment: the unique `username` makes the second fail, and it gets the same message.
+- **After sign-up:** the user is signed in and sent to the map. A signed-in user who opens the sign-up page goes to the map.
+- **Header:** guests see "Sign up" on the right of the map header; signed-in users see their email. Same line as the title, so the header height and the map are unchanged. The map and every Epic 1 API stay public (US9).
+
