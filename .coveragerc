@@ -1,0 +1,14 @@
+[run]
+source = .
+omit =
+    .venv/*
+    venv/*
+    */migrations/*
+    */tests/*
+    manage.py
+    taxiscope/wsgi.py
+    taxiscope/asgi.py
+    scripts/*
+
+[report]
+precision = 2

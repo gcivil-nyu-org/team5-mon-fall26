@@ -94,7 +94,8 @@ class EnsureTripFileTests(SimpleTestCase):
         self.assertEqual(request.full_url, TRIP_URL.format(month="2026-03"))
         self.assertEqual(
             request.full_url,
-            "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2026-03.parquet",
+            "https://d37ci6vzurychx.cloudfront.net/trip-data/"
+            "yellow_tripdata_2026-03.parquet",
         )
         self.assertTrue(request.get_header("User-agent"))
         self.assertEqual(sorted(p.name for p in self.data_dir.iterdir()), [path.name])

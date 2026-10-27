@@ -143,8 +143,9 @@ def main():
             separators=(",", ":"),
         )
     size = args.output.stat().st_size
+    mb = size / 1024 / 1024
     print(
-        f"Wrote {len(features)} features to {args.output} ({size:,} bytes, {size / 1024 / 1024:.2f} MB)"
+        f"Wrote {len(features)} features to {args.output} ({size:,} bytes, {mb:.2f} MB)"
     )
 
 
