@@ -14,7 +14,7 @@
     {# US10 #39, US11 #40: account links; the map never needs an account (US9). #}
     <nav class="account-nav" aria-label="Account">
       {% if user.is_authenticated %}
-        <span class="account-email">{{ user.email }}</span>
+        <a href="{% url 'accounts:account' %}" class="account-email" title="My account">{{ user.email }}</a>
         <form method="post" action="{% url 'accounts:signout' %}" class="signout-form">
           {% csrf_token %}
           <button type="submit" class="link-button">Sign out</button>

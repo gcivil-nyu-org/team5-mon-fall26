@@ -18,4 +18,5 @@ urlpatterns = [
         name="signin",
     ),
     path("signout/", auth_views.LogoutView.as_view(), name="signout"),
+    path("account/", views.account, name="account"),
 ]

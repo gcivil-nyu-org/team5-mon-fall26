@@ -1,4 +1,5 @@
 from django.contrib.auth import login
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
@@ -19,3 +20,10 @@ def signup(request):
             login(request, user)
             return redirect("zones:map")
     return render(request, "accounts/signup.html", {"form": form})
+
+
+@login_required
+def account(request):
+    """My account. Needs an account, so guests go to sign-in (LOGIN_URL)
+    with ?next= and come back here after signing in (US11 #40)."""
+    return render(request, "accounts/account.html")
