@@ -23,6 +23,12 @@ step yet; this is tracked separately.
 7. **`after_success`: `coveralls`** — uploads the coverage data gathered in
    step 4 to Coveralls, tagged with the Travis branch
    (`CI_BRANCH=$TRAVIS_BRANCH`) so develop and main report separately.
+   `COVERALLS_SERVICE_NAME=travis-pro` is also set: on the first real build,
+   the upload arrived in Coveralls with a blank branch under the default
+   `travis-ci` service name (this project builds on `app.travis-ci.com`,
+   Travis's `.com`/Pro side, not the legacy `.org` service that
+   `travis-ci` assumes). Setting the service name to `travis-pro` fixed the
+   branch tagging.
 
 Any step failing stops the build. A build failure sends an email (see
 `notifications` in `.travis.yml`); nothing posts on success.

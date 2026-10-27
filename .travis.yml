@@ -30,7 +30,7 @@ script:
   - node --test zones/tests/*.test.js
 
 after_success:
-  - CI_BRANCH=$TRAVIS_BRANCH coveralls
+  - COVERALLS_SERVICE_NAME=travis-pro CI_BRANCH=$TRAVIS_BRANCH coveralls
 
 notifications:
   email:
