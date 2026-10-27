@@ -5,7 +5,7 @@ from unittest import mock
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from django.test import TestCase
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 
 from accounts.forms import SignUpForm
 
@@ -86,7 +86,7 @@ class SignUpFormTests(TestCase):
 class SignUpViewTests(TestCase):
     """GET and POST /accounts/signup/."""
 
-    url = reverse("accounts:signup")
+    url = reverse_lazy("accounts:signup")
 
     def test_page_shows_the_form_with_csrf(self):
         response = self.client.get(self.url)
