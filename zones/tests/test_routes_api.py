@@ -9,8 +9,16 @@ from zones.stats import route_stats
 STAT_KEYS = ("fare_min", "fare_avg", "fare_max", "avg_duration_min")
 
 
-def add_zone_stats(zone, day, hour, trip_count, fare_min="5.00", fare_avg="15.00",
-                   fare_max="40.00", avg_duration_min=10.0):
+def add_zone_stats(
+    zone,
+    day,
+    hour,
+    trip_count,
+    fare_min="5.00",
+    fare_avg="15.00",
+    fare_max="40.00",
+    avg_duration_min=10.0,
+):
     return ZoneHourStats.objects.create(
         zone=zone,
         day_of_week=day,
@@ -23,8 +31,17 @@ def add_zone_stats(zone, day, hour, trip_count, fare_min="5.00", fare_avg="15.00
     )
 
 
-def add_route_stats(pickup, dropoff, day, hour, trip_count, fare_min="5.00",
-                    fare_avg="15.00", fare_max="40.00", avg_duration_min=10.0):
+def add_route_stats(
+    pickup,
+    dropoff,
+    day,
+    hour,
+    trip_count,
+    fare_min="5.00",
+    fare_avg="15.00",
+    fare_max="40.00",
+    avg_duration_min=10.0,
+):
     return RouteHourStats.objects.create(
         pickup_zone=pickup,
         dropoff_zone=dropoff,
@@ -44,28 +61,45 @@ class RouteData:
 
     @classmethod
     def setUpTestData(cls):
-        cls.midtown = Zone.objects.create(zone_id=161, name="Midtown Center", borough="Manhattan")
-        cls.ues = Zone.objects.create(zone_id=237, name="Upper East Side South", borough="Manhattan")
+        cls.midtown = Zone.objects.create(
+            zone_id=161, name="Midtown Center", borough="Manhattan"
+        )
+        cls.ues = Zone.objects.create(
+            zone_id=237, name="Upper East Side South", borough="Manhattan"
+        )
         cls.jfk = Zone.objects.create(zone_id=132, name="JFK Airport", borough="Queens")
-        cls.battery = Zone.objects.create(zone_id=12, name="Battery Park", borough="Manhattan")
-        cls.rockaway = Zone.objects.create(zone_id=201, name="Rockaway Park", borough="Queens")
+        cls.battery = Zone.objects.create(
+            zone_id=12, name="Battery Park", borough="Manhattan"
+        )
+        cls.rockaway = Zone.objects.create(
+            zone_id=201, name="Rockaway Park", borough="Queens"
+        )
 
         # Monday (0) 8:00 unless noted.
         cls.midtown_zone = add_zone_stats(
-            cls.midtown, 0, 8, 900, "3.50", "21.07", "95.10", 14.25)
+            cls.midtown, 0, 8, 900, "3.50", "21.07", "95.10", 14.25
+        )
         cls.midtown_ues = add_route_stats(
-            cls.midtown, cls.ues, 0, 8, 412, "9.80", "17.43", "48.25", 11.62)
+            cls.midtown, cls.ues, 0, 8, 412, "9.80", "17.43", "48.25", 11.62
+        )
         cls.midtown_midtown = add_route_stats(
-            cls.midtown, cls.midtown, 0, 8, 37, "4.20", "11.89", "26.75", 6.5)
+            cls.midtown, cls.midtown, 0, 8, 37, "4.20", "11.89", "26.75", 6.5
+        )
         # Must not leak into Midtown -> UES Monday 8:00.
-        add_route_stats(cls.midtown, cls.jfk, 0, 8, 60, "70.00", "88.00", "120.00", 45.0)
+        add_route_stats(
+            cls.midtown, cls.jfk, 0, 8, 60, "70.00", "88.00", "120.00", 45.0
+        )
         add_route_stats(cls.midtown, cls.ues, 0, 9, 300, "1.00", "2.00", "3.00", 1.0)
         add_route_stats(cls.midtown, cls.ues, 1, 8, 300, "1.00", "2.00", "3.00", 1.0)
 
         # Minimum trip count boundary: 5 is shown, 4 is not.
-        cls.five_route = add_route_stats(cls.battery, cls.rockaway, 0, 8, 5, "30.00", "41.67", "55.00", 40.0)
+        cls.five_route = add_route_stats(
+            cls.battery, cls.rockaway, 0, 8, 5, "30.00", "41.67", "55.00", 40.0
+        )
         cls.four_route = add_route_stats(cls.rockaway, cls.battery, 0, 8, 4)
-        cls.five_zone = add_zone_stats(cls.battery, 0, 8, 5, "8.00", "12.34", "19.99", 9.0)
+        cls.five_zone = add_zone_stats(
+            cls.battery, 0, 8, 5, "8.00", "12.34", "19.99", 9.0
+        )
         cls.four_zone = add_zone_stats(cls.rockaway, 0, 8, 4)
 
         # Busy pickup zone with no row for this route.
@@ -240,10 +274,10 @@ class RoutesApiTests(RouteData, TestCase):
 
     def test_missing_or_invalid_parameters_return_400(self):
         cases = (
-            {"day": 0, "hour": 8},                       # no from
+            {"day": 0, "hour": 8},  # no from
             {"from": "", "day": 0, "hour": 8},
             {"from": "abc", "day": 0, "hour": 8},
-            {"from": 999, "day": 0, "hour": 8},          # unknown zone
+            {"from": 999, "day": 0, "hour": 8},  # unknown zone
             {"from": 99999999999, "day": 0, "hour": 8},  # above MAX_ZONE_ID
             {"from": 161, "to": "abc", "day": 0, "hour": 8},
             {"from": 161, "to": 999, "day": 0, "hour": 8},

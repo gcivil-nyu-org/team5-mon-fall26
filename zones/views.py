@@ -91,7 +91,9 @@ def zones_api(request):
                     "name": name,
                     "borough": borough,
                     "trip_count": zone_stats["trip_count"] if zone_stats else 0,
-                    "avg_duration_min": zone_stats["avg_duration_min"] if zone_stats else None,
+                    "avg_duration_min": (
+                        zone_stats["avg_duration_min"] if zone_stats else None
+                    ),
                     "fare_min": zone_stats["fare_min"] if zone_stats else None,
                     "fare_avg": zone_stats["fare_avg"] if zone_stats else None,
                     "fare_max": zone_stats["fare_max"] if zone_stats else None,
@@ -218,5 +220,10 @@ def route_windows_api(request):
         )
 
     return JsonResponse(
-        {"from": pickup, "to": dropoff, "day": day, **route_windows(pickup, dropoff, day)}
+        {
+            "from": pickup,
+            "to": dropoff,
+            "day": day,
+            **route_windows(pickup, dropoff, day),
+        }
     )

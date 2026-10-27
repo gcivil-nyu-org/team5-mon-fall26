@@ -99,19 +99,25 @@ class ReplaceStatsTests(TestCase):
 
         replace_stats(*stats_for(make_kept((1, 2, 0, 0, 600, 1000))))
 
-        self.assertEqual(list(ZoneHourStats.objects.values_list("zone_id", flat=True)), [1])
+        self.assertEqual(
+            list(ZoneHourStats.objects.values_list("zone_id", flat=True)), [1]
+        )
         self.assertEqual(RouteHourStats.objects.count(), 1)
 
     def test_rows_are_written_in_batches(self):
         zone_stats, route_stats = stats_for(KEPT)
 
         with mock.patch.object(
-            RouteHourStats.objects, "bulk_create", wraps=RouteHourStats.objects.bulk_create
+            RouteHourStats.objects,
+            "bulk_create",
+            wraps=RouteHourStats.objects.bulk_create,
         ) as bulk_create:
             replace_stats(zone_stats, route_stats, batch_size=2)
 
         self.assertEqual(RouteHourStats.objects.count(), 4)
-        self.assertEqual([len(call.args[0]) for call in bulk_create.call_args_list], [2, 2])
+        self.assertEqual(
+            [len(call.args[0]) for call in bulk_create.call_args_list], [2, 2]
+        )
 
 
 class LoadAllTests(TestCase):
@@ -136,5 +142,7 @@ class LoadAllTests(TestCase):
             with self.assertRaises(RuntimeError):
                 load_all(changed, *stats_for(make_kept((1, 2, 0, 0, 600, 1000))))
 
-        self.assertEqual((stats_rows(ZoneHourStats), stats_rows(RouteHourStats)), before)
+        self.assertEqual(
+            (stats_rows(ZoneHourStats), stats_rows(RouteHourStats)), before
+        )
         self.assertEqual(Zone.objects.get(zone_id=1).name, "Newark Airport")

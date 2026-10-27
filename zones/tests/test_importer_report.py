@@ -19,8 +19,10 @@ ROUTE_STATS = pd.DataFrame({"trip_count": [1, 2, 5, 6, 4]})
 
 def number_after(label, block):
     """The first number on the line that starts with label."""
-    line = next(line.strip() for line in block.splitlines() if line.strip().startswith(label))
-    rest = line[len(label):]
+    line = next(
+        line.strip() for line in block.splitlines() if line.strip().startswith(label)
+    )
+    rest = line[len(label) :]
     return int(re.search(r"(\d[\d,]*)\s*(\(|$)", rest).group(1).replace(",", ""))
 
 

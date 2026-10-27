@@ -74,11 +74,11 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - **IDs:** LocationIDs must be unique and exactly 1..263; the script stops otherwise. Zones 264 and 265 (Unknown / Outside of NYC) have no shape.
 
 ## Open (decide before the story that needs it)
-- Which AWS services host the Django app and the database. Needed before the first deploy.
+- ~~Which AWS services host the Django app and the database.~~ App: Elastic Beanstalk (see "Our choices (CD, setup/ci, 2026-10-27)"). The database is reached through `DATABASE_URL`.
 - ~~Minimum trip count for a window to be shown.~~ Decided 2026-10-22: 5 trips, see "Our choices (fare range, US5 #7)" below.
 - ~~Exact rule for "best" and "worst" travel windows.~~ Decided 2026-10-23, confirmed by the Product Owner (Shyam) 2026-10-25: fare and duration ranked separately, see "Our choices (best and worst times, US7 #9)" below.
 - ~~Which months of TLC data to load first.~~ Decided 2026-10-17: March to May 2026, see "Our choices (data import)" above.
-- CI tooling. Waiting on the remaining course slides. (Testing tool is decided above: Django's built-in test runner.)
+- ~~CI tooling.~~ Decided 2026-10-27: Travis CI + Coveralls, see "Our choices (CI, setup/ci)" below. (Testing tool is decided above: Django's built-in test runner.)
 - Map tile provider for the demo. OpenStreetMap's public tile servers have a usage policy and are not meant for heavy production use (they already 403'd once locally over a missing Referer header). Check this before the sprint demo and be ready to switch to another tile provider (for example a paid provider, or self-hosted tiles) if it becomes a problem.
 
 ## Our choices (demand map, US1 #3, 2026-10-18)
@@ -124,3 +124,19 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 
 ## Our choices (use without an account, US9 #11, 2026-10-25)
 - US9: map tiles load from OpenStreetMap, which sees visitor IPs; hosting access logs also record IPs; the app itself stores no personal data.
+
+## Our choices (CI, setup/ci, 2026-10-27)
+- **CI tooling (decided, closing the "CI tooling" item under Open):** Travis CI (`app.travis-ci.com`), coverage uploaded to Coveralls. No deploy step yet; that is added separately once AWS hosting is decided.
+- **Formatting and linting:** black (line length 88, the default) and flake8, configured to agree (`.flake8` sets `max-line-length = 88` and ignores `E203`, which black and flake8 disagree on for slice spacing). `requirements-dev.txt` adds black, flake8, coverage, and coveralls on top of `requirements.txt`.
+- **PostgreSQL on Travis:** `dist: jammy`, version 14 (the version bundled with that image). PostgreSQL 16 is not available on `jammy` — it needs `dist: noble`, which this project does not use, so the minimum-trip-count-style "prefer newest, else the closest available" rule picked 14. The app has no version-specific PostgreSQL features, so this does not affect behavior.
+- **Coverage scope:** `.coveragerc` measures the project's own code (`source = .`), omitting virtualenvs, migrations, tests, `manage.py`, `wsgi.py`, `asgi.py`, and `scripts/` (one-off tooling, not part of the deployed app, not imported by it).
+- **Minimum coverage:** no enforced threshold in CI yet (the course asked for 85%+ as a one-time check, not a gate). The project's own code is at 100% as of this setup (`zones/models.py`'s `__str__` methods were the only gap, now tested in `test_models.py`).
+- **Secrets:** `.travis.yml`'s `SECRET_KEY` and `DATABASE_URL` are CI-only dummy values with no access to anything real; Coveralls' upload token is not stored anywhere — the `coveralls` CLI reads it from Travis's own build environment. See `docs/ci.md`.
+
+## Our choices (CD, setup/ci, 2026-10-27)
+- **Hosting:** AWS Elastic Beanstalk, application `taxiscope`, region `us-east-2`, Python 3.14 on Amazon Linux 2023. Integration is `Taxiscope-integration-env` and Production is `taxiscope-env`. This replaces "No deploy step yet" in the CI entry above.
+- **Deploy tool:** Travis dpl v2 (`edge: true`), provider `elasticbeanstalk`. `develop` deploys to Integration and `main` to Production, with `wait_until_deployed: true`. Pull requests never deploy. Cron builds are skipped (`condition: "$TRAVIS_EVENT_TYPE != cron"`). AWS keys are hidden Travis repository settings only.
+- **Deploy files in git:** `Procfile` (gunicorn) and `.ebextensions/01_static.config`, copied unchanged from the bundle production was first deployed with. `STATIC_ROOT = BASE_DIR / "staticfiles"` is in settings and the Elastic Beanstalk proxy serves `/static`, so no whitenoise.
+- **Migrate and collectstatic:** `.ebextensions/02_django.config` `container_commands` (migrate `leader_only`), not the bundle's `.platform/hooks` scripts. Travis builds its own zip, and hooks only run if executable, so they could be skipped silently.
+- **New dependency:** `gunicorn==26.2.0` in `requirements.txt`. The Procfile uses it, and before this it came only from the platform.
+- **Release rule:** nobody merges into `main` unless the latest `develop` deploy to Integration succeeded.

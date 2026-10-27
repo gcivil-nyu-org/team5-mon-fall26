@@ -54,7 +54,9 @@ class HeatmapAPITests(TestCase):
                 )
 
     def test_heatmap_returns_7x24_grid(self):
-        response = self.client.get(reverse("zones:heatmap_api", args=[self.zone.zone_id]))
+        response = self.client.get(
+            reverse("zones:heatmap_api", args=[self.zone.zone_id])
+        )
 
         self.assertEqual(response.status_code, 200)
         data = response.json()
@@ -65,7 +67,9 @@ class HeatmapAPITests(TestCase):
             self.assertEqual(len(day_data), 24)  # 24 hours
 
     def test_heatmap_contains_trip_count_and_duration(self):
-        response = self.client.get(reverse("zones:heatmap_api", args=[self.zone.zone_id]))
+        response = self.client.get(
+            reverse("zones:heatmap_api", args=[self.zone.zone_id])
+        )
 
         data = response.json()
         # Check a cell that exists (Monday hour 12)
@@ -76,7 +80,9 @@ class HeatmapAPITests(TestCase):
         self.assertIsNotNone(monday_noon["avg_duration_min"])
 
     def test_heatmap_marks_missing_data_as_null(self):
-        response = self.client.get(reverse("zones:heatmap_api", args=[self.zone.zone_id]))
+        response = self.client.get(
+            reverse("zones:heatmap_api", args=[self.zone.zone_id])
+        )
 
         data = response.json()
         # Check cells we deliberately skipped (Monday 0-5)

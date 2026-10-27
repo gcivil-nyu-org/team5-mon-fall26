@@ -15,6 +15,31 @@ Entry format:
 
 ## Log
 
+### 2026-10-27 — setup/ci (Sprint 6 CI setup, not a story)
+**What changed:**
+- `requirements-dev.txt` (black, flake8, coverage, coveralls pinned on top of `requirements.txt`), `.flake8` (max-line-length 88, `E203` ignored), `.coveragerc` (measures the project's own code; omits venvs, migrations, tests, `manage.py`, `wsgi.py`, `asgi.py`, `scripts/`).
+- Reformatted the whole codebase with black in its own commit (no behavior change — full suite passed before and after). Fixed the 5 remaining flake8 findings by hand: an unused import in `zones/admin.py`, and four lines over 88 characters split across variables/strings in `scripts/build_zone_shapes.py`, `taxiscope/settings.py`, `zones/importer/report.py`, `zones/tests/test_importer_download.py`.
+- Added `.travis.yml`: Travis CI (`app.travis-ci.com`), `dist: jammy`, PostgreSQL 14 (the version bundled with that image — 16 needs `dist: noble`, not used here), `python 3.12`. Script: `black --check .`, `flake8`, `coverage run manage.py test`, `coverage report`, `node --test zones/tests/*.test.js`. `after_success` uploads to Coveralls tagged by branch. Email notification on failure only. No deploy step yet.
+- Added `docs/ci.md` explaining the pipeline, the PostgreSQL version choice, the secrets used (CI-only dummy values, no real credentials), and what still needs manual setup in Travis's and Coveralls' own settings.
+- `zones/tests/test_models.py`: added `__str__` tests for `Zone`, `ZoneHourStats`, and new create/read-back + `__str__` tests for `RouteHourStats` (previously untested at all). This closed the only coverage gap.
+- README: Travis and Coveralls badges (develop and main), a "Development checks" section for running black/flake8/coverage/both test suites locally.
+- `.gitignore`: ignore the local `.coverage` data file and `htmlcov/`.
+
+**Decisions made (also in `docs/decisions.md`):** Travis CI + Coveralls (closes the "CI tooling" Open item); PostgreSQL 14 on Travis's `jammy` image; `.flake8`/`.coveragerc` scope; no enforced coverage threshold in CI (one-time 85%+ check per the course ask, not a gate).
+
+**Tests:** `coverage run manage.py test`: 225 tests, OK, 100% coverage of the project's own code (`taxiscope/`, `zones/`, excluding tests/migrations/wsgi/asgi/manage.py/scripts — up from 99.31% with 3 untested lines before this session). `node --test zones/tests/*.test.js`: 7 tests, OK. `black --check .` and `flake8` both clean. Every CI command run locally in the order `.travis.yml` uses it, against the local `taxiscope-db` Postgres 16 container (Travis itself runs Postgres 14 on `jammy`, not verified by an actual Travis build yet).
+
+**Known risk, flagged in `docs/ci.md`:** community reports describe PostgreSQL occasionally failing to auto-start on Travis's `jammy` image; if the first real build fails at the `services` step, try adding `group: previous` next to `dist: jammy`.
+
+**CD added (same day, same branch):**
+- Compared the source bundle running on production (`eb deploy --staged` from `c84c5d2`) with the repo. Committed its `Procfile` and `.ebextensions/01_static.config` unchanged, and added `STATIC_ROOT` to settings (`staticfiles/` was already in `.gitignore`).
+- Replaced the bundle's `.platform/hooks/predeploy` migrate/collectstatic scripts with `.ebextensions/02_django.config` `container_commands` (migrate `leader_only`).
+- Pinned `gunicorn==26.2.0` in `requirements.txt`.
+- `.travis.yml` `deploy`: dpl v2 Elastic Beanstalk, `develop` → `Taxiscope-integration-env`, `main` → `taxiscope-env`, `wait_until_deployed`, cron builds skipped. `docs/ci.md` has a new "Continuous deployment" section. Decisions are in `docs/decisions.md` (closes the AWS hosting Open item for the app).
+- Checked locally: black, flake8, 225 Django tests at 100% coverage, 7 Node tests, `collectstatic` with `DEBUG=False` (141 files into a temp dir), and gunicorn with `DEBUG=False` serving `/api/zones` (200). Travis's lint API reported no warnings. No real deploy has run from Travis yet.
+
+**Next step:** PR `setup/ci` → `develop` is open, not merged. After it merges, check that the first Travis deploy to `Taxiscope-integration-env` succeeds: `01_migrate` must reach the database, so its security group must allow the integration instance security group. Only then open `develop` → `main`. Travis runs Python 3.12 but Elastic Beanstalk runs 3.14, and the project decision still says 3.12, so align them in a later change. Optionally add a GitHub branch-protection rule requiring the Travis check before merging.
+
 ### 2026-10-25 — docs/release-prep (release prep, not a story)
 **What changed:**
 - `docs/decisions.md`: the Product Owner (Shyam) confirmed the US7 best/worst ranking rule (fare and duration ranked separately) and the US5/US6 `MIN_TRIP_COUNT = 5` setting. Added a US9 note on why "no personal data collected" holds: OpenStreetMap tile requests and hosting access logs see visitor IPs, but the app itself stores none.

@@ -36,7 +36,9 @@ class Command(BaseCommand):
     def handle(self, *args, months, data_dir, **options):
         repeated = sorted({month for month in months if months.count(month) > 1})
         if repeated:
-            raise CommandError(f"Each month can be given only once: {', '.join(repeated)}")
+            raise CommandError(
+                f"Each month can be given only once: {', '.join(repeated)}"
+            )
 
         started = time.monotonic()
         try:
@@ -45,7 +47,9 @@ class Command(BaseCommand):
             raise CommandError(str(exc)) from exc
 
         self.stdout.write("")
-        self.stdout.write(format_report(result.months, result.zone_stats, result.route_stats))
+        self.stdout.write(
+            format_report(result.months, result.zone_stats, result.route_stats)
+        )
         self.stdout.write("")
         self.stdout.write(
             f"Zones loaded: {result.zones_loaded}. "

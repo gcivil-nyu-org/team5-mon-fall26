@@ -56,4 +56,6 @@ class ZoneShapesFileTests(SimpleTestCase):
             location_id = feature["properties"]["LocationID"]
             for lon, lat in iter_positions(feature["geometry"]):
                 if not (MIN_LON <= lon <= MAX_LON and MIN_LAT <= lat <= MAX_LAT):
-                    self.fail(f"LocationID {location_id}: [{lon}, {lat}] is outside NYC")
+                    self.fail(
+                        f"LocationID {location_id}: [{lon}, {lat}] is outside NYC"
+                    )
