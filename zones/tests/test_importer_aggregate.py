@@ -167,12 +167,16 @@ class DecimalTests(SimpleTestCase):
     def test_cents_to_decimal_accepts_numpy_ints(self):
         stats = finalize(partial_totals(FIVE_TRIPS, ZONE_KEYS))
 
-        self.assertEqual(cents_to_decimal(stats["fare_min_cents"].iloc[0]), Decimal("12.00"))
+        self.assertEqual(
+            cents_to_decimal(stats["fare_min_cents"].iloc[0]), Decimal("12.00")
+        )
 
     def test_average_rounds_half_up(self):
         self.assertEqual(average_cents_to_decimal(1, 2), Decimal("0.01"))  # 0.005
         self.assertEqual(average_cents_to_decimal(2, 3), Decimal("0.01"))  # 0.00667
-        self.assertEqual(average_cents_to_decimal(1890 + 1865, 2), Decimal("18.78"))  # 18.775
+        self.assertEqual(
+            average_cents_to_decimal(1890 + 1865, 2), Decimal("18.78")
+        )  # 18.775
         self.assertEqual(average_cents_to_decimal(1, 3), Decimal("0.00"))  # 0.00333
 
     def test_average_has_two_decimal_places(self):

@@ -7,7 +7,12 @@ from urllib.error import URLError
 
 from django.test import SimpleTestCase
 
-from zones.importer.download import TRIP_URL, ensure_trip_file, parse_month, trip_file_path
+from zones.importer.download import (
+    TRIP_URL,
+    ensure_trip_file,
+    parse_month,
+    trip_file_path,
+)
 
 
 class ParseMonthTests(SimpleTestCase):
@@ -16,7 +21,16 @@ class ParseMonthTests(SimpleTestCase):
         self.assertEqual(parse_month("2026-12"), "2026-12")
 
     def test_rejects_anything_else(self):
-        for value in ["2026-3", "2026-003", "2026-00", "2026-13", "2026-03-01", " 2026-03", "March", ""]:
+        for value in [
+            "2026-3",
+            "2026-003",
+            "2026-00",
+            "2026-13",
+            "2026-03-01",
+            " 2026-03",
+            "March",
+            "",
+        ]:
             with self.subTest(value=value):
                 with self.assertRaises(argparse.ArgumentTypeError):
                     parse_month(value)
@@ -69,7 +83,8 @@ class EnsureTripFileTests(SimpleTestCase):
 
     def test_missing_file_is_downloaded(self):
         with mock.patch(
-            "zones.importer.download.urlopen", return_value=FakeResponse(b"parquet bytes")
+            "zones.importer.download.urlopen",
+            return_value=FakeResponse(b"parquet bytes"),
         ) as urlopen:
             path, downloaded = ensure_trip_file("2026-03", self.data_dir)
 
@@ -85,7 +100,9 @@ class EnsureTripFileTests(SimpleTestCase):
         self.assertEqual(sorted(p.name for p in self.data_dir.iterdir()), [path.name])
 
     def test_broken_download_leaves_no_file(self):
-        with mock.patch("zones.importer.download.urlopen", return_value=BrokenResponse()):
+        with mock.patch(
+            "zones.importer.download.urlopen", return_value=BrokenResponse()
+        ):
             with self.assertRaises(URLError):
                 ensure_trip_file("2026-03", self.data_dir)
 

@@ -41,7 +41,8 @@ class ImportTripsCommandTests(TestCase):
 
         # The tests never touch the network.
         patcher = mock.patch(
-            "zones.importer.download.urlopen", side_effect=URLError("no network in tests")
+            "zones.importer.download.urlopen",
+            side_effect=URLError("no network in tests"),
         )
         self.urlopen = patcher.start()
         self.addCleanup(patcher.stop)
@@ -51,7 +52,9 @@ class ImportTripsCommandTests(TestCase):
         args = []
         for month in months:
             args += ["--month", month]
-        call_command("import_trips", *args, "--data-dir", str(self.data_dir), stdout=out)
+        call_command(
+            "import_trips", *args, "--data-dir", str(self.data_dir), stdout=out
+        )
         return out.getvalue()
 
     def test_imports_months_end_to_end(self):
@@ -61,7 +64,9 @@ class ImportTripsCommandTests(TestCase):
         self.assertEqual(trip_total(ZoneHourStats), 4)
         self.assertEqual(trip_total(RouteHourStats), 4)
         # The two April trips share a zone and an hour.
-        self.assertEqual(ZoneHourStats.objects.get(zone_id=161, day_of_week=1, hour=18).trip_count, 2)
+        self.assertEqual(
+            ZoneHourStats.objects.get(zone_id=161, day_of_week=1, hour=18).trip_count, 2
+        )
         self.assertFalse(ZoneHourStats.objects.filter(zone_id__in=[264, 265]).exists())
         self.urlopen.assert_not_called()
 
@@ -72,12 +77,20 @@ class ImportTripsCommandTests(TestCase):
 
     def test_running_twice_gives_the_same_rows(self):
         self.run_import("2026-03", "2026-04")
-        first = (stats_rows(ZoneHourStats), stats_rows(RouteHourStats), Zone.objects.count())
+        first = (
+            stats_rows(ZoneHourStats),
+            stats_rows(RouteHourStats),
+            Zone.objects.count(),
+        )
 
         self.run_import("2026-03", "2026-04")
 
         self.assertEqual(
-            (stats_rows(ZoneHourStats), stats_rows(RouteHourStats), Zone.objects.count()),
+            (
+                stats_rows(ZoneHourStats),
+                stats_rows(RouteHourStats),
+                Zone.objects.count(),
+            ),
             first,
         )
 
@@ -107,7 +120,10 @@ class ImportTripsCommandTests(TestCase):
     def test_bad_file_is_an_error_and_keeps_the_old_stats(self):
         self.run_import("2026-03", "2026-04")
         before = stats_rows(RouteHourStats)
-        write_parquet(MARCH.drop(columns=["fare_amount"]), trip_file_path("2026-05", self.data_dir))
+        write_parquet(
+            MARCH.drop(columns=["fare_amount"]),
+            trip_file_path("2026-05", self.data_dir),
+        )
 
         with self.assertRaisesMessage(CommandError, "fare_amount"):
             self.run_import("2026-03", "2026-05")

@@ -35,7 +35,9 @@ class FarePanelTemplateTests(TestCase):
     def test_fare_js_loaded_after_filters_js(self):
         html = self.response.content.decode()
         self.assertIn("zones/js/fare.js", html)
-        self.assertLess(html.index("zones/js/filters.js"), html.index("zones/js/fare.js"))
+        self.assertLess(
+            html.index("zones/js/filters.js"), html.index("zones/js/fare.js")
+        )
 
 
 class FareJsTests(SimpleTestCase):

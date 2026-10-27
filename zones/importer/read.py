@@ -6,7 +6,9 @@ import pandas as pd
 import pyarrow
 import pyarrow.parquet as pq
 
-ZONE_LOOKUP_CSV = Path(__file__).resolve().parent.parent / "data" / "taxi_zone_lookup.csv"
+ZONE_LOOKUP_CSV = (
+    Path(__file__).resolve().parent.parent / "data" / "taxi_zone_lookup.csv"
+)
 
 # The TLC columns the import needs, and our names for them. This is the
 # only place that knows the raw names, so a renamed column is fixed here.
