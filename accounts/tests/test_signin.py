@@ -1,6 +1,9 @@
 """US11 #40: Sign In and Sign Out."""
 
 from django.contrib.auth import get_user_model
+from pathlib import Path
+
+from django.conf import settings
 from django.test import Client, TestCase
 from django.urls import reverse, reverse_lazy
 
@@ -185,3 +188,16 @@ class CsrfTests(AccountData, TestCase):
                 response = self.client.get(reverse(name))
 
                 self.assertContains(response, "csrfmiddlewaretoken")
+
+    def test_csrf_middleware_is_on(self):
+        self.assertIn("django.middleware.csrf.CsrfViewMiddleware", settings.MIDDLEWARE)
+
+    def test_every_post_form_in_the_templates_has_a_token(self):
+        templates = list(Path(settings.BASE_DIR).glob("*/templates/**/*.html"))
+        self.assertTrue(templates)
+        for template in templates:
+            html = template.read_text()
+            with self.subTest(template=template.name):
+                self.assertEqual(
+                    html.count('method="post"'), html.count("{% csrf_token %}")
+                )
