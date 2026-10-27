@@ -1,0 +1,38 @@
+os: linux
+dist: jammy
+language: python
+python:
+  - "3.12"
+
+services:
+  - postgresql
+
+addons:
+  postgresql: "14" # highest version bundled with the jammy image; 16 needs dist: noble
+
+env:
+  global:
+    - SECRET_KEY=travis-ci-dummy-secret-key-not-for-production
+    - DEBUG=True
+    - DATABASE_URL=postgres://postgres@localhost:5432/taxiscope_test
+
+before_script:
+  - psql -c 'create database taxiscope_test;' -U postgres
+
+install:
+  - pip install -r requirements-dev.txt
+
+script:
+  - black --check .
+  - flake8
+  - coverage run manage.py test
+  - coverage report
+  - node --test zones/tests/*.test.js
+
+after_success:
+  - CI_BRANCH=$TRAVIS_BRANCH coveralls
+
+notifications:
+  email:
+    on_success: never
+    on_failure: always
