@@ -31,7 +31,14 @@ Entry format:
 
 **Known risk, flagged in `docs/ci.md`:** community reports describe PostgreSQL occasionally failing to auto-start on Travis's `jammy` image; if the first real build fails at the `services` step, try adding `group: previous` next to `dist: jammy`.
 
-**Next step:** branch `setup/ci` is pushed but **not yet a PR** — the user is adding deploy config to this same branch and will open one PR. Manual setup still needed outside the repo: enable the repository on `app.travis-ci.com` and on `coveralls.io` (both just need the GitHub repo added, no tokens to paste in). Optionally add a GitHub branch-protection rule requiring the Travis check before merging.
+**CD added (same day, same branch):**
+- Compared the source bundle running on production (`eb deploy --staged` from `c84c5d2`) with the repo. Committed its `Procfile` and `.ebextensions/01_static.config` unchanged, and added `STATIC_ROOT` to settings (`staticfiles/` was already in `.gitignore`).
+- Replaced the bundle's `.platform/hooks/predeploy` migrate/collectstatic scripts with `.ebextensions/02_django.config` `container_commands` (migrate `leader_only`).
+- Pinned `gunicorn==26.2.0` in `requirements.txt`.
+- `.travis.yml` `deploy`: dpl v2 Elastic Beanstalk, `develop` → `Taxiscope-integration-env`, `main` → `taxiscope-env`, `wait_until_deployed`, cron builds skipped. `docs/ci.md` has a new "Continuous deployment" section. Decisions are in `docs/decisions.md` (closes the AWS hosting Open item for the app).
+- Checked locally: black, flake8, 225 Django tests at 100% coverage, 7 Node tests, `collectstatic` with `DEBUG=False` (141 files into a temp dir), and gunicorn with `DEBUG=False` serving `/api/zones` (200). Travis's lint API reported no warnings. No real deploy has run from Travis yet.
+
+**Next step:** PR `setup/ci` → `develop` is open, not merged. After it merges, check that the first Travis deploy to `Taxiscope-integration-env` succeeds: `01_migrate` must reach the database, so its security group must allow the integration instance security group. Only then open `develop` → `main`. Travis runs Python 3.12 but Elastic Beanstalk runs 3.14, and the project decision still says 3.12, so align them in a later change. Optionally add a GitHub branch-protection rule requiring the Travis check before merging.
 
 ### 2026-10-25 — docs/release-prep (release prep, not a story)
 **What changed:**

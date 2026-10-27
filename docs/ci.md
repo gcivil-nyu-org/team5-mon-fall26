@@ -1,8 +1,9 @@
 # CI pipeline
 
 Continuous integration runs on Travis CI (`app.travis-ci.com`), configured in
-`.travis.yml`. Coverage results are uploaded to Coveralls. There is no deploy
-step yet; this is tracked separately.
+`.travis.yml`. Coverage results are uploaded to Coveralls. Continuous
+deployment to AWS Elastic Beanstalk runs from the same file; see
+[Continuous deployment](#continuous-deployment) below.
 
 ## What runs, in order
 
@@ -29,6 +30,9 @@ step yet; this is tracked separately.
    Travis's `.com`/Pro side, not the legacy `.org` service that
    `travis-ci` assumes). Setting the service name to `travis-pro` fixed the
    branch tagging.
+
+8. **`deploy`** — only on pushes to `develop` or `main`; see
+   [Continuous deployment](#continuous-deployment).
 
 Any step failing stops the build. A build failure sends an email (see
 `notifications` in `.travis.yml`); nothing posts on success.
@@ -69,11 +73,18 @@ upload token is not configured here — it is picked up automatically by the
 (`TRAVIS`, `TRAVIS_JOB_ID`) when the build runs on `app.travis-ci.com` with
 the repository enabled in Coveralls.
 
+The deploy step's AWS credentials are `AWS_ACCESS_KEY_ID` and
+`AWS_SECRET_ACCESS_KEY`, stored as hidden environment variables in the Travis
+repository settings. dpl reads them from the environment. They must never be
+written into `.travis.yml` or any other file in the repository.
+
 ## Manual setup required (not in this repository)
 
 - **Travis CI:** enable the repository at app.travis-ci.com (Settings →
   GitHub Apps / repository list). No extra environment variables need to be
-  set there; everything CI needs is in `.travis.yml`.
+  set there for CI; everything CI needs is in `.travis.yml`. For deploys,
+  `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are set there as hidden
+  variables (done).
 - **Coveralls:** enable the repository at coveralls.io so it accepts the
   upload the build sends. Coveralls' standard Travis integration reads the
   build identity Travis already provides, so no extra token needs to be
@@ -81,6 +92,62 @@ the repository enabled in Coveralls.
 - **Branch protection (optional, not done here):** requiring the Travis
   check to pass before merging into `develop`/`main` is a GitHub branch
   protection setting, not a file in this repository.
+
+## Continuous deployment
+
+Travis deploys with dpl v2 (`edge: true`), provider `elasticbeanstalk`, to the
+Elastic Beanstalk application `taxiscope` in `us-east-2`. Both environments run
+Python 3.14 on Amazon Linux 2023. dpl zips the build directory (skipping what
+`.gitignore` matches), uploads it to the
+`elasticbeanstalk-us-east-2-933164653260` bucket, creates an application
+version labelled `travis-<sha>-<timestamp>`, and updates the environment.
+`wait_until_deployed: true` makes the Travis build wait for the environment
+update and fail if it fails.
+
+| Push to | Deploys to | Instance |
+|---|---|---|
+| `develop` | `Taxiscope-integration-env` (capital T) | Integration |
+| `main` | `taxiscope-env` | Production |
+
+The deploy runs only if every earlier step passed. Pull request builds never
+deploy (dpl skips the deploy step for them), and other branches do not match
+`on: branch`.
+
+**Cron builds are skipped.** Each target's `on:` has
+`condition: "$TRAVIS_EVENT_TYPE != cron"` next to `branch`, and dpl needs both
+to be true. A scheduled Travis cron build on `develop` or `main` still runs the
+tests but does not redeploy.
+
+**What runs on the instance.** The repository carries the same deploy files as
+the bundle production was first deployed with (`eb deploy --staged` from
+`c84c5d2`):
+
+- `Procfile` — `gunicorn` on `127.0.0.1:8000`, 1 worker, 15 threads.
+  `gunicorn` is pinned in `requirements.txt`.
+- `.ebextensions/01_static.config` — the Elastic Beanstalk proxy serves
+  `/static` from `staticfiles/`, which is `STATIC_ROOT` in
+  `taxiscope/settings.py`. No whitenoise is needed.
+- `.ebextensions/02_django.config` — `container_commands`: `migrate`
+  (`leader_only: true`, so it runs once per deploy, not on every instance),
+  then `collectstatic`. Both activate the platform venv first.
+
+**Why `container_commands` instead of `.platform/hooks`.** The original bundle
+ran migrate and collectstatic from `.platform/hooks/predeploy/*.sh`. Elastic
+Beanstalk runs those hooks only if the files are executable. Travis builds its
+own zip, and the executable bit may not survive the zip, so the hooks could be
+skipped silently. `container_commands` are YAML and need no file permissions.
+
+**Environment settings (not in the repository).** `SECRET_KEY`, `DEBUG`,
+`ALLOWED_HOSTS` and `DATABASE_URL` are environment properties on each Elastic
+Beanstalk environment. **Database access:** the database's security group must
+allow inbound PostgreSQL (port 5432) from **each** environment's instance
+security group, integration and production. If it does not, the deploy fails
+at `01_migrate` because the instance cannot reach the database.
+
+**Rule: nobody merges into `main` unless the latest deploy of `develop` to
+Integration succeeded.** Check the Travis build for the `develop` merge commit
+and the integration environment's health before opening or merging a
+`develop` → `main` pull request.
 
 ## Running the same checks locally
 

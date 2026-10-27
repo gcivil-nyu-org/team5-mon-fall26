@@ -32,6 +32,31 @@ script:
 after_success:
   - COVERALLS_SERVICE_NAME=travis-pro CI_BRANCH=$TRAVIS_BRANCH coveralls
 
+# Credentials come from the hidden Travis repository settings
+# AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, never from this file.
+# Pull request builds never deploy. Cron builds are skipped by the condition.
+deploy:
+  - provider: elasticbeanstalk
+    edge: true
+    region: us-east-2
+    app: taxiscope
+    env: Taxiscope-integration-env
+    bucket: elasticbeanstalk-us-east-2-933164653260
+    wait_until_deployed: true
+    on:
+      branch: develop
+      condition: "$TRAVIS_EVENT_TYPE != cron"
+  - provider: elasticbeanstalk
+    edge: true
+    region: us-east-2
+    app: taxiscope
+    env: taxiscope-env
+    bucket: elasticbeanstalk-us-east-2-933164653260
+    wait_until_deployed: true
+    on:
+      branch: main
+      condition: "$TRAVIS_EVENT_TYPE != cron"
+
 notifications:
   email:
     on_success: never
