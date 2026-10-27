@@ -1,11 +1,13 @@
 from django import forms
 from django.contrib.auth import get_user_model, password_validation
+from django.contrib.auth.forms import AuthenticationForm, UsernameField
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 
 User = get_user_model()
 
 EMAIL_TAKEN = "An account with this email already exists."
+SIGN_IN_ERROR = "The email or password is incorrect."
 
 
 class SignUpForm(forms.Form):
@@ -64,3 +66,23 @@ class SignUpForm(forms.Form):
         except IntegrityError:
             self.add_error("email", EMAIL_TAKEN)
             return None
+
+
+class SignInForm(AuthenticationForm):
+    """US11 #40: Django's AuthenticationForm with the email as the
+    username. Every failure (unknown email, wrong password, inactive
+    account) shows the same message, so it never says whether an email has
+    an account."""
+
+    error_messages = {
+        "invalid_login": SIGN_IN_ERROR,
+        "inactive": SIGN_IN_ERROR,
+    }
+
+    username = UsernameField(
+        label="Email",
+        widget=forms.EmailInput(attrs={"autocomplete": "email", "autofocus": True}),
+    )
+
+    def clean_username(self):
+        return self.cleaned_data["username"].strip().lower()
