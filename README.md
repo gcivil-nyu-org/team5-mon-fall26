@@ -1,9 +1,9 @@
 # team5-mon-fall26
 
-[![Build Status (develop)](https://app.travis-ci.com/gcivil-nyu-org/team5-mon-fall26.svg?branch=develop)](https://app.travis-ci.com/gcivil-nyu-org/team5-mon-fall26)
-[![Build Status (main)](https://app.travis-ci.com/gcivil-nyu-org/team5-mon-fall26.svg?branch=main)](https://app.travis-ci.com/gcivil-nyu-org/team5-mon-fall26)
-[![Coverage Status (develop)](https://coveralls.io/repos/github/gcivil-nyu-org/team5-mon-fall26/badge.svg?branch=develop)](https://coveralls.io/github/gcivil-nyu-org/team5-mon-fall26?branch=develop)
-[![Coverage Status (main)](https://coveralls.io/repos/github/gcivil-nyu-org/team5-mon-fall26/badge.svg?branch=main)](https://coveralls.io/github/gcivil-nyu-org/team5-mon-fall26?branch=main)
+| Branch | Build | Coverage | Environment |
+|---|---|---|---|
+| `develop` | [![Build Status (develop)](https://app.travis-ci.com/gcivil-nyu-org/team5-mon-fall26.svg?branch=develop)](https://app.travis-ci.com/gcivil-nyu-org/team5-mon-fall26) | [![Coverage Status (develop)](https://coveralls.io/repos/github/gcivil-nyu-org/team5-mon-fall26/badge.svg?branch=develop)](https://coveralls.io/github/gcivil-nyu-org/team5-mon-fall26?branch=develop) | [Integration](http://taxiscope-integration-env.eba-gfaktp8z.us-east-2.elasticbeanstalk.com/) |
+| `main` | [![Build Status (main)](https://app.travis-ci.com/gcivil-nyu-org/team5-mon-fall26.svg?branch=main)](https://app.travis-ci.com/gcivil-nyu-org/team5-mon-fall26) | [![Coverage Status (main)](https://coveralls.io/repos/github/gcivil-nyu-org/team5-mon-fall26/badge.svg?branch=main)](https://coveralls.io/github/gcivil-nyu-org/team5-mon-fall26?branch=main) | [Production](http://taxiscope-env.eba-gfaktp8z.us-east-2.elasticbeanstalk.com/) |
 
 TaxiScope NYC. See `CLAUDE.md` and `docs/` for the project docs.
 

@@ -8,6 +8,7 @@ Web app that shows NYC riders historical taxi demand, fares, and trip duration b
 - `docs/stories/README.md`: how the story files map to ZenHub issues; refresh with `scripts/sync-stories.sh`
 - `docs/decisions.md`: decisions already made. Add to it, never contradict it silently
 - `docs/progress.md`: what is done, what is next, handoff notes from the last session
+- `docs/ci.md`: the Travis CI pipeline and the Elastic Beanstalk deploys
 - Team wiki (design, Definition of Ready, Definition of Done): https://github.com/gcivil-nyu-org/team5-mon-fall26/wiki
 
 ## Required by the course
@@ -21,7 +22,9 @@ Web app that shows NYC riders historical taxi demand, fares, and trip duration b
 - Frontend: Django templates + Leaflet, calling the Django JSON endpoints (no separate React app)
 - Database: PostgreSQL, no PostGIS. Zone shapes are a static GeoJSON file joined to the stats in Django
 - Data import: a Django management command (pandas/pyarrow) that imports one or more monthly TLC Parquet files (one file at a time), cleans them, and writes the aggregate tables. No PySpark
-- Open: which AWS services to use, the minimum trip count (proposed 5), the best/worst rule (see `docs/decisions.md`)
+- Hosting: AWS Elastic Beanstalk with RDS PostgreSQL, region us-east-2. Integration env `Taxiscope-integration-env` (from `develop`), Production env `taxiscope-env` (from `main`)
+- CI/CD: Travis CI + Coveralls. Travis runs black, flake8, the Django and Node tests, and deploys `develop` and `main` to Elastic Beanstalk. See `docs/ci.md`
+- Open: the minimum trip count (proposed 5), the best/worst rule (see `docs/decisions.md`)
 
 ## Data model
 - `zone(zone_id, name, borough)` (boundary shapes are in the GeoJSON file, keyed by `zone_id`)
