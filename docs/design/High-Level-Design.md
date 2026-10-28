@@ -157,3 +157,9 @@ The exact AWS services (for example, how the Django app and the database are hos
 | US7: Find Best and Worst Travel Times | `/api/routes/windows`, `route_hour_stats` |
 | US8: View Trip Summary | Summary panel combining `/api/routes` and `/api/routes/windows` |
 | US9: Use Without an Account | No sign-in anywhere in this epic: every endpoint above is public and read-only |
+
+## 13. Epic 2 extension: Leave By (US15)
+
+The Arrive by form in the trip summary accepts a weekday and a time in 15-minute steps after the rider selects both zones. It calls the public `GET /api/routes/leave-by?from=&to=&day=&arrive=HH:MM` endpoint. The endpoint validates known zone ids, weekday 0-6, and a quarter-hour arrival time, then reads `route_hour_stats`.
+
+The planner first subtracts the arrival hour's average journey duration. It reads the resulting departure hour (including the previous day if necessary), subtracts that hour's average duration once more, and rounds the leave time down to a 15-minute boundary. The departure hour supplies the displayed typical duration and average fare. If the arrival or departure hour has fewer than `MIN_TRIP_COUNT` trips, the response has `enough_data: false` and the page shows Not enough data. The page labels a result as an estimate from March to May 2026 trips, not a guarantee.

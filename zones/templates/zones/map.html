@@ -84,6 +84,31 @@
       </dl>
       <p id="windows-status" class="summary-status" role="status" aria-live="polite"></p>
       <p class="summary-disclaimer">Based on historical taxi data; actual fares and travel times may vary.</p>
+      <section id="leave-by-panel" class="leave-by-panel" hidden aria-labelledby="leave-by-title">
+        <h2 id="leave-by-title">Arrive by</h2>
+        <form id="leave-by-form">
+          <label for="leave-by-day">Day</label>
+          <select id="leave-by-day" name="day" required>
+            <option value="0">Monday</option>
+            <option value="1">Tuesday</option>
+            <option value="2">Wednesday</option>
+            <option value="3">Thursday</option>
+            <option value="4">Friday</option>
+            <option value="5">Saturday</option>
+            <option value="6">Sunday</option>
+          </select>
+          <label for="leave-by-arrive">Arrival time</label>
+          <input id="leave-by-arrive" name="arrive" type="time" step="900" required>
+          <button type="submit">Find when to leave</button>
+        </form>
+        <p id="leave-by-status" class="summary-status" role="status" aria-live="polite"></p>
+        <dl id="leave-by-result" class="summary-values" hidden>
+          <div><dt>Leave by</dt><dd id="leave-by-time"></dd></div>
+          <div><dt>Typical journey time</dt><dd id="leave-by-duration"></dd></div>
+          <div><dt>Typical fare before tip</dt><dd id="leave-by-fare"></dd></div>
+        </dl>
+        <p class="summary-disclaimer">Estimate from past trips (March to May 2026), not a guarantee.</p>
+      </section>
     </section>
     <button id="clear-selection" class="clear-all-btn" hidden>Clear selection</button>
   </aside>
@@ -109,6 +134,7 @@
   <script src="{% static 'zones/js/heatmap.js' %}"></script>
   <script src="{% static 'zones/js/trip-summary.js' %}"></script>
   <script src="{% static 'routes/js/save-route.js' %}"></script>
+  <script src="{% static 'routes/js/leave-by.js' %}"></script>
   <script src="{% static 'zones/js/fare.js' %}"></script>
   <script src="{% static 'zones/js/windows.js' %}"></script>
 </body>

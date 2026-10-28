@@ -183,3 +183,9 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - Open uses GET /saved-routes/<id>/open/ to render the existing map. The server verifies ownership before rendering; after the map loads, the saved zone ids drive the existing taxiscope:zones-selected event so the trip summary opens.
 - Rename uses GET/POST /saved-routes/<id>/rename/ and the same trimmed, required, 50-character, per-user unique name rules as US13. Renaming to the current name is allowed.
 - Delete uses GET/POST /saved-routes/<id>/delete/. GET shows a confirmation page; POST with CSRF protection deletes the route. Unknown or other users' route ids return 404 for open, rename and delete.
+
+## Our choices (leave-by suggestion, US15 #44, 2026-10-28)
+- The public GET /api/routes/leave-by endpoint requires known pickup and dropoff zone ids, a Monday=0 day (0-6), and an HH:MM arrival time on a 15-minute boundary. Invalid requests return 400. It reads the existing route_hour_stats through the shared route statistics query.
+- Start with the arrival hour's average duration. Subtract it to select the estimated departure day and hour, then subtract that hour's average duration once more. Round the result down to the previous 15-minute boundary; day arithmetic wraps across midnight and Sunday/Monday.
+- The response provides the leave day/time, typical journey duration and average fare for the departure hour. If either required hour has fewer than MIN_TRIP_COUNT trips, it returns enough_data false and null estimates.
+- An Arrive by form appears under the trip summary when both zones are selected. It displays the result or Not enough data and labels the result an estimate from March to May 2026 trips, not a guarantee.

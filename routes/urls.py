@@ -5,6 +5,7 @@ from . import views
 app_name = "routes"
 
 urlpatterns = [
+    path("api/routes/leave-by", views.leave_by_api, name="leave_by_api"),
     path("saved-routes/save/", views.save_route, name="save_route"),
     path("saved-routes/", views.my_routes, name="my_routes"),
     path(
