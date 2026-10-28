@@ -1,11 +1,14 @@
 """US12 #41: Manage and Delete My Account."""
 
-from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.core import checks
 from django.test import TestCase
+from django.test.utils import isolate_apps
 from django.urls import reverse, reverse_lazy
+
+from accounts.checks import cascade_errors, user_data_cascades
 
 User = get_user_model()
 
@@ -170,24 +173,36 @@ class DeleteAccountTests(AccountData, TestCase):
 
 class UserDataCascadeTests(TestCase):
     """Deleting a user must delete everything that belongs to them. Saved
-    routes (US13) and plans (US17) will link to the user; this fails the
-    build if any model links to a user without on_delete=CASCADE."""
+    routes (US13) and plans (US17) will link to the user; a system check
+    (accounts.E001) flags any link without on_delete=CASCADE."""
 
-    def user_links(self):
-        for model in apps.get_models():
-            if model._meta.app_label in ("admin", "auth"):
-                continue  # Django's own tables
-            for field in model._meta.get_fields():
-                if (
-                    isinstance(field, (models.ForeignKey, models.OneToOneField))
-                    and field.related_model is User
-                ):
-                    yield model, field
+    def test_project_has_no_link_without_cascade(self):
+        self.assertEqual(user_data_cascades(None), [])
 
-    def test_every_link_to_a_user_uses_cascade(self):
-        for model, field in self.user_links():
-            with self.subTest(model=model.__name__, field=field.name):
-                self.assertIs(field.remote_field.on_delete, models.CASCADE)
+    @isolate_apps("accounts")
+    def test_link_without_cascade_is_flagged(self):
+        class SavedRoute(models.Model):
+            user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
+        class Plan(models.Model):
+            owner = models.OneToOneField(User, on_delete=models.PROTECT)
+
+        errors = cascade_errors([SavedRoute, Plan])
+
+        self.assertEqual([e.id for e in errors], ["accounts.E001"] * 2)
+        self.assertIn("SavedRoute.user", errors[0].msg)
+        self.assertIn("Plan.owner", errors[1].msg)
+
+    @isolate_apps("accounts")
+    def test_link_with_cascade_is_fine(self):
+        class SavedRoute(models.Model):
+            user = models.ForeignKey(User, on_delete=models.CASCADE)
+            name = models.CharField(max_length=50)
+
+        self.assertEqual(cascade_errors([SavedRoute]), [])
+
+    def test_check_is_registered(self):
+        self.assertIn(user_data_cascades, checks.registry.registry.get_checks())
 
     def test_user_model_is_django_builtin(self):
         self.assertEqual(settings.AUTH_USER_MODEL, "auth.User")
