@@ -53,6 +53,20 @@
       <button type="button" id="same-zone-trip" class="same-zone-btn" hidden>Trip within this zone</button>
       <button id="clear-dropoff" class="clear-btn" hidden aria-label="Clear dropoff">&times;</button>
     </div>
+    <div id="save-route-panel" hidden>
+      {% if user.is_authenticated %}
+        <form id="save-route-form" method="post" action="{% url 'zones:save_route' %}">
+          {% csrf_token %}
+          <label for="route-name">Route name</label>
+          <input id="route-name" name="name" type="text" maxlength="50" required
+                 placeholder="Office → Home" aria-describedby="save-route-status">
+          <button id="save-route-button" type="submit">Save this route</button>
+        </form>
+      {% endif %}
+      <a id="save-route-signin" href="{% url 'accounts:signin' %}?next={% url 'zones:map' %}"
+         {% if user.is_authenticated %}hidden{% endif %}>Sign in to save routes</a>
+      <p id="save-route-status" class="summary-status" role="status" aria-live="polite"></p>
+    </div>
     <button id="summary-toggle" class="summary-toggle" type="button" hidden
             aria-expanded="false" aria-controls="summary-panel">
       Trip summary <span class="summary-chevron" aria-hidden="true">▾</span>
@@ -92,6 +106,7 @@
   <script src="{% static 'zones/js/filters.js' %}"></script>
   <script src="{% static 'zones/js/heatmap.js' %}"></script>
   <script src="{% static 'zones/js/trip-summary.js' %}"></script>
+  <script src="{% static 'zones/js/save-route.js' %}"></script>
   <script src="{% static 'zones/js/fare.js' %}"></script>
   <script src="{% static 'zones/js/windows.js' %}"></script>
 </body>

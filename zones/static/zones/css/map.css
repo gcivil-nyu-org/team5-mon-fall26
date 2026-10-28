@@ -337,6 +337,39 @@ header h1 {
   }
 }
 
+/* Save route (US13) */
+#save-route-panel {
+  margin-top: 0.55rem;
+}
+
+#save-route-panel[hidden],
+#save-route-form[hidden],
+#save-route-signin[hidden] {
+  display: none;
+}
+
+#save-route-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+#save-route-form label {
+  flex-basis: 100%;
+}
+
+#route-name {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem;
+}
+
+#save-route-button {
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+}
+
 /* Trip summary panel (US8) */
 .summary-toggle {
   display: flex;

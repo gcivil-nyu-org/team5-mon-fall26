@@ -170,3 +170,10 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - **Everything saved is deleted with the account:** every `ForeignKey` or `OneToOneField` to the user must use `on_delete=models.CASCADE`. A Django system check (`accounts.E001`, `accounts/checks.py`) reports any link without it, at `manage.py check`, `runserver`, `migrate` (also on deploy) and in the tests. Saved routes (US13) and plans (US17) do not exist yet; their models must follow this.
 - **Password reset by email:** not built yet, because it needs an email service on AWS. Listed under "Open" above.
 
+## Our choices (save a route, US13 #42, 2026-10-28)
+- SavedRoute belongs to the authenticated user, with a name, pickup, dropoff and creation time. The user and zone relationships use CASCADE; deleting an account deletes its routes.
+- Names are trimmed, required, limited to 50 characters and unique per user (case-sensitive). A database constraint protects against simultaneous duplicate saves. Different users may reuse the same name.
+- The map shows the save form only when a signed-in user selects both zones. Trips within one zone are valid. Guests see a sign-in prompt when both zones are selected.
+- New endpoint: CSRF-protected POST /saved-routes/save/ accepts form fields name, pickup_zone and dropoff_zone. Ownership always comes from the session. Success returns 201 with id and name; invalid input returns 400 with field errors; an expired/guest session returns 401 with a sign-in prompt. Other methods return 405. Existing public statistics APIs remain unchanged.
+- US13 returns only the newly created route to its owner. The private list, open, rename and delete flows are US14.
+
