@@ -5,8 +5,20 @@ html, body {
 }
 
 header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 0.5rem 1rem;
   background: #1f2a44;
+  color: #fff;
+}
+
+/* US10 #39: account links on the right of the header. */
+.account-nav {
+  font: 14px sans-serif;
+}
+
+.account-nav a {
   color: #fff;
 }
 
