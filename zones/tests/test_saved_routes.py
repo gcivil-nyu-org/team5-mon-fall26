@@ -5,6 +5,7 @@ from django.db import IntegrityError, transaction
 from django.test import Client, TestCase
 from django.urls import reverse
 
+from zones.forms import SavedRouteForm
 from zones.models import SavedRoute, Zone
 
 
@@ -91,6 +92,21 @@ class SaveRouteTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("already", response.json()["errors"]["name"][0])
         self.assertEqual(SavedRoute.objects.count(), 1)
+
+    def test_unrelated_integrity_error_is_reraised(self):
+        form = SavedRouteForm(self.user, self.data)
+        self.assertTrue(form.is_valid())
+        error = IntegrityError("foreign key constraint failed")
+        with patch.object(SavedRoute.objects, "create", side_effect=error):
+            with self.assertRaisesRegex(
+                IntegrityError, "foreign key constraint failed"
+            ):
+                form.save()
+
+    def test_saved_route_str_returns_its_name(self):
+        self.client.post(self.url, self.data)
+        route = SavedRoute.objects.get()
+        self.assertEqual(str(route), self.data["name"])
 
     def test_both_zones_are_required_and_must_exist(self):
         for field in ("pickup_zone", "dropoff_zone"):
