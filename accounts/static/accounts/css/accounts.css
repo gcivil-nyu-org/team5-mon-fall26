@@ -97,6 +97,56 @@ button[type="submit"]:hover {
   background: #fbeaea;
 }
 
+.messages {
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 4px;
+  background: #e6f4ec;
+  color: #00804a;
+  list-style: none;
+}
+
+.account-page h2 {
+  margin: 1.5rem 0 0.6rem;
+  padding-top: 1rem;
+  border-top: 1px solid #ddd;
+  font-size: 1.1rem;
+}
+
+.signout-row button[type="submit"],
+.secondary-button {
+  width: auto;
+  padding: 0.4rem 0.9rem;
+  background: #fff;
+  color: #1f2a44;
+  border: 1px solid #bbb;
+}
+
+.signout-row button[type="submit"]:hover {
+  background: #f0f0f0;
+}
+
+/* US12 #41: deleting the account */
+.danger-link {
+  color: #b3261e;
+  font-weight: bold;
+}
+
+.warning {
+  padding: 0.6rem 0.8rem;
+  border-left: 4px solid #b3261e;
+  border-radius: 2px;
+  background: #fbeaea;
+}
+
+button.danger-button {
+  background: #b3261e;
+}
+
+button.danger-button:hover {
+  background: #8c1d17;
+}
+
 .switch-link {
   text-align: center;
   font-size: 14px;

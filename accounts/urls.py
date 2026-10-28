@@ -18,5 +18,6 @@ urlpatterns = [
         name="signin",
     ),
     path("signout/", auth_views.LogoutView.as_view(), name="signout"),
-    path("account/", views.account, name="account"),
+    path("account/", views.AccountView.as_view(), name="account"),
+    path("account/delete/", views.delete_account, name="delete"),
 ]

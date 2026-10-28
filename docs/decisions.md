@@ -80,6 +80,7 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - ~~Which months of TLC data to load first.~~ Decided 2026-10-17: March to May 2026, see "Our choices (data import)" above.
 - ~~CI tooling.~~ Decided 2026-10-27: Travis CI + Coveralls, see "Our choices (CI, setup/ci)" below. (Testing tool is decided above: Django's built-in test runner.)
 - HTTPS on the Integration and Production environments. Both are plain `http://` Elastic Beanstalk URLs, so sign-up and sign-in (US10, US11) would send passwords unencrypted. Needed before real users create accounts.
+- Password reset by email ("Forgot password?"). Left for later (US12 #41): it needs an email service on AWS (for example Amazon SES) and its credentials in Elastic Beanstalk. Until then, a user who forgets their password cannot get back in.
 - Map tile provider for the demo. OpenStreetMap's public tile servers have a usage policy and are not meant for heavy production use (they already 403'd once locally over a missing Referer header). Check this before the sprint demo and be ready to switch to another tile provider (for example a paid provider, or self-hosted tiles) if it becomes a problem.
 
 ## Our choices (demand map, US1 #3, 2026-10-18)
@@ -160,3 +161,12 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - **CSRF on every form:** Django's `CsrfViewMiddleware` (on by default) plus tests that the middleware stays on and that every `method="post"` form in the templates has `{% csrf_token %}`.
 - **Header:** guests see "Sign in" and "Sign up"; signed-in users see their email (links to My account) and "Sign out". One line, so the map height is unchanged.
 - **Not in scope:** limiting repeated wrong passwords (rate limiting) and "remember me". Both can be added later without changing the above.
+
+## Our choices (manage and delete my account, US12 #41, 2026-10-27)
+- **My account page** (`/accounts/account/`, sign-in required): shows the email, "Sign out", a change-password form and a link to delete the account.
+- **Change password:** Django's `PasswordChangeView` and `PasswordChangeForm`: current password, new password twice, checked by the same `AUTH_PASSWORD_VALIDATORS` as sign-up. The user stays signed in on this device afterwards (Django updates the session hash) and sees "Your password was changed." Other devices are signed out, because their sessions no longer match.
+- **Delete account:** `/accounts/account/delete/` explains that the account and everything saved in it are deleted, and the user confirms by entering their password. A wrong password deletes nothing. On success the user row is deleted, the user is signed out and sent to the map. The email can no longer sign in, but can sign up again as a new account.
+- **Delete before sign-out:** the account is deleted first, then the session is ended, so a failed delete never leaves the user signed out with the account still there.
+- **Everything saved is deleted with the account:** every `ForeignKey` or `OneToOneField` to the user must use `on_delete=models.CASCADE`. A Django system check (`accounts.E001`, `accounts/checks.py`) reports any link without it, at `manage.py check`, `runserver`, `migrate` (also on deploy) and in the tests. Saved routes (US13) and plans (US17) do not exist yet; their models must follow this.
+- **Password reset by email:** not built yet, because it needs an email service on AWS. Listed under "Open" above.
+
