@@ -86,3 +86,23 @@ class SignInForm(AuthenticationForm):
 
     def clean_username(self):
         return self.cleaned_data["username"].strip().lower()
+
+
+class DeleteAccountForm(forms.Form):
+    """US12 #41: confirm deleting the account by entering the password."""
+
+    password = forms.CharField(
+        label="Password",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"autocomplete": "current-password"}),
+    )
+
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def clean_password(self):
+        password = self.cleaned_data["password"]
+        if not self.user.check_password(password):
+            raise ValidationError("The password is incorrect.")
+        return password

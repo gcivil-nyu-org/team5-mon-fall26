@@ -1,0 +1,18 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}Delete account{% endblock %}
+
+{% block content %}
+  <h1>Delete your account?</h1>
+  <p class="warning">This deletes the account <strong>{{ user.email }}</strong> and everything saved in it, such as saved routes and plans. This cannot be undone.</p>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="field">
+      <label for="{{ form.password.id_for_label }}">Enter your password to confirm</label>
+      {{ form.password }}
+      {% if form.password.errors %}<div class="field-errors">{{ form.password.errors }}</div>{% endif %}
+    </div>
+    <button type="submit" class="danger-button">Delete my account</button>
+  </form>
+  <p class="switch-link"><a href="{% url 'accounts:account' %}">Cancel</a></p>
+{% endblock %}

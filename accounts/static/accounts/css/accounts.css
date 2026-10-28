@@ -126,6 +126,27 @@ button[type="submit"]:hover {
   background: #f0f0f0;
 }
 
+/* US12 #41: deleting the account */
+.danger-link {
+  color: #b3261e;
+  font-weight: bold;
+}
+
+.warning {
+  padding: 0.6rem 0.8rem;
+  border-left: 4px solid #b3261e;
+  border-radius: 2px;
+  background: #fbeaea;
+}
+
+button.danger-button {
+  background: #b3261e;
+}
+
+button.danger-button:hover {
+  background: #8c1d17;
+}
+
 .switch-link {
   text-align: center;
   font-size: 14px;

@@ -24,4 +24,8 @@
     {% endfor %}
     <button type="submit">Change password</button>
   </form>
+
+  <h2>Delete account</h2>
+  <p>Deletes your account and everything saved in it.</p>
+  <p><a class="danger-link" href="{% url 'accounts:delete' %}">Delete my account</a></p>
 {% endblock %}

@@ -1,11 +1,12 @@
-from django.contrib.auth import login
+from django.contrib.auth import login, logout
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import PasswordChangeView
 from django.contrib.messages.views import SuccessMessageMixin
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.views.decorators.http import require_http_methods
 
-from .forms import SignUpForm
+from .forms import DeleteAccountForm, SignUpForm
 
 
 @require_http_methods(["GET", "POST"])
@@ -32,3 +33,17 @@ class AccountView(SuccessMessageMixin, PasswordChangeView):
     template_name = "accounts/account.html"
     success_url = reverse_lazy("accounts:account")
     success_message = "Your password was changed."
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def delete_account(request):
+    """US12 #41: delete the account after the user confirms with their
+    password, then sign out and go to the map. Everything linked to the
+    user is deleted with it (on_delete=CASCADE)."""
+    form = DeleteAccountForm(request.user, request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        request.user.delete()  # one transaction, with everything linked to it
+        logout(request)
+        return redirect("zones:map")
+    return render(request, "accounts/delete.html", {"form": form})
