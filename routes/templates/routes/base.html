@@ -1,0 +1,24 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Routes{% endblock %} | TaxiScope NYC</title>
+  <link rel="stylesheet" href="{% static 'routes/css/routes.css' %}">
+</head>
+<body>
+  <header>
+    <a class="home-link" href="{% url 'zones:map' %}">TaxiScope NYC</a>
+  </header>
+  <main class="routes-page">
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}<li>{{ message }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+    <p class="back-link"><a href="{% url 'zones:map' %}">Back to the map</a></p>
+  </main>
+</body>
+</html>

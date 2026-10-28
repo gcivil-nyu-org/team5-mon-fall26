@@ -1,0 +1,25 @@
+{% extends "routes/base.html" %}
+
+{% block title %}My routes{% endblock %}
+
+{% block content %}
+  <h1>My routes</h1>
+  {% if routes %}
+    <ul class="saved-route-list">
+      {% for route in routes %}
+        <li>
+          <strong>{{ route.name }}</strong>
+          <span>{{ route.pickup_zone.name }} → {{ route.dropoff_zone.name }}</span>
+          <small>Saved {{ route.created_at|date:"M j, Y" }}</small>
+          <div class="saved-route-actions">
+            <a href="{% url 'routes:open_saved_route' route.pk %}">Open</a>
+            <a href="{% url 'routes:rename_saved_route' route.pk %}">Rename</a>
+            <a href="{% url 'routes:delete_saved_route' route.pk %}">Delete</a>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No saved routes yet. Select a pickup and dropoff on the map to save one.</p>
+  {% endif %}
+{% endblock %}

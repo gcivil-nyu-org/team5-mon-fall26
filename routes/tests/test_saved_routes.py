@@ -5,8 +5,9 @@ from django.db import IntegrityError, transaction
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from zones.forms import SavedRouteForm
-from zones.models import SavedRoute, Zone
+from routes.forms import SavedRouteForm
+from routes.models import SavedRoute
+from zones.models import Zone
 
 
 class SaveRouteTests(TestCase):
@@ -19,7 +20,7 @@ class SaveRouteTests(TestCase):
 
     def setUp(self):
         self.client.force_login(self.user)
-        self.url = reverse("zones:save_route")
+        self.url = reverse("routes:save_route")
         self.data = {"name": "Weekday commute", "pickup_zone": 1, "dropoff_zone": 2}
 
     def test_save_uses_current_user_and_returns_only_the_created_route(self):
@@ -86,7 +87,7 @@ class SaveRouteTests(TestCase):
     def test_concurrent_duplicate_gets_a_validation_message(self):
         self.client.post(self.url, self.data)
         with patch(
-            "zones.forms.SavedRouteForm.clean_name", return_value=self.data["name"]
+            "routes.forms.SavedRouteForm.clean_name", return_value=self.data["name"]
         ):
             response = self.client.post(self.url, self.data)
         self.assertEqual(response.status_code, 400)

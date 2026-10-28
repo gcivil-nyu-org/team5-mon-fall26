@@ -30,6 +30,25 @@ function updateHourLabel() {
   hourValue.textContent = `${hour}:00–${hour}:59`;
 }
 
+function openSavedRoute(pickup, dropoff) {
+  if (!zoneLayers.has(pickup) || !zoneLayers.has(dropoff)) {
+    showError("This saved route's zones are unavailable.");
+    return;
+  }
+  pickupZoneId = pickup;
+  dropoffZoneId = dropoff;
+  zonesLayer.setStyle(styleZone);
+  zoneLayers.get(pickup)?.bringToFront();
+  zoneLayers.get(dropoff)?.bringToFront();
+  updateSameZoneOutline();
+  updateSelectionPanel();
+  document.dispatchEvent(
+    new CustomEvent("taxiscope:zones-selected", {
+      detail: { pickup: pickupZoneId, dropoff: dropoffZoneId },
+    })
+  );
+}
+
 // The fare line and the duration line are both written by fare.js from
 // the same /api/routes response (US5 #7, US6 #8).
 function updateSelectionPanel() {
@@ -252,6 +271,13 @@ document.addEventListener("taxiscope:map-ready", (event) => {
   clearDropoffBtn.addEventListener("click", clearDropoff);
   clearSelectionBtn.addEventListener("click", clearPickup);
   sameZoneBtn.addEventListener("click", selectSameZone);
+
+  if (document.body.dataset.savedPickup && document.body.dataset.savedDropoff) {
+    openSavedRoute(
+      Number(document.body.dataset.savedPickup),
+      Number(document.body.dataset.savedDropoff)
+    );
+  }
 
   dayFilter.addEventListener("change", () => {
     window.clearTimeout(hourRequestTimer);

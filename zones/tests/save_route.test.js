@@ -4,7 +4,7 @@ const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
 
-const source = fs.readFileSync(path.join(__dirname, "../static/zones/js/save-route.js"), "utf8");
+const source = fs.readFileSync(path.join(__dirname, "../../routes/static/routes/js/save-route.js"), "utf8");
 function setup(fetch, guest = false) {
   const elements = {};
   for (const id of ["save-route-panel", "save-route-form", "save-route-status",

@@ -177,3 +177,9 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - New endpoint: CSRF-protected POST /saved-routes/save/ accepts form fields name, pickup_zone and dropoff_zone. Ownership always comes from the session. Success returns 201 with id and name; invalid input returns 400 with field errors; an expired/guest session returns 401 with a sign-in prompt. Other methods return 405. Existing public statistics APIs remain unchanged.
 - US13 returns only the newly created route to its owner. The private list, open, rename and delete flows are US14.
 
+## Our choices (manage saved routes, US14 #43, 2026-10-28)
+- Saved-route models, forms, views, URL names, templates and page styling belong to the separate routes Django app. It reads Django's login state; account management remains in accounts. State-only migrations move the model label from zones to routes while retaining the existing zones_savedroute table, data and unique constraint.
+- My routes is a sign-in-only page at /saved-routes/. It lists only the current user's routes, with name, pickup, dropoff and save date. The map header links to it as Routes, including for guests who are redirected to sign-in.
+- Open uses GET /saved-routes/<id>/open/ to render the existing map. The server verifies ownership before rendering; after the map loads, the saved zone ids drive the existing taxiscope:zones-selected event so the trip summary opens.
+- Rename uses GET/POST /saved-routes/<id>/rename/ and the same trimmed, required, 50-character, per-user unique name rules as US13. Renaming to the current name is allowed.
+- Delete uses GET/POST /saved-routes/<id>/delete/. GET shows a confirmation page; POST with CSRF protection deletes the route. Unknown or other users' route ids return 404 for open, rename and delete.
