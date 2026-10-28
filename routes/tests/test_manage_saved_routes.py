@@ -1,4 +1,7 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -142,6 +145,32 @@ class ManageSavedRoutesTests(TestCase):
         page = self.client.post(url, {"name": self.private_route.name})
         self.assertRedirects(page, reverse("routes:my_routes"))
         self.assertTrue(SavedRoute.objects.filter(pk=second.pk).exists())
+
+    def test_concurrent_duplicate_rename_shows_validation_error(self):
+        SavedRoute.objects.create(
+            user=self.user,
+            name="Second",
+            pickup_zone=self.pickup,
+            dropoff_zone=self.dropoff,
+        )
+        with patch("routes.forms.RouteNameForm.clean_name", return_value="Second"):
+            page = self.client.post(
+                self.route_url("rename_saved_route"), {"name": "Second"}
+            )
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "already have a saved route")
+        self.route.refresh_from_db()
+        self.assertEqual(self.route.name, "Commute")
+
+    def test_unrelated_rename_integrity_error_is_reraised(self):
+        error = IntegrityError("unrelated database constraint")
+        with patch("routes.views.SavedRoute.save", side_effect=error):
+            with self.assertRaisesRegex(
+                IntegrityError, "unrelated database constraint"
+            ):
+                self.client.post(
+                    self.route_url("rename_saved_route"), {"name": "Renamed"}
+                )
 
     def test_delete_requires_confirmation_page_then_removes_only_that_route(self):
         url = self.route_url("delete_saved_route")
