@@ -150,3 +150,13 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - **After sign-up:** the user is signed in and sent to the map. A signed-in user who opens the sign-up page goes to the map.
 - **Header:** guests see "Sign up" on the right of the map header; signed-in users see their email. Same line as the title, so the header height and the map are unchanged. The map and every Epic 1 API stay public (US9).
 
+
+## Our choices (sign in and sign out, US11 #40, 2026-10-27)
+- **Django's auth views:** `LoginView` at `/accounts/signin/` and `LogoutView` at `/accounts/signout/`. `LOGIN_URL = "accounts:signin"`, `LOGIN_REDIRECT_URL` and `LOGOUT_REDIRECT_URL` are the map.
+- **Email to sign in:** `SignInForm` is Django's `AuthenticationForm` with the field labeled "Email", trimmed and lowercased to match how US10 stores it.
+- **One generic error:** an unknown email, a wrong password and an inactive account all show "The email or password is incorrect.", so sign-in never says whether an email has an account. (Sign-up still has to say "already exists", see US10.)
+- **Sign out is a POST:** a small form with a CSRF token, styled like a link in the header. A GET does not sign out (Django 5 `LogoutView` answers 405), so a link on another site cannot sign a user out.
+- **Pages that need an account:** decorate the view with `@login_required`. A guest goes to `/accounts/signin/?next=<page>` and comes back after signing in; `next` pointing to another site is ignored (Django checks it). The first such page is a minimal "My account" at `/accounts/account/`, which US12 extends; "My routes" (US13) and "My plans" (US17) should use the same decorator.
+- **CSRF on every form:** Django's `CsrfViewMiddleware` (on by default) plus tests that the middleware stays on and that every `method="post"` form in the templates has `{% csrf_token %}`.
+- **Header:** guests see "Sign in" and "Sign up"; signed-in users see their email (links to My account) and "Sign out". One line, so the map height is unchanged.
+- **Not in scope:** limiting repeated wrong passwords (rate limiting) and "remember me". Both can be added later without changing the above.

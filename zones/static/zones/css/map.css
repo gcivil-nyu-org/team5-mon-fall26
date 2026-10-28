@@ -15,11 +15,29 @@ header {
 
 /* US10 #39: account links on the right of the header. */
 .account-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
   font: 14px sans-serif;
 }
 
-.account-nav a {
+.account-nav a,
+.account-nav .link-button {
   color: #fff;
+}
+
+/* US11 #40: "Sign out" is a POST form (CSRF), styled like the links. */
+.signout-form {
+  margin: 0;
+}
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .filters {
