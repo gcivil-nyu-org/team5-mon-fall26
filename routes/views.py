@@ -1,3 +1,5 @@
+import re
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
@@ -5,10 +7,46 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
-from zones.views import map_view
+from zones.stats import unknown_zone_ids
+from zones.views import MAX_ZONE_ID, _parse_int, map_view
 
 from .forms import NAME_TAKEN, RouteNameForm, SavedRouteForm
 from .models import SavedRoute
+from .planning import leave_by
+
+
+@require_GET
+def leave_by_api(request):
+    """GET /api/routes/leave-by?from=&to=&day=&arrive=HH:MM."""
+    pickup = _parse_int(request.GET.get("from"), 1, MAX_ZONE_ID)
+    dropoff = _parse_int(request.GET.get("to"), 1, MAX_ZONE_ID)
+    day = _parse_int(request.GET.get("day"), 0, 6)
+    arrive = request.GET.get("arrive", "")
+    match = re.fullmatch(r"([01]\d|2[0-3]):(00|15|30|45)", arrive)
+    if (
+        pickup is None
+        or dropoff is None
+        or day is None
+        or match is None
+        or unknown_zone_ids(pickup, dropoff)
+    ):
+        return JsonResponse(
+            {
+                "error": "from and to must be known zone ids; day must be 0-6 "
+                "(Monday=0); arrive must be HH:MM in 15-minute steps"
+            },
+            status=400,
+        )
+
+    return JsonResponse(
+        {
+            "from": pickup,
+            "to": dropoff,
+            "day": day,
+            "arrive": arrive,
+            **leave_by(pickup, dropoff, day, int(match[1]), int(match[2])),
+        }
+    )
 
 
 @require_POST

@@ -462,3 +462,45 @@ header h1 {
   color: #4c5565;
   font-size: 12px;
 }
+
+.leave-by-panel {
+  margin-top: 0.9rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid #ddd;
+}
+
+#leave-by-panel[hidden],
+#leave-by-result[hidden] {
+  display: none;
+}
+
+.leave-by-panel h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.leave-by-panel form {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.leave-by-panel input,
+.leave-by-panel select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.4rem;
+  font: inherit;
+}
+
+.leave-by-panel button {
+  padding: 0.45rem;
+  border: 0;
+  border-radius: 4px;
+  background: #0057b8;
+  color: #fff;
+  cursor: pointer;
+}
+
+.leave-by-panel button:hover {
+  background: #004494;
+}
