@@ -12,6 +12,11 @@
     <a class="home-link" href="{% url 'zones:map' %}">TaxiScope NYC</a>
   </header>
   <main class="account-page">
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}<li>{{ message }}</li>{% endfor %}
+      </ul>
+    {% endif %}
     {% block content %}{% endblock %}
     <p class="back-link"><a href="{% url 'zones:map' %}">Back to the map</a></p>
   </main>

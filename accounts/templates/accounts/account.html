@@ -1,0 +1,31 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}My account{% endblock %}
+
+{% block content %}
+  <h1>My account</h1>
+  <p>Signed in as <strong>{{ user.email }}</strong>.</p>
+  <form method="post" action="{% url 'accounts:signout' %}" class="signout-row">
+    {% csrf_token %}
+    <button type="submit">Sign out</button>
+  </form>
+
+  <h2>Change password</h2>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+    {% for field in form %}
+      <div class="field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<div class="field-errors">{{ field.errors }}</div>{% endif %}
+        {% if field.help_text %}<div class="help">{{ field.help_text|safe }}</div>{% endif %}
+      </div>
+    {% endfor %}
+    <button type="submit">Change password</button>
+  </form>
+
+  <h2>Delete account</h2>
+  <p>Deletes your account and everything saved in it.</p>
+  <p><a class="danger-link" href="{% url 'accounts:delete' %}">Delete my account</a></p>
+{% endblock %}

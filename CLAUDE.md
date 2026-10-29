@@ -8,6 +8,7 @@ Web app that shows NYC riders historical taxi demand, fares, and trip duration b
 - `docs/stories/README.md`: how the story files map to ZenHub issues; refresh with `scripts/sync-stories.sh`
 - `docs/decisions.md`: decisions already made. Add to it, never contradict it silently
 - `docs/progress.md`: what is done, what is next, handoff notes from the last session
+- `docs/accounts.md`: rules for stories that store user data (on_delete=CASCADE, @login_required, CSRF)
 - `docs/ci.md`: the Travis CI pipeline and the Elastic Beanstalk deploys
 - Team wiki (design, Definition of Ready, Definition of Done): https://github.com/gcivil-nyu-org/team5-mon-fall26/wiki
 
