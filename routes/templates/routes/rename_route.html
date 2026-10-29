@@ -1,0 +1,18 @@
+{% extends "routes/base.html" %}
+
+{% block title %}Rename route{% endblock %}
+
+{% block content %}
+  <h1>Rename route</h1>
+  <p>{{ route.pickup_zone.name }} → {{ route.dropoff_zone.name }}</p>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="field">
+      <label for="{{ form.name.id_for_label }}">Route name</label>
+      {{ form.name }}
+      {{ form.name.errors }}
+    </div>
+    <button type="submit">Save name</button>
+  </form>
+  <p><a href="{% url 'routes:my_routes' %}">Cancel</a></p>
+{% endblock %}

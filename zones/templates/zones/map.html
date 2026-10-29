@@ -8,11 +8,12 @@
   <link rel="stylesheet" href="{% static 'zones/vendor/leaflet/leaflet.css' %}">
   <link rel="stylesheet" href="{% static 'zones/css/map.css' %}">
 </head>
-<body>
+<body{% if saved_route %} data-saved-pickup="{{ saved_route.pickup_zone_id }}" data-saved-dropoff="{{ saved_route.dropoff_zone_id }}"{% endif %}>
   <header>
     <h1>TaxiScope NYC</h1>
     {# US10 #39, US11 #40: account links; the map never needs an account (US9). #}
     <nav class="account-nav" aria-label="Account">
+      <a href="{% url 'routes:my_routes' %}">Routes</a>
       {% if user.is_authenticated %}
         <a href="{% url 'accounts:account' %}" class="account-email" title="My account">{{ user.email }}</a>
         <form method="post" action="{% url 'accounts:signout' %}" class="signout-form">
@@ -42,6 +43,7 @@
     <span id="filter-status" role="status" aria-live="polite"></span>
   </section>
   <aside class="zone-selection" aria-live="polite" aria-label="Selected zone information">
+    {% if saved_route %}<p class="saved-route-heading">Saved route: {{ saved_route.name }}</p>{% endif %}
     <div class="selection-row">
       <span class="selection-label pickup-label">Pickup:</span>
       <span id="pickup-zone" class="selection-name">Click a zone</span>
@@ -55,7 +57,7 @@
     </div>
     <div id="save-route-panel" hidden>
       {% if user.is_authenticated %}
-        <form id="save-route-form" method="post" action="{% url 'zones:save_route' %}">
+        <form id="save-route-form" method="post" action="{% url 'routes:save_route' %}">
           {% csrf_token %}
           <label for="route-name">Route name</label>
           <input id="route-name" name="name" type="text" maxlength="50" required
@@ -106,7 +108,7 @@
   <script src="{% static 'zones/js/filters.js' %}"></script>
   <script src="{% static 'zones/js/heatmap.js' %}"></script>
   <script src="{% static 'zones/js/trip-summary.js' %}"></script>
-  <script src="{% static 'zones/js/save-route.js' %}"></script>
+  <script src="{% static 'routes/js/save-route.js' %}"></script>
   <script src="{% static 'zones/js/fare.js' %}"></script>
   <script src="{% static 'zones/js/windows.js' %}"></script>
 </body>

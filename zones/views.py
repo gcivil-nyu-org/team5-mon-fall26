@@ -6,9 +6,8 @@ from zoneinfo import ZoneInfo
 
 from django.http import JsonResponse
 from django.shortcuts import render
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_GET
 
-from .forms import SavedRouteForm
 from .models import Zone, ZoneHourStats
 from .stats import route_stats, route_windows, unknown_zone_ids
 
@@ -21,27 +20,18 @@ NYC_TZ = ZoneInfo("America/New_York")
 MAX_ZONE_ID = 2**31 - 1
 
 
-def map_view(request):
+def map_view(request, saved_route=None):
     """The main page: a Leaflet map of NYC taxi zones colored by demand."""
     now = datetime.now(NYC_TZ)
     return render(
         request,
         "zones/map.html",
-        {"current_day": now.weekday(), "current_hour": now.hour},
+        {
+            "current_day": now.weekday(),
+            "current_hour": now.hour,
+            "saved_route": saved_route,
+        },
     )
-
-
-@require_POST
-def save_route(request):
-    """Save only for the current account; never accept an owner from the client."""
-    if not request.user.is_authenticated:
-        return JsonResponse({"message": "Sign in to save routes"}, status=401)
-    form = SavedRouteForm(request.user, request.POST)
-    if form.is_valid():
-        route = form.save()
-        if route is not None:
-            return JsonResponse({"id": route.pk, "name": route.name}, status=201)
-    return JsonResponse({"errors": form.errors}, status=400)
 
 
 @lru_cache(maxsize=1)
