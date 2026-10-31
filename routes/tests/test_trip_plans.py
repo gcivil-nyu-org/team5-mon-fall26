@@ -2,11 +2,14 @@
 
 from datetime import time
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 from django.test import TestCase
 from django.urls import reverse
 
+from routes.forms import TripPlanForm
 from routes.models import TripPlan
 from zones.models import RouteHourStats, Zone
 
@@ -131,6 +134,39 @@ class SavePlanTests(TripPlanTestCase):
 
     def test_get_is_not_allowed(self):
         self.assertEqual(self.client.get(reverse("routes:save_plan")).status_code, 405)
+
+    def test_concurrent_duplicate_gets_a_validation_message(self):
+        # Another request saved "Monday arrival" after this one was validated.
+        with patch(
+            "routes.forms.TripPlanForm.clean_name", return_value="Monday arrival"
+        ):
+            response = self.save(name="Monday arrival")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("already", response.json()["errors"]["name"][0])
+        self.assertEqual(
+            TripPlan.objects.filter(user=self.user, name="Monday arrival").count(), 1
+        )
+
+    def test_unrelated_integrity_error_is_reraised(self):
+        form = TripPlanForm(
+            self.user,
+            {
+                "name": "New plan",
+                "pickup_zone": 1,
+                "dropoff_zone": 2,
+                "mode": "arrive_by",
+                "day_of_week": 2,
+                "time": "08:45",
+            },
+        )
+        self.assertTrue(form.is_valid())
+        error = IntegrityError("foreign key constraint failed")
+        with patch.object(TripPlan.objects, "create", side_effect=error):
+            with self.assertRaisesRegex(IntegrityError, "foreign key constraint"):
+                form.save()
+
+    def test_trip_plan_str_returns_its_name(self):
+        self.assertEqual(str(self.arrive_plan), "Monday arrival")
 
 
 class MyPlansTests(TripPlanTestCase):
