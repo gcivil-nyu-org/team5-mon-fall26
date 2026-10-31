@@ -6,6 +6,7 @@
   const MIN_STOPS = 3;
   const QUARTER_HOUR = /^([01]\d|2[0-3]):(00|15|30|45)$/;
   const CLOCK = /^([01]\d|2[0-3]):[0-5]\d$/;
+  const SAVE_NEEDS = "Needs 3 to 10 stops, a time for each stop except the last, and a name";
   const panel = document.getElementById("day-plan-panel");
   const signin = document.getElementById("day-plan-signin");
   const addButton = document.getElementById("day-plan-add");
@@ -92,7 +93,11 @@
     addButton.disabled = stops.length >= MAX_STOPS;
     if (addButton.hidden || addButton.disabled) setArmed(false);
     form.hidden = stops.length === 0;
-    saveButton.disabled = !canSave();
+    const ready = canSave();
+    saveButton.disabled = !ready;
+    // Say why Save is disabled; nothing to explain while it is ready or saving.
+    if (ready || saving) saveButton.removeAttribute("title");
+    else saveButton.setAttribute("title", SAVE_NEEDS);
   }
 
   // The newest leg (second-last → last stop) becomes the map selection and

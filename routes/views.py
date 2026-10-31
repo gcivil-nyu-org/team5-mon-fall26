@@ -15,15 +15,28 @@ from zones.views import MAX_ZONE_ID, NYC_TZ, _parse_int, map_view
 
 from .forms import (
     NAME_TAKEN,
+    AddStopForm,
+    DayPlanDayForm,
     DayPlanForm,
+    MoveStopForm,
     PlanTimeForm,
     RouteNameForm,
     SavedRouteForm,
+    StopTimeForm,
     TripPlanForm,
 )
 from .models import DayPlan, DayPlanStop, SavedRoute, TripPlan
 from .calendar import build_ics
-from .day_plans import out_of_order_warning
+from .day_plans import (
+    TOO_MANY_STOPS,
+    DayPlanError,
+    add_stop,
+    move_stop,
+    out_of_order_warning,
+    remove_stop,
+    reorder_stops,
+    set_leave_time,
+)
 from .planning import (
     cheaper_nearby,
     cheapest_in_window,
@@ -345,11 +358,9 @@ def my_day_plans(request):
     return render(request, "routes/my_day_plans.html", {"plans": plans})
 
 
-@login_required
-@require_GET
-def open_day_plan(request, plan_id):
-    """The plan's legs with their statistics, recalculated now."""
-    plan = _own_day_plan(request, plan_id)
+def _render_day_plan(request, plan, status=200, error=None, add_form=None):
+    """The day plan page: stops, legs with statistics, and the edit forms.
+    A blocked or invalid change shows its message with status 400."""
     stops = list(plan.stops.select_related("zone"))
     return render(
         request,
@@ -359,5 +370,128 @@ def open_day_plan(request, plan_id):
             "stops": stops,
             "legs": day_plan_legs(plan, stops),
             "warning": out_of_order_warning(stops),
+            "error": error,
+            "can_add": len(stops) < DayPlan.MAX_STOPS,
+            "too_many_stops": TOO_MANY_STOPS,
+            "add_form": add_form or AddStopForm(),
+            "days": DayPlan._meta.get_field("day_of_week").choices,
         },
+        status=status,
     )
+
+
+def _form_error(form):
+    return " ".join(message for errors in form.errors.values() for message in errors)
+
+
+@login_required
+@require_GET
+def open_day_plan(request, plan_id):
+    """The plan's legs with their statistics, recalculated now."""
+    return _render_day_plan(request, _own_day_plan(request, plan_id))
+
+
+def _own_stop(plan, stop_id):
+    return get_object_or_404(DayPlanStop, pk=stop_id, day_plan=plan)
+
+
+def _after_change(request, plan, message):
+    messages.success(request, message)
+    return redirect("routes:open_day_plan", plan_id=plan.pk)
+
+
+@login_required
+@require_POST
+def change_day_plan_day(request, plan_id):
+    plan = _own_day_plan(request, plan_id)
+    form = DayPlanDayForm(request.POST)
+    if not form.is_valid():
+        return _render_day_plan(request, plan, 400, _form_error(form))
+    plan.day_of_week = form.cleaned_data["day_of_week"]
+    plan.save(update_fields=["day_of_week"])
+    return _after_change(request, plan, "Day changed.")
+
+
+@login_required
+@require_POST
+def set_day_plan_stop_time(request, plan_id, stop_id):
+    plan = _own_day_plan(request, plan_id)
+    stop = _own_stop(plan, stop_id)
+    form = StopTimeForm(request.POST)
+    if not form.is_valid():
+        return _render_day_plan(request, plan, 400, _form_error(form))
+    try:
+        set_leave_time(plan, stop.pk, form.cleaned_data["leave_time"])
+    except DayPlanError as error:
+        return _render_day_plan(request, plan, 400, str(error))
+    return _after_change(request, plan, "Leave time changed.")
+
+
+@login_required
+@require_POST
+def add_day_plan_stop(request, plan_id):
+    plan = _own_day_plan(request, plan_id)
+    form = AddStopForm(request.POST)
+    if not form.is_valid():
+        return _render_day_plan(request, plan, 400, _form_error(form), add_form=form)
+    try:
+        add_stop(plan, form.cleaned_data["zone"], form.cleaned_data["leave_time"])
+    except DayPlanError as error:
+        return _render_day_plan(request, plan, 400, str(error), add_form=form)
+    return _after_change(request, plan, "Stop added.")
+
+
+@login_required
+@require_POST
+def move_day_plan_stop(request, plan_id, stop_id):
+    """The up/down buttons; they work without JavaScript."""
+    plan = _own_day_plan(request, plan_id)
+    stop = _own_stop(plan, stop_id)
+    form = MoveStopForm(request.POST)
+    if not form.is_valid():
+        return _render_day_plan(request, plan, 400, _form_error(form))
+    try:
+        move_stop(plan, stop.pk, form.cleaned_data["direction"])
+    except DayPlanError as error:
+        return _render_day_plan(request, plan, 400, str(error))
+    return _after_change(request, plan, "Stops reordered.")
+
+
+@login_required
+@require_POST
+def remove_day_plan_stop(request, plan_id, stop_id):
+    plan = _own_day_plan(request, plan_id)
+    stop = _own_stop(plan, stop_id)
+    try:
+        remove_stop(plan, stop.pk)
+    except DayPlanError as error:
+        return _render_day_plan(request, plan, 400, str(error))
+    return _after_change(request, plan, "Stop removed.")
+
+
+@login_required
+@require_POST
+def reorder_day_plan(request, plan_id):
+    """POST order=<stop ids, comma-separated, in the new order> (drag and
+    drop). JSON: 200 when saved, 400 when it is not exactly the plan's stops."""
+    plan = _own_day_plan(request, plan_id)
+    try:
+        order = [int(value) for value in request.POST.get("order", "").split(",")]
+        reorder_stops(plan, order)
+    except (ValueError, DayPlanError):
+        return JsonResponse(
+            {"error": "The stops have changed. Reload the page and try again."},
+            status=400,
+        )
+    return JsonResponse({"ok": True})
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def delete_day_plan(request, plan_id):
+    plan = _own_day_plan(request, plan_id)
+    if request.method == "POST":
+        plan.delete()
+        messages.success(request, "Day plan deleted.")
+        return redirect("routes:my_day_plans")
+    return render(request, "routes/delete_day_plan.html", {"plan": plan})

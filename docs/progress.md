@@ -15,6 +15,22 @@ Entry format:
 
 ## Log
 
+### 2026-10-31 — us20-day-plans, Pass B (US20, #49)
+**What changed:**
+- `routes/day_plans.py`: `move_stop`, `reorder_stops`, `remove_stop`, `add_stop`, `set_leave_time` and `DayPlanError`; every change locks the plan row and renumbers row by row.
+- `routes/forms.py`: `DayPlanDayForm`, `StopTimeForm`, `AddStopForm` (zones with a shape, borough then name), `MoveStopForm`. `routes/views.py` and `routes/urls.py`: change day, set leave time, add, move, remove, reorder (JSON), delete (confirmation page `delete_day_plan.html`).
+- Day plan page: day form, a row per stop (drag handle, leave time, ↑ ↓, Remove), add-stop form, Delete link; My day plans has a Delete link. `routes/base.html` has a `scripts` block.
+- SortableJS 1.15.6 vendored in `routes/static/routes/vendor/sortable/` (sha256 in `docs/decisions.md`); new `routes/static/routes/js/day-plan-sort.js`.
+- Map builder: a disabled "Save day plan" explains why in its title.
+- Review follow-up: stop rows on the day plan page are numbered again; the stop-count messages are shared constants in `routes/day_plans.py` (`TOO_FEW_STOPS`, `TOO_FEW_TO_REMOVE`, `TOO_MANY_STOPS`), used by the forms, the rules and the page.
+- `docs/decisions.md` (reorder/remove/add, pages, SortableJS) and the rest of High Level Design §18.
+
+**Decisions made (also in `docs/decisions.md`):** blocked or invalid edits re-render the plan page with the message and status 400; the reorder endpoint takes comma-separated stop ids and returns JSON; SortableJS pinned and vendored.
+
+**Tests:** `routes/tests/test_day_plan_edits.py` (40: rules from the worked example, views, and ownership/sign-in/method/CSRF for every endpoint), `zones/tests/day_plan_sort.test.js` (6), `zones/tests/day_plan.test.js` (+1, Save title). Two Pass A page tests updated for the new stop rows and the add-stop query. Full Django suite (526, 4 skipped) and all 86 Node tests pass; black, flake8 and `makemigrations --check` pass.
+
+**Next step:** check the day plan page in the browser (drag and drop, buttons); then US21 part 2, the day plan calendar export.
+
 ### 2026-10-31 — us20-day-plans, Pass A (US20, #49)
 **What changed:**
 - Models `routes.DayPlan` and `routes.DayPlanStop`, migration `routes/migrations/0003_day_plan.py`. `routes/day_plans.py`: `create_day_plan()`, `out_of_order_warning()`.

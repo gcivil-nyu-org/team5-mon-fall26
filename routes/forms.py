@@ -2,8 +2,9 @@ from django import forms
 from django.db import IntegrityError, transaction
 
 from zones.models import Zone
+from zones.views import load_zone_shapes
 
-from .day_plans import create_day_plan
+from .day_plans import TOO_FEW_STOPS, TOO_MANY_STOPS, create_day_plan
 from .models import DAY_CHOICES, DayPlan, SavedRoute, TripPlan
 
 NAME_TAKEN = "You already have a saved route with this name."
@@ -110,11 +111,6 @@ class TripPlanForm(PlanTimeForm):
 
 
 DAY_PLAN_NAME_TAKEN = "You already have a day plan with this name."
-TOO_FEW_STOPS = (
-    f"A day plan needs at least {DayPlan.MIN_STOPS} stops "
-    f"({DayPlan.MIN_STOPS - 1} trips)."
-)
-TOO_MANY_STOPS = f"A day plan can have at most {DayPlan.MAX_STOPS} stops."
 TIME_PER_STOP = "Give a leave time for every stop except the last."
 
 
@@ -190,3 +186,55 @@ class DayPlanForm(forms.Form):
                 raise
             self.add_error("name", DAY_PLAN_NAME_TAKEN)
             return None
+
+
+# ---- US20 Pass B: editing a saved day plan ----
+
+
+def _quarter_hour(time):
+    if time.minute % 15:
+        raise forms.ValidationError(QUARTER_HOUR)
+    return time
+
+
+class DayPlanDayForm(forms.Form):
+    day_of_week = forms.TypedChoiceField(choices=DAY_CHOICES, coerce=int, label="Day")
+
+
+class StopTimeForm(forms.Form):
+    leave_time = forms.TimeField(input_formats=["%H:%M"], label="Leave at")
+
+    def clean_leave_time(self):
+        return _quarter_hour(self.cleaned_data["leave_time"])
+
+
+class ZoneChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, zone):
+        return f"{zone.borough}: {zone.name}"
+
+
+class AddStopForm(forms.Form):
+    """A stop added at the end, plus when the rider leaves the old last stop.
+    Only zones with a shape can be chosen, like on the map (not 264/265)."""
+
+    zone = ZoneChoiceField(queryset=Zone.objects.none(), label="Next stop")
+    leave_time = forms.TimeField(
+        input_formats=["%H:%M"], label="Leave the last stop at"
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        shape_ids = [
+            feature["properties"]["LocationID"]
+            for feature in load_zone_shapes()["features"]
+        ]
+        self.fields["zone"].queryset = Zone.objects.filter(
+            zone_id__in=shape_ids
+        ).order_by("borough", "name")
+
+    def clean_leave_time(self):
+        return _quarter_hour(self.cleaned_data["leave_time"])
+
+
+class MoveStopForm(forms.Form):
+    direction = forms.ChoiceField(choices=[("up", "Up"), ("down", "Down")])

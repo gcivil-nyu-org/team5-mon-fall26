@@ -17,6 +17,7 @@ function element(extra = {}) {
     listeners: {}, children: [], attributes: {}, classes: new Set(),
     addEventListener(name, callback) { this.listeners[name] = callback; },
     setAttribute(name, value) { this.attributes[name] = value; },
+    removeAttribute(name) { delete this.attributes[name]; },
     replaceChildren(...nodes) { this.children = nodes; },
     append(...nodes) { this.children.push(...nodes); },
     querySelector() { return { value: "csrf-test-token" }; },
@@ -332,6 +333,22 @@ test("save is disabled until 3 stops, every time and a name", () => {
   ui.editTime(0, "08:15");
   ui.setName("  ");
   assert.equal(ui.saveDisabled(), true);
+});
+
+test("a disabled Save explains why in its title; the title goes when saving is possible", () => {
+  const ui = setup();
+  const save = ui.elements["day-plan-save"];
+  const needs = "Needs 3 to 10 stops, a time for each stop except the last, and a name";
+  ui.select(BH, MC);
+  ui.press();
+  assert.equal(save.attributes.title, needs); // 2 stops, no name
+  ui.click(TS);
+  assert.equal(save.attributes.title, needs); // still no name
+  ui.setName("Museum day");
+  assert.equal(save.disabled, false);
+  assert.equal("title" in save.attributes, false);
+  ui.editTime(0, "08:20");
+  assert.equal(save.attributes.title, needs);
 });
 
 test("save posts name, day, stops and leave_times with the CSRF header", async () => {

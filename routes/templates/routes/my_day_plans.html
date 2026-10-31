@@ -13,6 +13,7 @@
           <span>{% for stop in plan.stops.all %}{{ stop.zone.name }}{% if not forloop.last %} → {% endif %}{% endfor %}</span>
           <div class="saved-route-actions">
             <a href="{% url 'routes:open_day_plan' plan.pk %}">Open</a>
+            <a href="{% url 'routes:delete_day_plan' plan.pk %}">Delete</a>
           </div>
         </li>
       {% endfor %}

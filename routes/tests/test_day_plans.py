@@ -341,8 +341,10 @@ class DayPlanPagesTests(DayPlanTestCase):
 
     def test_page_lists_stops_with_leave_times(self):
         page = self.page()
-        self.assertContains(page, "Brooklyn Heights (Brooklyn): leave 08:00")
-        self.assertContains(page, "Times Sq/Theatre District (Manhattan)</li>")
+        self.assertContains(page, "Brooklyn Heights (Brooklyn)</span>")
+        self.assertContains(page, 'name="leave_time" step="900" value="08:00"')
+        self.assertContains(page, 'name="leave_time" step="900" value="11:15"')
+        self.assertContains(page, "Times Sq/Theatre District (Manhattan)</span>")
         self.assertContains(page, "Monday: 3 stops, 2 trips")
 
     def test_leg_without_data_shows_not_enough_data(self):
@@ -379,8 +381,9 @@ class DayPlanPagesTests(DayPlanTestCase):
         self.assertNotContains(self.page(), "⚠")
 
     def test_page_query_count(self):
-        # Session and user, the plan, its stops, then 2 per leg.
-        with self.assertNumQueries(2 + 2 + 2 * 2):
+        # Session and user, the plan, its stops, 2 per leg, then the
+        # add-stop zone list (Pass B).
+        with self.assertNumQueries(2 + 2 + 2 * 2 + 1):
             self.page()
 
     def test_list_shows_name_day_and_stop_chain(self):
