@@ -15,6 +15,19 @@ Entry format:
 
 ## Log
 
+### 2026-10-30 — us16-cheapest (US16, #45)
+**What changed:**
+- `routes/planning.py`: `cheapest_in_window()` compares the start hour and the next 2 hours (crossing midnight and Sunday→Monday), skips hours under `MIN_TRIP_COUNT`, picks the lowest average fare (earlier hour on a tie), and works out when to leave and the expected arrival.
+- New public endpoint `GET /api/routes/cheapest?from=&to=&day=&start=HH:MM` (`routes/views.py`, `routes/urls.py`).
+- Map: the Leave by panel now has two options, "Arrive by" (US15) and "Cheapest in the next 3 hours", with a Now button (New York time) or a custom day and start time in 15-minute steps. It lists the 3 hours with typical fares, highlights the cheapest and shows its journey time and expected arrival (`zones/templates/zones/map.html`, `routes/static/routes/js/cheapest.js`, `zones/static/zones/css/map.css`).
+- Docs: `docs/decisions.md` and the High Level Design (section 14).
+
+**Decisions made:** see "cheapest in the next 3 hours" in `decisions.md` (any-minute `start` for Now, tie rule, midnight wrap).
+
+**Tests:** `routes/tests/test_cheapest.py` (rule, midnight and week wrap, sparse hours, validation, page) and `zones/tests/cheapest.test.js`. Full suite passes; black and flake8 clean.
+
+**Next step:** US17 saves these plans; `cheapest.js` already sends a `taxiscope:plan-result` event for it.
+
 ### 2026-10-27 — setup/ci (Sprint 6 CI setup, not a story)
 **What changed:**
 - `requirements-dev.txt` (black, flake8, coverage, coveralls pinned on top of `requirements.txt`), `.flake8` (max-line-length 88, `E203` ignored), `.coveragerc` (measures the project's own code; omits venvs, migrations, tests, `manage.py`, `wsgi.py`, `asgi.py`, `scripts/`).

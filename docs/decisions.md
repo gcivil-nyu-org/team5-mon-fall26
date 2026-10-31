@@ -189,3 +189,12 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - Start with the arrival hour's average duration. Subtract it to select the estimated departure day and hour, then subtract that hour's average duration once more. Round the result down to the previous 15-minute boundary; day arithmetic wraps across midnight and Sunday/Monday.
 - The response provides the leave day/time, typical journey duration and average fare for the departure hour. If either required hour has fewer than MIN_TRIP_COUNT trips, it returns enough_data false and null estimates.
 - An Arrive by form appears under the trip summary when both zones are selected. It displays the result or Not enough data and labels the result an estimate from March to May 2026 trips, not a guarantee.
+
+## Our choices (cheapest in the next 3 hours, US16 #45, 2026-10-30)
+- **New endpoint:** public `GET /api/routes/cheapest?from=&to=&day=&start=HH:MM`. `from` and `to` must be known zone ids and `day` 0-6 (Monday=0), the same checks as `/api/routes/leave-by`; invalid requests return 400. It reads `route_hour_stats` through the shared `route_stats` query.
+- **Start time:** `start` accepts any `HH:MM`, not only quarter hours, so "Now" can use the exact current New York time. The custom start time picker moves in 15-minute steps. ("Arrive by" still requires quarter hours.)
+- **Now:** the browser computes the current day and time with the `America/New_York` time zone, so it is New York time wherever the rider is.
+- **Window:** the start hour and the next 2 hours. Past midnight it continues into the next day; Sunday 23:00 continues into Monday.
+- **Rule:** only hours with at least `MIN_TRIP_COUNT` trips are compared. The lowest average fare wins; on a tie, the earlier hour wins.
+- **Suggestion:** leave at the start time if the first hour is cheapest, otherwise at the start of the cheapest hour. Expected arrival = departure + that hour's average duration, rounded to the minute, with day wrap.
+- **No data:** sparse hours show "Not enough data"; if none of the 3 qualifies, the response has `enough_data` false and the page says so.

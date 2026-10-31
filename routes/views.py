@@ -12,7 +12,7 @@ from zones.views import MAX_ZONE_ID, _parse_int, map_view
 
 from .forms import NAME_TAKEN, RouteNameForm, SavedRouteForm
 from .models import SavedRoute
-from .planning import leave_by
+from .planning import cheapest_in_window, leave_by
 
 
 @require_GET
@@ -45,6 +45,45 @@ def leave_by_api(request):
             "day": day,
             "arrive": arrive,
             **leave_by(pickup, dropoff, day, int(match[1]), int(match[2])),
+        }
+    )
+
+
+@require_GET
+def cheapest_api(request):
+    """GET /api/routes/cheapest?from=&to=&day=&start=HH:MM (US16 #45).
+
+    Same zone and day validation as /api/routes/leave-by. `start` is any
+    HH:MM, so "Now" can send the exact current NYC time; the map's custom
+    start time picker moves in 15-minute steps.
+    """
+    pickup = _parse_int(request.GET.get("from"), 1, MAX_ZONE_ID)
+    dropoff = _parse_int(request.GET.get("to"), 1, MAX_ZONE_ID)
+    day = _parse_int(request.GET.get("day"), 0, 6)
+    start = request.GET.get("start", "")
+    match = re.fullmatch(r"([01]\d|2[0-3]):([0-5]\d)", start)
+    if (
+        pickup is None
+        or dropoff is None
+        or day is None
+        or match is None
+        or unknown_zone_ids(pickup, dropoff)
+    ):
+        return JsonResponse(
+            {
+                "error": "from and to must be known zone ids; day must be 0-6 "
+                "(Monday=0); start must be HH:MM"
+            },
+            status=400,
+        )
+
+    return JsonResponse(
+        {
+            "from": pickup,
+            "to": dropoff,
+            "day": day,
+            "start": start,
+            **cheapest_in_window(pickup, dropoff, day, int(match[1]), int(match[2])),
         }
     )
 
