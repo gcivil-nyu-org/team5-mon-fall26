@@ -358,3 +358,72 @@ def day_plan_legs(plan, stops):
         }
         for number, (start, end) in enumerate(zip(stops, stops[1:]), start=1)
     ]
+
+
+DAY_PLAN_NO_DATA = "Not enough past trips to estimate this trip at this hour."
+DAY_PLAN_PARTLY_NO_DATA = (
+    "Some trips have too few past trips for an estimate; "
+    "their events show only the leave time."
+)
+
+
+def day_plan_calendar(plan, stops, now, weekly=False):
+    """US21 #50 part 2: one calendar event per leg of a day plan, plus the
+    text the day plan page shows for it. Built from day_plan_legs(), so the
+    file and the page agree.
+
+    The first leg goes on the next New York date for the plan's day on which
+    its leave time has not passed. Each leg starts at its own leave time; a
+    leave time earlier than (or equal to) the previous leg's means the next
+    day, and the legs after it follow (22:00 then 00:30 is 00:30 the next
+    day). With an estimate a leg ends after its typical duration; without
+    one it is a zero-length event at the leave time.
+    """
+    legs = day_plan_legs(plan, stops)
+    first = stops[0].leave_time
+    date = next_occurrence(plan.day_of_week, first.hour, first.minute, now).date()
+    previous = None
+    events = []
+    for leg, stop in zip(legs, stops):
+        if previous is not None and stop.leave_time <= previous:
+            date += timedelta(days=1)
+        previous = stop.leave_time
+        start = datetime(
+            date.year,
+            date.month,
+            date.day,
+            stop.leave_time.hour,
+            stop.leave_time.minute,
+            tzinfo=NYC_TZ,
+        )
+        stats = leg["stats"]
+        trip = f"Trip {leg['number']} of {len(legs)} in {plan.name}"
+        if stats["enough_data"]:
+            end = start + timedelta(minutes=round(stats["avg_duration_min"]))
+            lines = [
+                f"Leave at {leg['leave']}",
+                f"Typical journey time: {stats['avg_duration_min']:.1f} min",
+                f"Typical fare before tip: ${stats['fare_avg']}",
+                trip,
+            ]
+        else:
+            end = start
+            lines = [DAY_PLAN_NO_DATA, f"Leave at {leg['leave']}", trip]
+        events.append(
+            CalendarEvent(
+                uid=f"dayplan-{plan.pk}-leg-{leg['number']}@taxiscope",
+                start=start,
+                end=end,
+                summary=f"Taxi: {leg['from'].name} → {leg['to'].name}",
+                description="\n".join(lines + [CALENDAR_NOTE]),
+                alarm_minutes=15,
+                weekly=weekly,
+            )
+        )
+    missing = any(not leg["stats"]["enough_data"] for leg in legs)
+    return {
+        "legs": legs,
+        "events": events,
+        "button_label": f"Add day plan to calendar: {_date_label(events[0].start)}",
+        "warning": DAY_PLAN_PARTLY_NO_DATA if missing else None,
+    }

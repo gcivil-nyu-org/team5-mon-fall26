@@ -90,6 +90,13 @@
   {% endfor %}
   <p class="plan-note">Based on past trips (March to May 2026), not a guarantee.</p>
 
+  {# US21 #50 part 2: download the whole day plan as calendar events, one per trip. #}
+  <form method="get" action="{% url 'routes:day_plan_calendar' plan.pk %}" class="calendar-form">
+    {% if calendar.warning %}<p class="warning">⚠ {{ calendar.warning }}</p>{% endif %}
+    <label class="calendar-repeat"><input type="checkbox" name="repeat" value="weekly"> Repeat every week</label>
+    <button type="submit">{{ calendar.button_label }}</button>
+  </form>
+
   <div class="saved-route-actions">
     <a href="{% url 'routes:delete_day_plan' plan.pk %}">Delete</a>
     <a href="{% url 'routes:my_day_plans' %}">All day plans</a>
