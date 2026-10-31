@@ -89,6 +89,7 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - HTTPS on the Integration and Production environments. Both are plain `http://` Elastic Beanstalk URLs, so sign-up and sign-in (US10, US11) would send passwords unencrypted. Needed before real users create accounts.
 - Password reset by email ("Forgot password?"). Left for later (US12 #41): it needs an email service on AWS (for example Amazon SES) and its credentials in Elastic Beanstalk. Until then, a user who forgets their password cannot get back in.
 - Map tile provider for the demo. OpenStreetMap's public tile servers have a usage policy and are not meant for heavy production use (they already 403'd once locally over a missing Referer header). Check this before the sprint demo and be ready to switch to another tile provider (for example a paid provider, or self-hosted tiles) if it becomes a problem.
+- Minimum saving worth suggesting a nearby pickup (US19 #48). Currently any lower average fare counts, so a saving of a few cents can be suggested. Ask the Product Owner whether a minimum (for example $1) should apply.
 
 ## Our choices (demand map, US1 #3, 2026-10-18)
 - **Default day and hour:** `/api/zones` uses the current NYC day and hour when none is given, because trip times are recorded in NYC time.
@@ -214,3 +215,10 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - **Endpoint:** CSRF-protected `POST /plans/save/`, signed-in users only (401 for guests, 400 with field errors, 201 with `id` and `name`). The owner always comes from the session.
 - **Pages:** `/plans/` (My plans), `/plans/<id>/` (open, with the result recalculated), `/plans/<id>/edit/` (day and time), `/plans/<id>/delete/` (confirm, then delete). All need sign-in; another user's plan gives 404. The map header links to it as "Plans".
 - **Map events:** `leave-by.js` and `cheapest.js` send `taxiscope:plan-result` (mode, day, time) when they show a result and `taxiscope:plan-cleared` when it goes away; `save-plan.js` uses them to show "Save this plan" only for the result on screen.
+
+## Our choices (cheaper adjacent pickup, US19 #48, 2026-10-31)
+- **Endpoint:** public `GET /api/routes/nearby?from=&to=&day=&hour=`. `from` and `to` must be known zone ids (`to` is required); `day` 0-6 (Monday=0) and `hour` 0-23 default to the current NYC day and hour, as in `/api/routes`. Invalid requests return 400. It reads `zones/data/zone_neighbors.json` (US18) and `route_hour_stats`.
+- **Rule:** a zone is suggested when it borders the pickup, is not the destination, and its route to the same destination at the same day and hour has a lower average fare than the current route. Both routes need at least `MIN_TRIP_COUNT` trips. Any lower average counts; an equal fare does not.
+- **Order:** up to 3 suggestions, biggest saving first; on a tie, the lower zone id.
+- **No data:** if the current route has too few trips, `enough_data` is false and there are no suggestions. `neighbor_count` 0 means the pickup borders no zone (an island). The page says which case applies; when both apply, it says the pickup has no bordering zones, because an island can never get a suggestion.
+- **Map:** clicking a suggestion sends `taxiscope:select-route` (pickup, dropoff); `filters.js` makes that zone the pickup and keeps the dropoff. Same-zone trips show no suggestions.

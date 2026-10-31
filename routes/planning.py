@@ -2,7 +2,10 @@
 
 from math import floor
 
-from zones.stats import route_stats
+from django.conf import settings
+
+from zones.models import RouteHourStats
+from zones.stats import load_zone_neighbors, route_stats
 
 
 def leave_by(pickup, dropoff, day, arrive_hour, arrive_minute):
@@ -149,3 +152,72 @@ def plan_result(plan):
                 f"{DAY_NAMES[result['arrive_day']]} {result['arrive']}"
             )
     return result
+
+
+NEARBY_LIMIT = 3
+
+
+def cheaper_nearby(pickup, dropoff, day, hour):
+    """US19: up to NEARBY_LIMIT zones adjacent to the pickup where the same
+    trip (same dropoff, day and hour) has a lower average fare.
+
+    Both routes need settings.MIN_TRIP_COUNT trips. The dropoff zone is never
+    suggested. Biggest saving first; on a tie, the lower zone id.
+    neighbor_count is the number of adjacent zones considered, so 0 means
+    the pickup borders no other zone (an island).
+    """
+    candidates = [
+        zone_id
+        for zone_id in load_zone_neighbors().get(pickup, [])
+        if zone_id != dropoff
+    ]
+    stats = route_stats(pickup, dropoff, day, hour)
+    current = {
+        "trip_count": stats["trip_count"],
+        "fare_avg": stats["fare_avg"],
+        "avg_duration_min": stats["avg_duration_min"],
+    }
+    if not stats["enough_data"] or not candidates:
+        return {
+            "enough_data": stats["enough_data"],
+            "current": current,
+            "neighbor_count": len(candidates),
+            "suggestions": [],
+        }
+
+    rows = (
+        RouteHourStats.objects.filter(
+            pickup_zone_id__in=candidates,
+            dropoff_zone_id=dropoff,
+            day_of_week=day,
+            hour=hour,
+            trip_count__gte=settings.MIN_TRIP_COUNT,
+            fare_avg__lt=stats["fare_avg"],
+        )
+        .order_by("fare_avg", "pickup_zone_id")
+        .values(
+            "pickup_zone_id",
+            "pickup_zone__name",
+            "pickup_zone__borough",
+            "trip_count",
+            "fare_avg",
+            "avg_duration_min",
+        )[:NEARBY_LIMIT]
+    )
+    return {
+        "enough_data": True,
+        "current": current,
+        "neighbor_count": len(candidates),
+        "suggestions": [
+            {
+                "zone_id": row["pickup_zone_id"],
+                "name": row["pickup_zone__name"],
+                "borough": row["pickup_zone__borough"],
+                "trip_count": row["trip_count"],
+                "fare_avg": row["fare_avg"],
+                "avg_duration_min": row["avg_duration_min"],
+                "saving": stats["fare_avg"] - row["fare_avg"],
+            }
+            for row in rows
+        ],
+    }

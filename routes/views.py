@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -8,11 +9,11 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
 from zones.stats import unknown_zone_ids
-from zones.views import MAX_ZONE_ID, _parse_int, map_view
+from zones.views import MAX_ZONE_ID, NYC_TZ, _parse_int, map_view
 
 from .forms import NAME_TAKEN, PlanTimeForm, RouteNameForm, SavedRouteForm, TripPlanForm
 from .models import SavedRoute, TripPlan
-from .planning import cheapest_in_window, leave_by, plan_result
+from .planning import cheaper_nearby, cheapest_in_window, leave_by, plan_result
 
 
 @require_GET
@@ -84,6 +85,45 @@ def cheapest_api(request):
             "day": day,
             "start": start,
             **cheapest_in_window(pickup, dropoff, day, int(match[1]), int(match[2])),
+        }
+    )
+
+
+@require_GET
+def nearby_api(request):
+    """GET /api/routes/nearby?from=&to=&day=&hour= (US19 #48).
+
+    Adjacent pickup zones where the same trip is historically cheaper.
+    `to` is required; day and hour default to the current NYC day and
+    hour, as in /api/routes.
+    """
+    now = datetime.now(NYC_TZ)
+    pickup = _parse_int(request.GET.get("from"), 1, MAX_ZONE_ID)
+    dropoff = _parse_int(request.GET.get("to"), 1, MAX_ZONE_ID)
+    day = _parse_int(request.GET.get("day", now.weekday()), 0, 6)
+    hour = _parse_int(request.GET.get("hour", now.hour), 0, 23)
+    if (
+        pickup is None
+        or dropoff is None
+        or day is None
+        or hour is None
+        or unknown_zone_ids(pickup, dropoff)
+    ):
+        return JsonResponse(
+            {
+                "error": "from and to must be known zone ids; day must be 0-6 "
+                "(Monday=0) and hour must be 0-23"
+            },
+            status=400,
+        )
+
+    return JsonResponse(
+        {
+            "from": pickup,
+            "to": dropoff,
+            "day": day,
+            "hour": hour,
+            **cheaper_nearby(pickup, dropoff, day, hour),
         }
     )
 

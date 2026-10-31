@@ -1,11 +1,24 @@
 """Query logic for the trip statistics API, kept out of the views so it
 can be tested without HTTP."""
 
+import json
+from functools import lru_cache
+from pathlib import Path
+
 from django.conf import settings
 
 from .models import RouteHourStats, Zone, ZoneHourStats
 
 STAT_FIELDS = ("fare_min", "fare_avg", "fare_max", "avg_duration_min")
+
+NEIGHBORS_PATH = Path(__file__).resolve().parent / "data" / "zone_neighbors.json"
+
+
+@lru_cache(maxsize=1)
+def load_zone_neighbors():
+    """zone_neighbors.json (US18) as {zone_id: [adjacent zone ids]}, read once."""
+    with NEIGHBORS_PATH.open(encoding="utf-8") as f:
+        return {int(zone_id): ids for zone_id, ids in json.load(f).items()}
 
 
 def unknown_zone_ids(*zone_ids):
