@@ -24,6 +24,7 @@
   function clearResult() {
     result.hidden = true;
     status.textContent = "";
+    document.dispatchEvent(new CustomEvent("taxiscope:plan-cleared", { detail: { mode: "cheapest" } }));
   }
 
   // Current day (Monday=0) and HH:MM in New York, whatever the browser's time zone.
@@ -95,7 +96,7 @@
         if (label && data.enough_data) status.textContent = label;
         document.dispatchEvent(
           new CustomEvent("taxiscope:plan-result", {
-            detail: { mode: "cheapest", day: Number(day), time: start, enough_data: data.enough_data },
+            detail: { mode: "cheapest", day: Number(day), time: start },
           })
         );
       })
@@ -110,6 +111,7 @@
       const cheapest = input.value === "cheapest" && input.checked;
       cheapestMode.hidden = !cheapest;
       arriveMode.hidden = cheapest;
+      document.dispatchEvent(new CustomEvent("taxiscope:plan-cleared", { detail: { mode: "switch" } }));
     });
   });
 

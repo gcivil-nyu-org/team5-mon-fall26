@@ -198,3 +198,12 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - **Rule:** only hours with at least `MIN_TRIP_COUNT` trips are compared. The lowest average fare wins; on a tie, the earlier hour wins.
 - **Suggestion:** leave at the start time if the first hour is cheapest, otherwise at the start of the cheapest hour. Expected arrival = departure + that hour's average duration, rounded to the minute, with day wrap.
 - **No data:** sparse hours show "Not enough data"; if none of the 3 qualifies, the response has `enough_data` false and the page says so.
+
+## Our choices (save and manage "Leave by" plans, US17 #46, 2026-10-30)
+- **Model:** `routes.TripPlan` (table `routes_tripplan`): user, name, pickup zone, dropoff zone, mode (`arrive_by` or `cheapest`), day of week (Monday=0) and time (arrival time or start time), plus `created_at`. Every link uses `on_delete=CASCADE`, so deleting an account or a zone deletes its plans (US12, `accounts.E001`).
+- **Names:** required, at most 50 characters, unique per user (database constraint), the same rules as saved routes. Different users may reuse a name.
+- **Only inputs are stored, never results.** Opening a plan recalculates it from `route_hour_stats` with the same functions as the two APIs, so a new import changes the answer and nothing stale is stored.
+- **Times:** "Arrive by" plans need a quarter-hour time, like `/api/routes/leave-by`. "Cheapest" plans keep any minute, because a plan made with "Now" is saved with the exact time it was made.
+- **Endpoint:** CSRF-protected `POST /plans/save/`, signed-in users only (401 for guests, 400 with field errors, 201 with `id` and `name`). The owner always comes from the session.
+- **Pages:** `/plans/` (My plans), `/plans/<id>/` (open, with the result recalculated), `/plans/<id>/edit/` (day and time), `/plans/<id>/delete/` (confirm, then delete). All need sign-in; another user's plan gives 404. The map header links to it as "Plans".
+- **Map events:** `leave-by.js` and `cheapest.js` send `taxiscope:plan-result` (mode, day, time) when they show a result and `taxiscope:plan-cleared` when it goes away; `save-plan.js` uses them to show "Save this plan" only for the result on screen.

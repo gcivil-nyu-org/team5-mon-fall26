@@ -115,8 +115,9 @@ test("Now sends the current New York day and exact time", async () => {
   ui.elements["cheapest-now"].listeners.click();
   await settle();
   assert.match(urls[0], /day=[0-6]&start=([01]\d|2[0-3])%3A[0-5]\d$/);
-  assert.equal(ui.events[0].type, "taxiscope:plan-result");
-  assert.equal(ui.events[0].detail.mode, "cheapest");
+  const result = ui.events.find(event => event.type === "taxiscope:plan-result");
+  assert.equal(result.detail.mode, "cheapest");
+  assert.match(result.detail.time, /^\d\d:\d\d$/);
 });
 
 test("does nothing until both zones are selected", () => {

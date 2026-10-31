@@ -1,0 +1,46 @@
+{% extends "routes/base.html" %}
+
+{% block title %}{{ plan.name }}{% endblock %}
+
+{% block content %}
+  <h1>{{ plan.name }}</h1>
+  <p>{{ plan.pickup_zone.name }} → {{ plan.dropoff_zone.name }}</p>
+  <p class="plan-inputs">
+    {% if plan.mode == "arrive_by" %}Arrive by {{ plan.get_day_of_week_display }} {{ plan.time_label }}
+    {% else %}Cheapest in the 3 hours from {{ plan.get_day_of_week_display }} {{ plan.time_label }}{% endif %}
+  </p>
+
+  {% if plan.mode == "cheapest" %}
+    <table class="plan-hours">
+      <thead><tr><th scope="col">Hour</th><th scope="col">Typical fare before tip</th></tr></thead>
+      <tbody>
+        {% for slot in result.hours %}
+          <tr{% if forloop.counter0 == result.cheapest %} class="is-cheapest"{% endif %}>
+            <td>{{ slot.label }}</td>
+            <td>{% if slot.enough_data %}${{ slot.fare_avg }}{% if forloop.counter0 == result.cheapest %} (cheapest){% endif %}{% else %}Not enough data{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  {% if result.enough_data %}
+    <dl class="plan-result">
+      <div><dt>{% if plan.mode == "arrive_by" %}Leave by{% else %}Leave at{% endif %}</dt><dd>{{ result.leave_label }}</dd></div>
+      <div><dt>Typical journey time</dt><dd>{{ result.avg_duration_min|floatformat:1 }} min</dd></div>
+      {% if result.arrive_label %}<div><dt>Expected arrival</dt><dd>{{ result.arrive_label }}</dd></div>{% endif %}
+      <div><dt>Typical fare before tip</dt><dd>${{ result.fare_avg }}</dd></div>
+    </dl>
+  {% elif plan.mode == "cheapest" %}
+    <p class="plan-empty">None of these 3 hours has enough past trips for this route.</p>
+  {% else %}
+    <p class="plan-empty">Not enough data</p>
+  {% endif %}
+  <p class="plan-note">Recalculated just now. Estimate from past trips (March to May 2026), not a guarantee.</p>
+
+  <div class="saved-route-actions">
+    <a href="{% url 'routes:edit_plan' plan.pk %}">Edit day or time</a>
+    <a href="{% url 'routes:delete_plan' plan.pk %}">Delete</a>
+    <a href="{% url 'routes:my_plans' %}">All plans</a>
+  </div>
+{% endblock %}

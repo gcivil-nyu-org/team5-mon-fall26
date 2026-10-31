@@ -171,3 +171,18 @@ The Leave by panel has two options: **Arrive by** (US15) and **Cheapest in the n
 The window is 3 one-hour slots: the start hour and the next 2 hours from `route_hour_stats`. After midnight it continues into the next day, and Sunday wraps to Monday (Friday 22:00 covers Friday 22:00, Friday 23:00 and Saturday 00:00). Only slots with at least `MIN_TRIP_COUNT` trips are compared. The lowest average fare wins, and on a tie the earlier hour wins. The suggested departure is the start time if the first slot is cheapest, otherwise the start of the cheapest hour. The expected arrival is that departure plus the cheapest hour's average duration, rounded to the minute.
 
 The response lists all 3 slots (`day`, `hour`, `enough_data`, `trip_count`, `fare_avg`, `avg_duration_min`), the index of the cheapest (`cheapest`), and `leave_day`, `leave`, `arrive_day`, `arrive`, `avg_duration_min` and `fare_avg`. If no slot has enough trips, `enough_data` is false and the suggestion fields are null. The page shows Not enough data for each sparse hour, says so when none qualifies, and labels the result an estimate from March to May 2026 trips, not a guarantee.
+
+## 15. Epic 2 extension: Saved "Leave by" plans (US17)
+
+A signed-in rider can save the plan behind either Leave by result ("Arrive by" or "Cheapest in the next 3 hours"). The map shows "Save this plan" under the result; guests see a sign-in link instead. The browser posts the plan to `POST /plans/save/` (CSRF token in the `X-CSRFToken` header) with `name`, `pickup_zone`, `dropoff_zone`, `mode` (`arrive_by` or `cheapest`), `day_of_week` (0-6) and `time` (`HH:MM`). The owner always comes from the session. A plan made with Now is saved with the day and exact time it was made.
+
+The `routes_tripplan` table (`routes.TripPlan`) stores only those inputs: user, name, pickup zone, dropoff zone, mode, day of week and time, plus the creation time. Names are unique per user. The user link uses `on_delete=CASCADE`, so deleting an account deletes its plans (US12).
+
+| Page | What it does |
+|---|---|
+| `GET /plans/` | My plans: the signed-in user's plans with route, mode, day and time |
+| `GET /plans/<id>/` | Opens a plan and **recalculates** its result from `route_hour_stats` with the same code as `/api/routes/leave-by` and `/api/routes/cheapest`. Nothing about the result is stored, so it is never stale |
+| `GET/POST /plans/<id>/edit/` | Change the day or time; the plan then shows the updated result |
+| `GET/POST /plans/<id>/delete/` | Confirm, then delete |
+
+All plan pages require sign-in, look plans up with `user=request.user` (another user's plan gives 404), and use CSRF tokens on every form.
