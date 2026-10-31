@@ -15,6 +15,20 @@ Entry format:
 
 ## Log
 
+### 2026-10-31 — us21-calendar-export (US21, #50)
+**What changed:**
+- New `routes/calendar.py` (standard library only): `CalendarEvent`, `next_occurrence()`, `escape_text()`, `fold_line()`, `build_ics()`, with a fixed `America/New_York` `VTIMEZONE`.
+- `routes/planning.py`: `plan_calendar(plan, now, weekly=False)` builds the event and the page's button label and warning from `plan_result()`.
+- New endpoint `GET /plans/<id>/calendar.ics` (`routes/views.py` `plan_calendar_ics`, `routes/urls.py`). `open_plan` now gets its result from `plan_calendar()`, so the stats are read once and the button and the file agree.
+- Plan page (`routes/templates/routes/plan_detail.html`, `routes/static/routes/css/routes.css`): warning when there is no estimate, "Repeat every week" checkbox, and a button with the date.
+- `docs/decisions.md` (US21 section) and High Level Design §17. No migration, no new dependency.
+
+**Decisions made (also in `docs/decisions.md`):** New York wall-clock times with `TZID` and `VTIMEZONE`; next date whose start has not passed (start >= now, compared in UTC); event on the leave date; zero-length events when there is no estimate; reminders 15 min (1 h for arrival-only); stable UID with no personal data; optional weekly repeat.
+
+**Tests:** `routes/tests/test_calendar.py` (47): date rules incl. the Nov 1 2026 DST change, folding/escaping, VTIMEZONE vs zoneinfo 2026–2030, events with and without data, privacy, endpoint, repeat, plan page. Full Django suite (441, 4 skipped) and all 48 Node tests pass; black and flake8 pass.
+
+**Next step:** check the downloaded files by hand in Google Calendar and Apple Calendar (expect Google to ignore the reminders).
+
 ### 2026-10-31 — us19-cheaper-nearby (US19, #48)
 **What changed:**
 - New public endpoint `GET /api/routes/nearby?from=&to=&day=&hour=` (`routes/views.py` `nearby_api`, `routes/urls.py`), backed by `cheaper_nearby()` in `routes/planning.py` and `load_zone_neighbors()` (cached) in `zones/stats.py`. No new table, no new dependency.
