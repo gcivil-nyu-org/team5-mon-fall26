@@ -81,3 +81,15 @@ coverage run manage.py test    # Django tests, instrumented for coverage
 coverage report                # per-file and total coverage (config in .coveragerc)
 node --test zones/tests/*.test.js   # JavaScript tests
 ```
+
+## Regenerate the adjacent zones
+
+`zones/data/zone_neighbors.json` (US18) lists, for every zone, the zones that share a border with it. It is committed, so you only need this after rebuilding `taxi_zones.geojson`. The script needs `shapely`, which the app does not use, so it is not in `requirements.txt`:
+
+```bash
+pip install shapely==2.1.2
+python scripts/build_zone_neighbors.py
+python manage.py test zones.tests.test_zone_neighbors
+```
+
+The rule (a shared border of at least 10 m; corners and rivers do not count) is in `docs/decisions.md` (adjacent zones).

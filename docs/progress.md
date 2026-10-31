@@ -15,6 +15,17 @@ Entry format:
 
 ## Log
 
+### 2026-10-30 — us18-zone-neighbors (US18, #47)
+**What changed:**
+- `scripts/build_zone_neighbors.py` (shapely 2.1.2, not in `requirements.txt`) reads `zones/data/taxi_zones.geojson` and writes `zones/data/zone_neighbors.json`: 263 zones, 611 adjacent pairs. Zones with no neighbour are islands: 1, 46, 103, 104, 105, 199, 202.
+- README: "Regenerate the adjacent zones". `docs/decisions.md`: adjacent zones section.
+
+**Decisions made (also in `docs/decisions.md`):** adjacent zones instead of walking distance, because trips only record the zone; a shared border of at least 10 m counts, a touching corner or a river does not; shapely pinned to 2.1.2 and kept out of `requirements.txt`.
+
+**Tests:** `zones/tests/test_zone_neighbors.py`: every zone covered, two-way, no self, spot checks (Midtown, JFK, Staten Island), nothing across a river; 4 rule tests on small squares skip when shapely isn't installed (as on Travis). Full suite passes; black and flake8 clean.
+
+**Next step:** the story that suggests a cheaper pickup zone next to the rider's can read `zone_neighbors.json`.
+
 ### 2026-10-30 — us17-trip-plans (US17, #46)
 **What changed:**
 - `routes.TripPlan` model and migration `routes/migrations/0002_trip_plan.py` (user, name, pickup, dropoff, mode, day, time; CASCADE links; unique name per user).
