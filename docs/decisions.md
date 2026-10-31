@@ -73,6 +73,13 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - **Output:** `zones/data/taxi_zones.geojson`, one feature per zone with `LocationID` (int), `zone`, `borough`. Coordinates rounded to 6 decimals (~10 cm), no simplification. Size: 2.17 MB.
 - **IDs:** LocationIDs must be unique and exactly 1..263; the script stops otherwise. Zones 264 and 265 (Unknown / Outside of NYC) have no shape.
 
+## Our choices (adjacent zones, US18 #47, 2026-10-30)
+- **Adjacent zones, not walking distance:** the trip data only says which zone a trip started in, not where in the zone, so a walking distance between two pickups can't be measured. "Next to" means the two zones share a border.
+- **Output:** `zones/data/zone_neighbors.json`, committed like the zone shapes: zone id (as a string key) → sorted list of adjacent zone ids. Every zone with a shape (1..263) has an entry; islands with no land border (Newark Airport, City Island, Governors/Ellis/Liberty Islands, Rikers Island, Roosevelt Island) have an empty list.
+- **Build tool:** `scripts/build_zone_neighbors.py`, using `shapely==2.1.2` (rebuild only, not in `requirements.txt`, like `pyshp` and `pyproj` for US0b). Run it again whenever `taxi_zones.geojson` is rebuilt.
+- **Rule:** two zones are adjacent when their borders run alongside each other for at least 10 m, measured in metres with a flat projection centred on NYC (error well under 1%). Borders within 2 m count as touching, to absorb the 6-decimal rounding of the shapes. So a shared street counts, a single touching corner does not, and zones facing each other across a river or creek (the narrowest such gap is about 15 m) do not.
+- **Checked:** two-way adjacency, no zone lists itself, spot checks in Midtown, at JFK and on Staten Island, and no Manhattan zone borders Brooklyn, Queens or Staten Island (Manhattan only borders the Bronx at Marble Hill).
+
 ## Open (decide before the story that needs it)
 - ~~Which AWS services host the Django app and the database.~~ App: Elastic Beanstalk (see "Our choices (CD, setup/ci, 2026-10-27)"). The database is reached through `DATABASE_URL`.
 - ~~Minimum trip count for a window to be shown.~~ Decided 2026-10-22: 5 trips, see "Our choices (fare range, US5 #7)" below.
