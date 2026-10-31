@@ -1,0 +1,23 @@
+{% extends "routes/base.html" %}
+
+{% block title %}My day plans{% endblock %}
+
+{% block content %}
+  <h1>My day plans</h1>
+  {% if plans %}
+    <ul class="saved-route-list">
+      {% for plan in plans %}
+        <li>
+          <strong>{{ plan.name }}</strong>
+          <span>{{ plan.get_day_of_week_display }}, {{ plan.stops.all|length }} stops</span>
+          <span>{% for stop in plan.stops.all %}{{ stop.zone.name }}{% if not forloop.last %} → {% endif %}{% endfor %}</span>
+          <div class="saved-route-actions">
+            <a href="{% url 'routes:open_day_plan' plan.pk %}">Open</a>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No day plans yet. On the map, select a pickup and a dropoff, choose "Add to day plan", keep adding stops, then choose "Save day plan".</p>
+  {% endif %}
+{% endblock %}

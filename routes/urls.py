@@ -35,4 +35,7 @@ urlpatterns = [
     ),
     path("plans/<int:plan_id>/edit/", views.edit_plan, name="edit_plan"),
     path("plans/<int:plan_id>/delete/", views.delete_plan, name="delete_plan"),
+    path("day-plans/save/", views.save_day_plan, name="save_day_plan"),
+    path("day-plans/", views.my_day_plans, name="my_day_plans"),
+    path("day-plans/<int:plan_id>/", views.open_day_plan, name="open_day_plan"),
 ]

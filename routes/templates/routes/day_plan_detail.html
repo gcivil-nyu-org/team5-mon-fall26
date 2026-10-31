@@ -1,0 +1,48 @@
+{% extends "routes/base.html" %}
+
+{% block title %}{{ plan.name }}{% endblock %}
+
+{% block content %}
+  <h1>{{ plan.name }}</h1>
+  <p class="plan-inputs">{{ plan.get_day_of_week_display }}: {{ stops|length }} stops, {{ legs|length }} trips</p>
+  {% if warning %}<p class="warning">⚠ {{ warning }}</p>{% endif %}
+
+  <h2>Stops</h2>
+  <ol class="day-plan-stops">
+    {% for stop in stops %}
+      <li>{{ stop.zone.name }} ({{ stop.zone.borough }}){% if not forloop.last %}: leave {{ stop.leave_label }}{% endif %}</li>
+    {% endfor %}
+  </ol>
+
+  <h2>Trips</h2>
+  {% for leg in legs %}
+    <section class="day-plan-leg" aria-labelledby="leg-{{ leg.number }}">
+      <h3 id="leg-{{ leg.number }}">{{ leg.number }}. {{ leg.from.name }} → {{ leg.to.name }}, leave {{ leg.leave }}</h3>
+      <dl class="plan-result">
+        <div>
+          <dt>Typical fare before tip (min / avg / max)</dt>
+          <dd>{% if leg.stats.enough_data %}${{ leg.stats.fare_min }} / ${{ leg.stats.fare_avg }} / ${{ leg.stats.fare_max }}{% else %}Not enough data{% endif %}</dd>
+        </div>
+        <div>
+          <dt>Typical journey time</dt>
+          <dd>{% if leg.stats.enough_data %}{{ leg.stats.avg_duration_min|floatformat:1 }} min{% else %}Not enough data{% endif %}</dd>
+        </div>
+        {% with best=leg.windows.best worst=leg.windows.worst %}
+        <div>
+          <dt>Best time on {{ plan.get_day_of_week_display }}</dt>
+          <dd>{% if leg.windows.enough_data %}Cheapest: {{ best.fare.hour|stringformat:"02d" }}:00–{{ best.fare.hour|stringformat:"02d" }}:59 (avg ${{ best.fare.fare_avg }}); Fastest: {{ best.duration.hour|stringformat:"02d" }}:00–{{ best.duration.hour|stringformat:"02d" }}:59 ({{ best.duration.avg_duration_min|floatformat:1 }} min){% else %}Not enough data{% endif %}</dd>
+        </div>
+        <div>
+          <dt>Worst time on {{ plan.get_day_of_week_display }}</dt>
+          <dd>{% if leg.windows.enough_data %}Most expensive: {{ worst.fare.hour|stringformat:"02d" }}:00–{{ worst.fare.hour|stringformat:"02d" }}:59 (avg ${{ worst.fare.fare_avg }}); Slowest: {{ worst.duration.hour|stringformat:"02d" }}:00–{{ worst.duration.hour|stringformat:"02d" }}:59 ({{ worst.duration.avg_duration_min|floatformat:1 }} min){% else %}Not enough data{% endif %}</dd>
+        </div>
+        {% endwith %}
+      </dl>
+    </section>
+  {% endfor %}
+  <p class="plan-note">Based on past trips (March to May 2026), not a guarantee.</p>
+
+  <div class="saved-route-actions">
+    <a href="{% url 'routes:my_day_plans' %}">All day plans</a>
+  </div>
+{% endblock %}

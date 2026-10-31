@@ -15,6 +15,7 @@
     <nav class="account-nav" aria-label="Account">
       <a href="{% url 'routes:my_routes' %}">Routes</a>
       <a href="{% url 'routes:my_plans' %}">Plans</a>
+      <a href="{% url 'routes:my_day_plans' %}">Day plans</a>
       {% if user.is_authenticated %}
         <a href="{% url 'accounts:account' %}" class="account-email" title="My account">{{ user.email }}</a>
         <form method="post" action="{% url 'accounts:signout' %}" class="signout-form">
@@ -172,6 +173,39 @@
         <p class="summary-disclaimer">Estimate from past trips (March to May 2026), not a guarantee.</p>
       </section>
     </section>
+    {# US20 #49: build a multi-stop day plan from map clicks. #}
+    <section id="day-plan-panel" class="day-plan-panel" hidden aria-labelledby="day-plan-title">
+      <h2 id="day-plan-title">Day plan</h2>
+      {% if user.is_authenticated %}
+        <button type="button" id="day-plan-add" hidden>Add to day plan</button>
+        <ol id="day-plan-stops" class="day-plan-stops"></ol>
+        <form id="day-plan-form" method="post" action="{% url 'routes:save_day_plan' %}" hidden>
+          {% csrf_token %}
+          <label for="day-plan-day">Day</label>
+          <select id="day-plan-day" name="day_of_week" required>
+            <option value="0">Monday</option>
+            <option value="1">Tuesday</option>
+            <option value="2">Wednesday</option>
+            <option value="3">Thursday</option>
+            <option value="4">Friday</option>
+            <option value="5">Saturday</option>
+            <option value="6">Sunday</option>
+          </select>
+          <label for="day-plan-name">Day plan name</label>
+          <input id="day-plan-name" name="name" type="text" maxlength="50" required
+                 placeholder="Museum day" aria-describedby="day-plan-status">
+          <div class="plan-buttons">
+            <button type="button" id="day-plan-clear">Clear</button>
+            <button type="submit" id="day-plan-save" disabled>Save day plan</button>
+          </div>
+          <p class="summary-disclaimer">3 to 10 stops. Set when you leave each stop, in 15-minute steps.</p>
+        </form>
+        <p id="day-plan-status" class="summary-status" role="status" aria-live="polite"></p>
+        <a id="day-plan-open" href="{% url 'routes:my_day_plans' %}" hidden>Open day plan</a>
+      {% else %}
+        <a id="day-plan-signin" href="{% url 'accounts:signin' %}?next={% url 'zones:map' %}" hidden>Sign in to plan a day</a>
+      {% endif %}
+    </section>
     <button id="clear-selection" class="clear-all-btn" hidden>Clear selection</button>
   </aside>
   <aside id="heatmap-panel" class="heatmap-panel" hidden aria-label="Zone demand heatmap">
@@ -202,5 +236,6 @@
   <script src="{% static 'zones/js/fare.js' %}"></script>
   <script src="{% static 'zones/js/windows.js' %}"></script>
   <script src="{% static 'routes/js/nearby.js' %}"></script>
+  <script src="{% static 'routes/js/day-plan.js' %}"></script>
 </body>
 </html>

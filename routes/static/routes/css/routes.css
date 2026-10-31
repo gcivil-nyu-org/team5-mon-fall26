@@ -197,3 +197,48 @@ button.danger-button:hover {
   gap: 0.4rem;
   cursor: pointer;
 }
+
+/* Header links to saved items (US20) */
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 1rem;
+}
+
+.routes-nav {
+  display: flex;
+  gap: 0.9rem;
+}
+
+.routes-nav a {
+  color: #fff;
+  font-size: 14px;
+}
+
+/* Day plans (US20) */
+.routes-page h2 {
+  margin: 1.2rem 0 0.4rem;
+  font-size: 1.1rem;
+}
+
+.day-plan-stops {
+  margin: 0;
+  padding-left: 1.4rem;
+}
+
+.day-plan-leg {
+  margin-top: 0.8rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid #e3e6eb;
+}
+
+.day-plan-leg h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.day-plan-leg .plan-result {
+  margin: 0.5rem 0 0;
+}

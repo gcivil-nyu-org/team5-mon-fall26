@@ -31,9 +31,10 @@ function updateHourLabel() {
 }
 
 // Select a pickup and dropoff together: a saved route (US13) or a cheaper
-// nearby pickup (US19, via taxiscope:select-route).
+// nearby pickup (US19, via taxiscope:select-route). A null dropoff selects
+// only the pickup (US20: the day plan's last stop becomes the next pickup).
 function selectRoute(pickup, dropoff, unavailableMessage) {
-  if (!zoneLayers.has(pickup) || !zoneLayers.has(dropoff)) {
+  if (!zoneLayers.has(pickup) || (dropoff !== null && !zoneLayers.has(dropoff))) {
     showError(unavailableMessage);
     return;
   }

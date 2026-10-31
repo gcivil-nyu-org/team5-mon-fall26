@@ -6,7 +6,7 @@ from math import floor
 from django.conf import settings
 
 from zones.models import RouteHourStats
-from zones.stats import load_zone_neighbors, route_stats
+from zones.stats import load_zone_neighbors, route_stats, route_windows
 from zones.views import NYC_TZ
 
 from .calendar import CalendarEvent, next_occurrence
@@ -339,3 +339,22 @@ def plan_calendar(plan, now, weekly=False):
         "button_label": f"{label}: {_date_label(start)}",
         "warning": warning,
     }
+
+
+def day_plan_legs(plan, stops):
+    """US20: one entry per consecutive pair of stops: route_stats for the hour
+    of the leave time and route_windows for the plan's day (the same functions
+    as /api/routes and /api/routes/windows, so two queries per leg)."""
+    return [
+        {
+            "number": number,
+            "from": start.zone,
+            "to": end.zone,
+            "leave": start.leave_label,
+            "stats": route_stats(
+                start.zone_id, end.zone_id, plan.day_of_week, start.leave_time.hour
+            ),
+            "windows": route_windows(start.zone_id, end.zone_id, plan.day_of_week),
+        }
+        for number, (start, end) in enumerate(zip(stops, stops[1:]), start=1)
+    ]

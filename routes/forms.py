@@ -3,7 +3,8 @@ from django.db import IntegrityError, transaction
 
 from zones.models import Zone
 
-from .models import DAY_CHOICES, SavedRoute, TripPlan
+from .day_plans import create_day_plan
+from .models import DAY_CHOICES, DayPlan, SavedRoute, TripPlan
 
 NAME_TAKEN = "You already have a saved route with this name."
 
@@ -105,4 +106,87 @@ class TripPlanForm(PlanTimeForm):
             ).exists():
                 raise
             self.add_error("name", PLAN_NAME_TAKEN)
+            return None
+
+
+DAY_PLAN_NAME_TAKEN = "You already have a day plan with this name."
+TOO_FEW_STOPS = (
+    f"A day plan needs at least {DayPlan.MIN_STOPS} stops "
+    f"({DayPlan.MIN_STOPS - 1} trips)."
+)
+TOO_MANY_STOPS = f"A day plan can have at most {DayPlan.MAX_STOPS} stops."
+TIME_PER_STOP = "Give a leave time for every stop except the last."
+
+
+class DayPlanForm(forms.Form):
+    """A day plan built on the map (US20 #49). `stops` is a comma-separated
+    list of zone ids in order; `leave_times` has one HH:MM per stop except
+    the last, in 15-minute steps."""
+
+    name = forms.CharField(max_length=50)
+    day_of_week = forms.TypedChoiceField(choices=DAY_CHOICES, coerce=int, label="Day")
+    stops = forms.CharField()
+    leave_times = forms.CharField()
+
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def clean_name(self):
+        name = self.cleaned_data["name"]
+        if DayPlan.objects.filter(user=self.user, name=name).exists():
+            raise forms.ValidationError(DAY_PLAN_NAME_TAKEN)
+        return name
+
+    def clean_stops(self):
+        try:
+            ids = [int(value) for value in self.cleaned_data["stops"].split(",")]
+        except ValueError:
+            raise forms.ValidationError("Stops must be zone ids.")
+        if len(ids) < DayPlan.MIN_STOPS:
+            raise forms.ValidationError(TOO_FEW_STOPS)
+        if len(ids) > DayPlan.MAX_STOPS:
+            raise forms.ValidationError(TOO_MANY_STOPS)
+        zones = Zone.objects.in_bulk(ids)
+        unknown = sorted(set(ids) - set(zones))
+        if unknown:
+            raise forms.ValidationError(
+                f"Unknown zone: {', '.join(str(i) for i in unknown)}."
+            )
+        return [zones[zone_id] for zone_id in ids]
+
+    def clean_leave_times(self):
+        times = []
+        for value in self.cleaned_data["leave_times"].split(","):
+            try:
+                time = forms.TimeField(input_formats=["%H:%M"]).clean(value.strip())
+            except forms.ValidationError:
+                raise forms.ValidationError("Leave times must be HH:MM.")
+            if time.minute % 15:
+                raise forms.ValidationError(QUARTER_HOUR)
+            times.append(time)
+        return times
+
+    def clean(self):
+        cleaned = super().clean()
+        stops, times = cleaned.get("stops"), cleaned.get("leave_times")
+        if stops is not None and times is not None and len(times) != len(stops) - 1:
+            self.add_error("leave_times", TIME_PER_STOP)
+        return cleaned
+
+    def save(self):
+        data = self.cleaned_data
+        try:
+            return create_day_plan(
+                self.user,
+                data["name"],
+                data["day_of_week"],
+                data["stops"],
+                data["leave_times"],
+            )
+        except IntegrityError:
+            # A second request may have saved the same name after validation.
+            if not DayPlan.objects.filter(user=self.user, name=data["name"]).exists():
+                raise
+            self.add_error("name", DAY_PLAN_NAME_TAKEN)
             return None

@@ -149,3 +149,22 @@ test("an unknown zone shows an error and changes nothing", () => {
   assert.equal(ui.elements["pickup-zone"].textContent, "Midtown Center (Manhattan)");
   assert.deepEqual(ui.errors, ["This zone is unavailable."]);
 });
+
+// US20 #49: the day plan builder makes the last stop the next pickup.
+test("select-route with a null dropoff sets the pickup and clears the dropoff", () => {
+  const ui = setup();
+  ui.zones[161].listeners.click();
+  ui.zones[132].listeners.click();
+  ui.selectRoute(164, null);
+  assert.deepEqual({ ...ui.selections().at(-1).detail }, { pickup: 164, dropoff: null });
+  assert.equal(ui.elements["pickup-zone"].textContent, "Midtown South (Manhattan)");
+  assert.equal(ui.elements["dropoff-zone"].textContent, "Click another zone (optional)");
+  assert.deepEqual(ui.errors, []);
+});
+
+test("select-route with a null dropoff still rejects an unknown pickup", () => {
+  const ui = setup();
+  ui.selectRoute(999, null);
+  assert.equal(ui.selections().length, 0);
+  assert.deepEqual(ui.errors, ["This zone is unavailable."]);
+});

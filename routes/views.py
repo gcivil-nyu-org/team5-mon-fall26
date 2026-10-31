@@ -4,17 +4,33 @@ from datetime import datetime
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
+from django.db.models import Prefetch
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
 from zones.stats import unknown_zone_ids
 from zones.views import MAX_ZONE_ID, NYC_TZ, _parse_int, map_view
 
-from .forms import NAME_TAKEN, PlanTimeForm, RouteNameForm, SavedRouteForm, TripPlanForm
-from .models import SavedRoute, TripPlan
+from .forms import (
+    NAME_TAKEN,
+    DayPlanForm,
+    PlanTimeForm,
+    RouteNameForm,
+    SavedRouteForm,
+    TripPlanForm,
+)
+from .models import DayPlan, DayPlanStop, SavedRoute, TripPlan
 from .calendar import build_ics
-from .planning import cheaper_nearby, cheapest_in_window, leave_by, plan_calendar
+from .day_plans import out_of_order_warning
+from .planning import (
+    cheaper_nearby,
+    cheapest_in_window,
+    day_plan_legs,
+    leave_by,
+    plan_calendar,
+)
 
 
 @require_GET
@@ -291,3 +307,57 @@ def delete_plan(request, plan_id):
         messages.success(request, "Plan deleted.")
         return redirect("routes:my_plans")
     return render(request, "routes/delete_plan.html", {"plan": plan})
+
+
+# ---- US20 #49: multi-stop day plans ----
+
+
+@require_POST
+def save_day_plan(request):
+    """Save a day plan built on the map; the owner never comes from the client."""
+    if not request.user.is_authenticated:
+        return JsonResponse({"message": "Sign in to save day plans"}, status=401)
+    form = DayPlanForm(request.user, request.POST)
+    if form.is_valid():
+        plan = form.save()
+        if plan is not None:
+            return JsonResponse(
+                {
+                    "id": plan.pk,
+                    "name": plan.name,
+                    "url": reverse("routes:open_day_plan", args=[plan.pk]),
+                },
+                status=201,
+            )
+    return JsonResponse({"errors": form.errors}, status=400)
+
+
+def _own_day_plan(request, plan_id):
+    return get_object_or_404(DayPlan, pk=plan_id, user=request.user)
+
+
+@login_required
+@require_GET
+def my_day_plans(request):
+    plans = DayPlan.objects.filter(user=request.user).prefetch_related(
+        Prefetch("stops", queryset=DayPlanStop.objects.select_related("zone"))
+    )
+    return render(request, "routes/my_day_plans.html", {"plans": plans})
+
+
+@login_required
+@require_GET
+def open_day_plan(request, plan_id):
+    """The plan's legs with their statistics, recalculated now."""
+    plan = _own_day_plan(request, plan_id)
+    stops = list(plan.stops.select_related("zone"))
+    return render(
+        request,
+        "routes/day_plan_detail.html",
+        {
+            "plan": plan,
+            "stops": stops,
+            "legs": day_plan_legs(plan, stops),
+            "warning": out_of_order_warning(stops),
+        },
+    )

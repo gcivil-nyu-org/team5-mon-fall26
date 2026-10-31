@@ -370,6 +370,67 @@ header h1 {
   cursor: pointer;
 }
 
+/* Day plan builder (US20) */
+.day-plan-panel {
+  margin-top: 0.75rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid #ddd;
+}
+
+#day-plan-panel[hidden],
+#day-plan-add[hidden],
+#day-plan-form[hidden],
+#day-plan-open[hidden],
+#day-plan-signin[hidden] {
+  display: none;
+}
+
+.day-plan-panel h2 {
+  margin: 0 0 0.45rem;
+  font-size: 1rem;
+}
+
+#day-plan-add,
+#day-plan-form button {
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+}
+
+.day-plan-stops {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.5rem 0;
+  padding-left: 1.3rem;
+}
+
+.day-plan-stops:empty {
+  display: none;
+}
+
+.day-plan-stops li span {
+  display: inline-block;
+  min-width: 8rem;
+  margin-right: 0.35rem;
+}
+
+.day-plan-stops input[type="time"] {
+  margin-right: 0.35rem;
+  padding: 0.2rem;
+}
+
+#day-plan-form {
+  display: grid;
+  gap: 0.35rem;
+}
+
+#day-plan-form input,
+#day-plan-form select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.35rem;
+  font: inherit;
+}
+
 /* Trip summary panel (US8) */
 .summary-toggle {
   display: flex;

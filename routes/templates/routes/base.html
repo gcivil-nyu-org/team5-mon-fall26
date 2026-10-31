@@ -10,6 +10,11 @@
 <body>
   <header>
     <a class="home-link" href="{% url 'zones:map' %}">TaxiScope NYC</a>
+    <nav class="routes-nav" aria-label="Saved items">
+      <a href="{% url 'routes:my_routes' %}">Routes</a>
+      <a href="{% url 'routes:my_plans' %}">Plans</a>
+      <a href="{% url 'routes:my_day_plans' %}">Day plans</a>
+    </nav>
   </header>
   <main class="routes-page">
     {% if messages %}

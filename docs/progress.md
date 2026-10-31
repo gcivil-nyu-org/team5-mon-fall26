@@ -15,6 +15,19 @@ Entry format:
 
 ## Log
 
+### 2026-10-31 — us20-day-plans, Pass A (US20, #49)
+**What changed:**
+- Models `routes.DayPlan` and `routes.DayPlanStop`, migration `routes/migrations/0003_day_plan.py`. `routes/day_plans.py`: `create_day_plan()`, `out_of_order_warning()`.
+- `routes/forms.py` `DayPlanForm`; `POST /day-plans/save/` (`save_day_plan`); `GET /day-plans/` (`my_day_plans`) and `GET /day-plans/<id>/` (`open_day_plan`, read-only). `routes/planning.py` `day_plan_legs()`.
+- Map: Day plan panel (`zones/templates/zones/map.html`, `zones/static/zones/css/map.css`, new `routes/static/routes/js/day-plan.js`). `filters.js` `selectRoute` accepts a null dropoff. "Day plans" link in the map header and a new nav on the routes pages (`routes/templates/routes/base.html`).
+- `docs/decisions.md` (US20 section, Pass A bullets) and High Level Design §18 (first part).
+
+**Decisions made (also in `docs/decisions.md`):** chain of 3–10 stops, leave time on every stop but the last; unique `(day_plan, position)`; two queries per leg, not batched; builder defaults (map hour, then +1 hour, at most 23:45); calendar export of a day plan is US21 part 2, after US20.
+
+**Tests:** `routes/tests/test_day_plans.py` (44), `zones/tests/day_plan.test.js` (16), `zones/tests/select_route.test.js` (+2). Full Django suite (485, 4 skipped) and all 66 Node tests pass; black, flake8 and `makemigrations --check` pass.
+
+**Next step:** Pass B: change day and leave times, add/remove/move/reorder stops (SortableJS 1.15.6, download approved), delete with confirmation.
+
 ### 2026-10-31 — us21-calendar-export (US21, #50)
 **What changed:**
 - New `routes/calendar.py` (standard library only): `CalendarEvent`, `next_occurrence()`, `escape_text()`, `fold_line()`, `build_ics()`, with a fixed `America/New_York` `VTIMEZONE`.
