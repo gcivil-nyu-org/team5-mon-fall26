@@ -14,6 +14,7 @@
     {# US10 #39, US11 #40: account links; the map never needs an account (US9). #}
     <nav class="account-nav" aria-label="Account">
       <a href="{% url 'routes:my_routes' %}">Routes</a>
+      <a href="{% url 'routes:my_plans' %}">Plans</a>
       {% if user.is_authenticated %}
         <a href="{% url 'accounts:account' %}" class="account-email" title="My account">{{ user.email }}</a>
         <form method="post" action="{% url 'accounts:signout' %}" class="signout-form">
@@ -85,7 +86,13 @@
       <p id="windows-status" class="summary-status" role="status" aria-live="polite"></p>
       <p class="summary-disclaimer">Based on historical taxi data; actual fares and travel times may vary.</p>
       <section id="leave-by-panel" class="leave-by-panel" hidden aria-labelledby="leave-by-title">
-        <h2 id="leave-by-title">Arrive by</h2>
+        <h2 id="leave-by-title">Leave by</h2>
+        {# US16 #45: two ways to plan the departure. #}
+        <div class="plan-modes" role="radiogroup" aria-label="How to plan">
+          <label><input type="radio" name="plan-mode" value="arrive" checked> Arrive by</label>
+          <label><input type="radio" name="plan-mode" value="cheapest"> Cheapest in the next 3 hours</label>
+        </div>
+        <div id="arrive-by-mode">
         <form id="leave-by-form">
           <label for="leave-by-day">Day</label>
           <select id="leave-by-day" name="day" required>
@@ -107,6 +114,54 @@
           <div><dt>Typical journey time</dt><dd id="leave-by-duration"></dd></div>
           <div><dt>Typical fare before tip</dt><dd id="leave-by-fare"></dd></div>
         </dl>
+        </div>
+        <div id="cheapest-mode" hidden>
+          <form id="cheapest-form">
+            <label for="cheapest-day">Day</label>
+            <select id="cheapest-day" name="day" required>
+              <option value="0">Monday</option>
+              <option value="1">Tuesday</option>
+              <option value="2">Wednesday</option>
+              <option value="3">Thursday</option>
+              <option value="4">Friday</option>
+              <option value="5">Saturday</option>
+              <option value="6">Sunday</option>
+            </select>
+            <label for="cheapest-start">Start time</label>
+            <input id="cheapest-start" name="start" type="time" step="900" required>
+            <div class="plan-buttons">
+              <button type="button" id="cheapest-now">Now</button>
+              <button type="submit">Find the cheapest hour</button>
+            </div>
+          </form>
+          <p id="cheapest-status" class="summary-status" role="status" aria-live="polite"></p>
+          <div id="cheapest-result" hidden>
+            <table class="cheapest-hours">
+              <thead><tr><th scope="col">Hour</th><th scope="col">Typical fare before tip</th></tr></thead>
+              <tbody id="cheapest-hours"></tbody>
+            </table>
+            <dl id="cheapest-best" class="summary-values" hidden>
+              <div><dt>Leave at</dt><dd id="cheapest-leave"></dd></div>
+              <div><dt>Typical journey time</dt><dd id="cheapest-duration"></dd></div>
+              <div><dt>Expected arrival</dt><dd id="cheapest-arrive"></dd></div>
+            </dl>
+          </div>
+        </div>
+        {# US17 #46: save the plan behind the result shown above. #}
+        <div id="save-plan-panel" hidden>
+          {% if user.is_authenticated %}
+            <form id="save-plan-form" method="post" action="{% url 'routes:save_plan' %}">
+              {% csrf_token %}
+              <label for="plan-name">Plan name</label>
+              <input id="plan-name" name="name" type="text" maxlength="50" required
+                     placeholder="Friday night home" aria-describedby="save-plan-status">
+              <button id="save-plan-button" type="submit">Save this plan</button>
+            </form>
+          {% else %}
+            <a id="save-plan-signin" href="{% url 'accounts:signin' %}?next={% url 'zones:map' %}">Sign in to save this plan</a>
+          {% endif %}
+          <p id="save-plan-status" class="summary-status" role="status" aria-live="polite"></p>
+        </div>
         <p class="summary-disclaimer">Estimate from past trips (March to May 2026), not a guarantee.</p>
       </section>
     </section>
@@ -135,6 +190,8 @@
   <script src="{% static 'zones/js/trip-summary.js' %}"></script>
   <script src="{% static 'routes/js/save-route.js' %}"></script>
   <script src="{% static 'routes/js/leave-by.js' %}"></script>
+  <script src="{% static 'routes/js/cheapest.js' %}"></script>
+  <script src="{% static 'routes/js/save-plan.js' %}"></script>
   <script src="{% static 'zones/js/fare.js' %}"></script>
   <script src="{% static 'zones/js/windows.js' %}"></script>
 </body>

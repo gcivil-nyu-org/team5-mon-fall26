@@ -10,9 +10,9 @@ from django.views.decorators.http import require_GET, require_POST, require_http
 from zones.stats import unknown_zone_ids
 from zones.views import MAX_ZONE_ID, _parse_int, map_view
 
-from .forms import NAME_TAKEN, RouteNameForm, SavedRouteForm
-from .models import SavedRoute
-from .planning import leave_by
+from .forms import NAME_TAKEN, PlanTimeForm, RouteNameForm, SavedRouteForm, TripPlanForm
+from .models import SavedRoute, TripPlan
+from .planning import cheapest_in_window, leave_by, plan_result
 
 
 @require_GET
@@ -45,6 +45,45 @@ def leave_by_api(request):
             "day": day,
             "arrive": arrive,
             **leave_by(pickup, dropoff, day, int(match[1]), int(match[2])),
+        }
+    )
+
+
+@require_GET
+def cheapest_api(request):
+    """GET /api/routes/cheapest?from=&to=&day=&start=HH:MM (US16 #45).
+
+    Same zone and day validation as /api/routes/leave-by. `start` is any
+    HH:MM, so "Now" can send the exact current NYC time; the map's custom
+    start time picker moves in 15-minute steps.
+    """
+    pickup = _parse_int(request.GET.get("from"), 1, MAX_ZONE_ID)
+    dropoff = _parse_int(request.GET.get("to"), 1, MAX_ZONE_ID)
+    day = _parse_int(request.GET.get("day"), 0, 6)
+    start = request.GET.get("start", "")
+    match = re.fullmatch(r"([01]\d|2[0-3]):([0-5]\d)", start)
+    if (
+        pickup is None
+        or dropoff is None
+        or day is None
+        or match is None
+        or unknown_zone_ids(pickup, dropoff)
+    ):
+        return JsonResponse(
+            {
+                "error": "from and to must be known zone ids; day must be 0-6 "
+                "(Monday=0); start must be HH:MM"
+            },
+            status=400,
+        )
+
+    return JsonResponse(
+        {
+            "from": pickup,
+            "to": dropoff,
+            "day": day,
+            "start": start,
+            **cheapest_in_window(pickup, dropoff, day, int(match[1]), int(match[2])),
         }
     )
 
@@ -116,3 +155,75 @@ def delete_saved_route(request, route_id):
         messages.success(request, "Route deleted.")
         return redirect("routes:my_routes")
     return render(request, "routes/delete_route.html", {"route": route})
+
+
+# ---- US17 #46: saved "Leave by" plans ----
+
+
+@require_POST
+def save_plan(request):
+    """Save a plan for the current account; the owner never comes from the client."""
+    if not request.user.is_authenticated:
+        return JsonResponse({"message": "Sign in to save plans"}, status=401)
+    form = TripPlanForm(request.user, request.POST)
+    if form.is_valid():
+        plan = form.save()
+        if plan is not None:
+            return JsonResponse({"id": plan.pk, "name": plan.name}, status=201)
+    return JsonResponse({"errors": form.errors}, status=400)
+
+
+def _own_plan(request, plan_id):
+    return get_object_or_404(
+        TripPlan.objects.select_related("pickup_zone", "dropoff_zone"),
+        pk=plan_id,
+        user=request.user,
+    )
+
+
+@login_required
+@require_GET
+def my_plans(request):
+    plans = TripPlan.objects.filter(user=request.user).select_related(
+        "pickup_zone", "dropoff_zone"
+    )
+    return render(request, "routes/my_plans.html", {"plans": plans})
+
+
+@login_required
+@require_GET
+def open_plan(request, plan_id):
+    """Show the plan with its result recalculated now (nothing stale is stored)."""
+    plan = _own_plan(request, plan_id)
+    return render(
+        request, "routes/plan_detail.html", {"plan": plan, "result": plan_result(plan)}
+    )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def edit_plan(request, plan_id):
+    plan = _own_plan(request, plan_id)
+    form = PlanTimeForm(
+        request.POST if request.method == "POST" else None,
+        mode=plan.mode,
+        initial={"day_of_week": plan.day_of_week, "time": plan.time_label},
+    )
+    if request.method == "POST" and form.is_valid():
+        plan.day_of_week = form.cleaned_data["day_of_week"]
+        plan.time = form.cleaned_data["time"]
+        plan.save(update_fields=["day_of_week", "time"])
+        messages.success(request, "Plan updated.")
+        return redirect("routes:open_plan", plan_id=plan.pk)
+    return render(request, "routes/edit_plan.html", {"plan": plan, "form": form})
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def delete_plan(request, plan_id):
+    plan = _own_plan(request, plan_id)
+    if request.method == "POST":
+        plan.delete()
+        messages.success(request, "Plan deleted.")
+        return redirect("routes:my_plans")
+    return render(request, "routes/delete_plan.html", {"plan": plan})

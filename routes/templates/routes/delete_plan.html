@@ -1,0 +1,13 @@
+{% extends "routes/base.html" %}
+
+{% block title %}Delete plan{% endblock %}
+
+{% block content %}
+  <h1>Delete plan?</h1>
+  <p class="warning">Delete <strong>{{ plan.name }}</strong> ({{ plan.pickup_zone.name }} → {{ plan.dropoff_zone.name }}) from My plans?</p>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="danger-button">Delete plan</button>
+  </form>
+  <p><a href="{% url 'routes:open_plan' plan.pk %}">Cancel</a></p>
+{% endblock %}

@@ -16,9 +16,15 @@
   let dropoff = null;
   let sequence = 0;
 
+  // US17: tell save-plan.js which plan the shown result belongs to.
+  function announce(name, detail) {
+    document.dispatchEvent(new CustomEvent(name, { detail }));
+  }
+
   function clearResult() {
     result.hidden = true;
     status.textContent = "";
+    announce("taxiscope:plan-cleared", { mode: "arrive_by" });
   }
 
   document.addEventListener("taxiscope:map-ready", (event) => {
@@ -60,6 +66,9 @@
       })
       .then((data) => {
         if (request !== sequence) return;
+        announce("taxiscope:plan-result", {
+          mode: "arrive_by", day: Number(params.get("day")), time: params.get("arrive"),
+        });
         if (!data.enough_data) {
           status.textContent = "Not enough data";
           return;

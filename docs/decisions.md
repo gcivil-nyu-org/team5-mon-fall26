@@ -196,3 +196,21 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - Start with the arrival hour's average duration. Subtract it to select the estimated departure day and hour, then subtract that hour's average duration once more. Round the result down to the previous 15-minute boundary; day arithmetic wraps across midnight and Sunday/Monday.
 - The response provides the leave day/time, typical journey duration and average fare for the departure hour. If either required hour has fewer than MIN_TRIP_COUNT trips, it returns enough_data false and null estimates.
 - An Arrive by form appears under the trip summary when both zones are selected. It displays the result or Not enough data and labels the result an estimate from March to May 2026 trips, not a guarantee.
+
+## Our choices (cheapest in the next 3 hours, US16 #45, 2026-10-30)
+- **New endpoint:** public `GET /api/routes/cheapest?from=&to=&day=&start=HH:MM`. `from` and `to` must be known zone ids and `day` 0-6 (Monday=0), the same checks as `/api/routes/leave-by`; invalid requests return 400. It reads `route_hour_stats` through the shared `route_stats` query.
+- **Start time:** `start` accepts any `HH:MM`, not only quarter hours, so "Now" can use the exact current New York time. The custom start time picker moves in 15-minute steps. ("Arrive by" still requires quarter hours.)
+- **Now:** the browser computes the current day and time with the `America/New_York` time zone, so it is New York time wherever the rider is.
+- **Window:** the start hour and the next 2 hours. Past midnight it continues into the next day; Sunday 23:00 continues into Monday.
+- **Rule:** only hours with at least `MIN_TRIP_COUNT` trips are compared. The lowest average fare wins; on a tie, the earlier hour wins.
+- **Suggestion:** leave at the start time if the first hour is cheapest, otherwise at the start of the cheapest hour. Expected arrival = departure + that hour's average duration, rounded to the minute, with day wrap.
+- **No data:** sparse hours show "Not enough data"; if none of the 3 qualifies, the response has `enough_data` false and the page says so.
+
+## Our choices (save and manage "Leave by" plans, US17 #46, 2026-10-30)
+- **Model:** `routes.TripPlan` (table `routes_tripplan`): user, name, pickup zone, dropoff zone, mode (`arrive_by` or `cheapest`), day of week (Monday=0) and time (arrival time or start time), plus `created_at`. Every link uses `on_delete=CASCADE`, so deleting an account or a zone deletes its plans (US12, `accounts.E001`).
+- **Names:** required, at most 50 characters, unique per user (database constraint), the same rules as saved routes. Different users may reuse a name.
+- **Only inputs are stored, never results.** Opening a plan recalculates it from `route_hour_stats` with the same functions as the two APIs, so a new import changes the answer and nothing stale is stored.
+- **Times:** "Arrive by" plans need a quarter-hour time, like `/api/routes/leave-by`. "Cheapest" plans keep any minute, because a plan made with "Now" is saved with the exact time it was made.
+- **Endpoint:** CSRF-protected `POST /plans/save/`, signed-in users only (401 for guests, 400 with field errors, 201 with `id` and `name`). The owner always comes from the session.
+- **Pages:** `/plans/` (My plans), `/plans/<id>/` (open, with the result recalculated), `/plans/<id>/edit/` (day and time), `/plans/<id>/delete/` (confirm, then delete). All need sign-in; another user's plan gives 404. The map header links to it as "Plans".
+- **Map events:** `leave-by.js` and `cheapest.js` send `taxiscope:plan-result` (mode, day, time) when they show a result and `taxiscope:plan-cleared` when it goes away; `save-plan.js` uses them to show "Save this plan" only for the result on screen.

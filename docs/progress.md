@@ -15,6 +15,32 @@ Entry format:
 
 ## Log
 
+### 2026-10-30 — us17-trip-plans (US17, #46)
+**What changed:**
+- `routes.TripPlan` model and migration `routes/migrations/0002_trip_plan.py` (user, name, pickup, dropoff, mode, day, time; CASCADE links; unique name per user).
+- `POST /plans/save/` and the map's "Save this plan" form under both Leave by results (`routes/static/routes/js/save-plan.js`); guests get a sign-in link. `leave-by.js` and `cheapest.js` now send `taxiscope:plan-result` / `taxiscope:plan-cleared`.
+- Pages: My plans (`/plans/`), open (`/plans/<id>/`, result recalculated with `routes.planning.plan_result`), edit day or time, delete. Header link "Plans".
+- Docs: `docs/decisions.md` and the High Level Design (section 15).
+
+**Decisions made:** see "save and manage Leave by plans" in `decisions.md` (store inputs only, quarter-hour rule only for Arrive by).
+
+**Tests:** `routes/tests/test_trip_plans.py` (save, validation, ownership and 404s, recalculation, edit, delete, account deletion) and `zones/tests/save_plan.test.js`; `leave_by.test.js` updated for the new events. Full suite passes; black and flake8 clean.
+
+**Next step:** US18 (adjacent zones) is independent.
+
+### 2026-10-30 — us16-cheapest (US16, #45)
+**What changed:**
+- `routes/planning.py`: `cheapest_in_window()` compares the start hour and the next 2 hours (crossing midnight and Sunday→Monday), skips hours under `MIN_TRIP_COUNT`, picks the lowest average fare (earlier hour on a tie), and works out when to leave and the expected arrival.
+- New public endpoint `GET /api/routes/cheapest?from=&to=&day=&start=HH:MM` (`routes/views.py`, `routes/urls.py`).
+- Map: the Leave by panel now has two options, "Arrive by" (US15) and "Cheapest in the next 3 hours", with a Now button (New York time) or a custom day and start time in 15-minute steps. It lists the 3 hours with typical fares, highlights the cheapest and shows its journey time and expected arrival (`zones/templates/zones/map.html`, `routes/static/routes/js/cheapest.js`, `zones/static/zones/css/map.css`).
+- Docs: `docs/decisions.md` and the High Level Design (section 14).
+
+**Decisions made:** see "cheapest in the next 3 hours" in `decisions.md` (any-minute `start` for Now, tie rule, midnight wrap).
+
+**Tests:** `routes/tests/test_cheapest.py` (rule, midnight and week wrap, sparse hours, validation, page) and `zones/tests/cheapest.test.js`. Full suite passes; black and flake8 clean.
+
+**Next step:** US17 saves these plans; `cheapest.js` already sends a `taxiscope:plan-result` event for it.
+
 ### 2026-10-27 — setup/ci (Sprint 6 CI setup, not a story)
 **What changed:**
 - `requirements-dev.txt` (black, flake8, coverage, coveralls pinned on top of `requirements.txt`), `.flake8` (max-line-length 88, `E203` ignored), `.coveragerc` (measures the project's own code; omits venvs, migrations, tests, `manage.py`, `wsgi.py`, `asgi.py`, `scripts/`).
