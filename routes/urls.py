@@ -24,4 +24,9 @@ urlpatterns = [
         views.delete_saved_route,
         name="delete_saved_route",
     ),
+    path("plans/save/", views.save_plan, name="save_plan"),
+    path("plans/", views.my_plans, name="my_plans"),
+    path("plans/<int:plan_id>/", views.open_plan, name="open_plan"),
+    path("plans/<int:plan_id>/edit/", views.edit_plan, name="edit_plan"),
+    path("plans/<int:plan_id>/delete/", views.delete_plan, name="delete_plan"),
 ]

@@ -113,3 +113,39 @@ def cheapest_in_window(pickup, dropoff, day, start_hour, start_minute):
         "avg_duration_min": hours[best]["avg_duration_min"],
         "fare_avg": hours[best]["fare_avg"],
     }
+
+
+DAY_NAMES = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+]
+
+
+def plan_result(plan):
+    """US17: recalculate a saved plan's result from the current statistics.
+
+    Nothing about the result is stored, so it always reflects the latest
+    import. Adds display labels for the plan pages.
+    """
+    pickup, dropoff = plan.pickup_zone_id, plan.dropoff_zone_id
+    hour, minute = plan.time.hour, plan.time.minute
+    if plan.mode == plan.ARRIVE_BY:
+        result = leave_by(pickup, dropoff, plan.day_of_week, hour, minute)
+    else:
+        result = cheapest_in_window(pickup, dropoff, plan.day_of_week, hour, minute)
+        for slot in result["hours"]:
+            clock = f"{slot['hour']:02d}"
+            slot["label"] = f"{DAY_NAMES[slot['day']][:3]} {clock}:00–{clock}:59"
+    result["mode"] = plan.mode
+    if result["enough_data"]:
+        result["leave_label"] = f"{DAY_NAMES[result['leave_day']]} {result['leave']}"
+        if result.get("arrive") is not None:
+            result["arrive_label"] = (
+                f"{DAY_NAMES[result['arrive_day']]} {result['arrive']}"
+            )
+    return result

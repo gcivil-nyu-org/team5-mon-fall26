@@ -22,13 +22,19 @@ function setup(fetch) {
     checkValidity() { return this.valid !== false; },
   }]));
   const listeners = {};
+  const events = [];
   const document = {
     getElementById(id) { return elements[id]; },
     addEventListener(name, callback) { (listeners[name] ??= []).push(callback); },
+    dispatchEvent(event) { events.push(event); },
   };
-  vm.runInNewContext(source, { document, fetch, URLSearchParams, Number, String, Promise, Error });
+  class CustomEvent { constructor(type, init) { this.type = type; this.detail = init.detail; } }
+  vm.runInNewContext(source, {
+    document, fetch, URLSearchParams, Number, String, Promise, Error, CustomEvent,
+  });
   return {
     elements,
+    events,
     emit(name, detail) { for (const callback of listeners[name] || []) callback({ detail }); },
     submit() { elements["leave-by-form"].listeners.submit({ preventDefault() {} }); },
   };
@@ -110,4 +116,23 @@ test("invalid form and failed request never show an estimate", async () => {
   await settle();
   assert.equal(ui.elements["leave-by-status"].textContent, "Could not load leave-by estimate");
   assert.equal(ui.elements["leave-by-result"].hidden, true);
+});
+
+// US17 #46: a shown result tells save-plan.js which plan it belongs to.
+test("announces the plan behind a result and clears it on change", async () => {
+  const ui = setup(() => response({
+    enough_data: true, leave_day: 0, leave: "08:30", avg_duration_min: 35, fare_avg: "12.34",
+  }));
+  ui.emit("taxiscope:zones-selected", { pickup: 1, dropoff: 2 });
+  ui.elements["leave-by-panel"].hidden = false;
+  ui.elements["leave-by-day"].value = "0";
+  ui.elements["leave-by-arrive"].value = "09:15";
+  ui.submit();
+  await settle();
+  const result = ui.events.find(event => event.type === "taxiscope:plan-result");
+  assert.equal(result.detail.mode, "arrive_by");
+  assert.equal(result.detail.day, 0);
+  assert.equal(result.detail.time, "09:15");
+  ui.elements["leave-by-arrive"].listeners.input();
+  assert.equal(ui.events.at(-1).type, "taxiscope:plan-cleared");
 });

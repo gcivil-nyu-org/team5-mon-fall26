@@ -123,3 +123,59 @@ button.danger-button:hover {
   text-align: center;
   font-size: 14px;
 }
+
+/* Saved plans (US17) */
+.plan-inputs,
+.plan-note,
+.plan-empty {
+  color: #4c5565;
+}
+
+.plan-hours {
+  width: 100%;
+  margin: 0.8rem 0;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-hours th,
+.plan-hours td {
+  padding: 0.35rem 0.4rem;
+  border-bottom: 1px solid #e3e6eb;
+  text-align: left;
+}
+
+.plan-hours th {
+  color: #4c5565;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.plan-hours tr.is-cheapest td {
+  background: #e8f5ee;
+  font-weight: 600;
+}
+
+.plan-result {
+  display: grid;
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+
+.plan-result dt {
+  color: #4c5565;
+  font-size: 13px;
+}
+
+.plan-result dd {
+  margin: 0.1rem 0 0;
+  font-weight: 600;
+}
+
+.field select,
+.field input[type="time"] {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.45rem;
+  font: inherit;
+}
