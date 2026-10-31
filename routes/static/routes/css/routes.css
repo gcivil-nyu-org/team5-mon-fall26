@@ -179,3 +179,21 @@ button.danger-button:hover {
   padding: 0.45rem;
   font: inherit;
 }
+
+/* Export a plan to a calendar (US21) */
+.calendar-form {
+  display: grid;
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+
+.calendar-form .warning {
+  margin: 0;
+}
+
+.calendar-repeat {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}

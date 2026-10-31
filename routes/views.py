@@ -4,7 +4,7 @@ from datetime import datetime
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
@@ -13,7 +13,8 @@ from zones.views import MAX_ZONE_ID, NYC_TZ, _parse_int, map_view
 
 from .forms import NAME_TAKEN, PlanTimeForm, RouteNameForm, SavedRouteForm, TripPlanForm
 from .models import SavedRoute, TripPlan
-from .planning import cheaper_nearby, cheapest_in_window, leave_by, plan_result
+from .calendar import build_ics
+from .planning import cheaper_nearby, cheapest_in_window, leave_by, plan_calendar
 
 
 @require_GET
@@ -235,9 +236,32 @@ def my_plans(request):
 def open_plan(request, plan_id):
     """Show the plan with its result recalculated now (nothing stale is stored)."""
     plan = _own_plan(request, plan_id)
+    calendar = plan_calendar(plan, datetime.now(NYC_TZ))
     return render(
-        request, "routes/plan_detail.html", {"plan": plan, "result": plan_result(plan)}
+        request,
+        "routes/plan_detail.html",
+        {"plan": plan, "result": calendar["result"], "calendar": calendar},
     )
+
+
+@login_required
+@require_GET
+def plan_calendar_ics(request, plan_id):
+    """GET /plans/<id>/calendar.ics (US21 #50): the plan as a calendar event.
+
+    The same plan_calendar() as the plan page's button, so they agree. The
+    file names nobody: no email, username or user id, and the filename only
+    has the plan id.
+    """
+    plan = _own_plan(request, plan_id)
+    now = datetime.now(NYC_TZ)
+    weekly = request.GET.get("repeat") == "weekly"
+    event = plan_calendar(plan, now, weekly=weekly)["event"]
+    response = HttpResponse(
+        build_ics([event], now), content_type="text/calendar; charset=utf-8"
+    )
+    response["Content-Disposition"] = f'attachment; filename="plan-{plan.pk}.ics"'
+    return response
 
 
 @login_required
