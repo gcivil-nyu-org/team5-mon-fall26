@@ -429,19 +429,42 @@ class DayPlanPagesTests(DayPlanTestCase):
 
 
 class MapDayPlanTests(DayPlanTestCase):
-    def test_map_shows_day_plan_form_for_signed_in_user(self):
-        page = self.client.get(reverse("zones:map"))
-        self.assertContains(page, 'id="day-plan-form"')
-        self.assertContains(page, f'action="{reverse("routes:save_day_plan")}"')
-        self.assertContains(page, "Add to day plan")
-        self.assertContains(page, "routes/js/day-plan.js")
-        self.assertNotContains(page, "Sign in to plan a day")
+    def map_page(self):
+        return self.client.get(reverse("zones:map")).content.decode()
 
-    def test_guest_sees_sign_in_to_plan_a_day(self):
+    def assert_under_selection_rows(self, page, marker):
+        # Directly under the Pickup/Dropoff rows, above "Save this route"
+        # and the Trip summary.
+        self.assertLess(
+            page.index('id="dropoff-zone"'), page.index('id="day-plan-panel"')
+        )
+        self.assertLess(page.index('id="day-plan-panel"'), page.index(marker))
+        self.assertLess(page.index(marker), page.index('id="save-route-panel"'))
+        self.assertLess(
+            page.index('id="save-route-panel"'), page.index('id="summary-panel"')
+        )
+
+    def test_map_shows_day_plan_builder_for_signed_in_user(self):
+        page = self.map_page()
+        self.assertIn('id="day-plan-form"', page)
+        self.assertIn(f'action="{reverse("routes:save_day_plan")}"', page)
+        self.assertIn('aria-pressed="false" hidden>+ Add stop</button>', page)
+        self.assertIn('id="day-plan-day"', page)
+        self.assertIn("Save day plan", page)
+        self.assertIn("routes/js/day-plan.js", page)
+        self.assertNotIn("Sign in to plan a day", page)
+
+    def test_builder_sits_under_pickup_and_dropoff(self):
+        page = self.map_page()
+        self.assert_under_selection_rows(page, 'id="day-plan-form"')
+        self.assertEqual(page.count('id="day-plan-panel"'), 1)  # no old bottom panel
+
+    def test_guest_sees_sign_in_to_plan_a_day_in_the_same_place(self):
         self.client.logout()
-        page = self.client.get(reverse("zones:map"))
-        self.assertContains(page, "Sign in to plan a day")
-        self.assertNotContains(page, 'id="day-plan-form"')
+        page = self.map_page()
+        self.assertIn("Sign in to plan a day", page)
+        self.assertNotIn('id="day-plan-form"', page)
+        self.assert_under_selection_rows(page, 'id="day-plan-signin"')
 
     def test_header_links_to_day_plans(self):
         for url in (reverse("zones:map"), reverse("routes:my_plans")):

@@ -20,6 +20,8 @@ let currentBreaks = [];
 let requestSequence = 0;
 let hourRequestTimer = null;
 let sameZoneOutline = null;
+// US20: true while the day plan's "+ Add stop" waits for a map click.
+let pickingStop = false;
 const zoneLayers = new Map();
 
 const PICKUP_COLOR = "#0057b8";
@@ -146,6 +148,22 @@ function selectZone(zoneId) {
   );
 }
 
+// While a day plan stop is being picked, a map click adds that stop instead
+// of changing the selection; otherwise it selects zones as usual.
+function clickZone(zoneId) {
+  if (pickingStop) {
+    document.dispatchEvent(
+      new CustomEvent("taxiscope:stop-picked", { detail: { zone: zoneId } })
+    );
+    return;
+  }
+  selectZone(zoneId);
+}
+
+document.addEventListener("taxiscope:stop-picking", (event) => {
+  pickingStop = event.detail.active;
+});
+
 function clearPickup() {
   pickupZoneId = null;
   dropoffZoneId = null;
@@ -260,7 +278,7 @@ document.addEventListener("taxiscope:map-ready", (event) => {
   zonesLayer.eachLayer((zoneLayer) => {
     const zoneId = zoneLayer.feature.properties.zone_id;
     zoneLayers.set(zoneId, zoneLayer);
-    zoneLayer.on("click", () => selectZone(zoneId));
+    zoneLayer.on("click", () => clickZone(zoneId));
   });
   zonesLayer.options.style = styleZone;
   zonesLayer.setStyle(styleZone);
@@ -285,6 +303,19 @@ document.addEventListener("taxiscope:map-ready", (event) => {
 
   document.addEventListener("taxiscope:select-route", (event) => {
     selectRoute(event.detail.pickup, event.detail.dropoff, "This zone is unavailable.");
+  });
+
+  // US20: another panel (the day plan builder) moves the day or hour filter;
+  // the map and summary reload as if the rider had moved it.
+  document.addEventListener("taxiscope:set-time", (event) => {
+    const day = event.detail.day ?? Number(dayFilter.value);
+    const hour = event.detail.hour ?? Number(hourFilter.value);
+    if (day === Number(dayFilter.value) && hour === Number(hourFilter.value)) return;
+    dayFilter.value = day;
+    hourFilter.value = hour;
+    updateHourLabel();
+    window.clearTimeout(hourRequestTimer);
+    reloadZones();
   });
 
   dayFilter.addEventListener("change", () => {

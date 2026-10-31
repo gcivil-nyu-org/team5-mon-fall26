@@ -57,6 +57,40 @@
       <button type="button" id="same-zone-trip" class="same-zone-btn" hidden>Trip within this zone</button>
       <button id="clear-dropoff" class="clear-btn" hidden aria-label="Clear dropoff">&times;</button>
     </div>
+    {# US20 #49: build a multi-stop day plan, one "+ Add stop" and map click at a time. #}
+    <section id="day-plan-panel" class="day-plan-panel" hidden aria-label="Day plan">
+      {% if user.is_authenticated %}
+        <div class="day-plan-head">
+          <span class="day-plan-title">Day plan</span>
+          <button type="button" id="day-plan-add" class="day-plan-add" aria-pressed="false" hidden>+ Add stop</button>
+        </div>
+        <ol id="day-plan-stops" class="day-plan-stops"></ol>
+        <form id="day-plan-form" method="post" action="{% url 'routes:save_day_plan' %}" hidden>
+          {% csrf_token %}
+          <div class="day-plan-fields">
+            <select id="day-plan-day" name="day_of_week" aria-label="Day" required>
+              <option value="0">Monday</option>
+              <option value="1">Tuesday</option>
+              <option value="2">Wednesday</option>
+              <option value="3">Thursday</option>
+              <option value="4">Friday</option>
+              <option value="5">Saturday</option>
+              <option value="6">Sunday</option>
+            </select>
+            <input id="day-plan-name" name="name" type="text" maxlength="50" required
+                   placeholder="Day plan name" aria-label="Day plan name" aria-describedby="day-plan-status">
+          </div>
+          <div class="day-plan-buttons">
+            <button type="button" id="day-plan-clear">Clear</button>
+            <button type="submit" id="day-plan-save" disabled>Save day plan</button>
+          </div>
+        </form>
+        <p id="day-plan-status" class="summary-status" role="status" aria-live="polite"></p>
+        <a id="day-plan-open" href="{% url 'routes:my_day_plans' %}" hidden>Open day plan</a>
+      {% else %}
+        <a id="day-plan-signin" href="{% url 'accounts:signin' %}?next={% url 'zones:map' %}" hidden>Sign in to plan a day</a>
+      {% endif %}
+    </section>
     <div id="save-route-panel" hidden>
       {% if user.is_authenticated %}
         <form id="save-route-form" method="post" action="{% url 'routes:save_route' %}">
@@ -172,39 +206,6 @@
         </div>
         <p class="summary-disclaimer">Estimate from past trips (March to May 2026), not a guarantee.</p>
       </section>
-    </section>
-    {# US20 #49: build a multi-stop day plan from map clicks. #}
-    <section id="day-plan-panel" class="day-plan-panel" hidden aria-labelledby="day-plan-title">
-      <h2 id="day-plan-title">Day plan</h2>
-      {% if user.is_authenticated %}
-        <button type="button" id="day-plan-add" hidden>Add to day plan</button>
-        <ol id="day-plan-stops" class="day-plan-stops"></ol>
-        <form id="day-plan-form" method="post" action="{% url 'routes:save_day_plan' %}" hidden>
-          {% csrf_token %}
-          <label for="day-plan-day">Day</label>
-          <select id="day-plan-day" name="day_of_week" required>
-            <option value="0">Monday</option>
-            <option value="1">Tuesday</option>
-            <option value="2">Wednesday</option>
-            <option value="3">Thursday</option>
-            <option value="4">Friday</option>
-            <option value="5">Saturday</option>
-            <option value="6">Sunday</option>
-          </select>
-          <label for="day-plan-name">Day plan name</label>
-          <input id="day-plan-name" name="name" type="text" maxlength="50" required
-                 placeholder="Museum day" aria-describedby="day-plan-status">
-          <div class="plan-buttons">
-            <button type="button" id="day-plan-clear">Clear</button>
-            <button type="submit" id="day-plan-save" disabled>Save day plan</button>
-          </div>
-          <p class="summary-disclaimer">3 to 10 stops. Set when you leave each stop, in 15-minute steps.</p>
-        </form>
-        <p id="day-plan-status" class="summary-status" role="status" aria-live="polite"></p>
-        <a id="day-plan-open" href="{% url 'routes:my_day_plans' %}" hidden>Open day plan</a>
-      {% else %}
-        <a id="day-plan-signin" href="{% url 'accounts:signin' %}?next={% url 'zones:map' %}" hidden>Sign in to plan a day</a>
-      {% endif %}
     </section>
     <button id="clear-selection" class="clear-all-btn" hidden>Clear selection</button>
   </aside>
