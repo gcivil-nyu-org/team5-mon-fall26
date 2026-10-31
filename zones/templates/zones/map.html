@@ -85,6 +85,13 @@
       </dl>
       <p id="windows-status" class="summary-status" role="status" aria-live="polite"></p>
       <p class="summary-disclaimer">Based on historical taxi data; actual fares and travel times may vary.</p>
+      {# US19 #48: adjacent pickup zones where this trip is historically cheaper. #}
+      <section id="nearby-panel" class="nearby-panel" hidden aria-labelledby="nearby-title">
+        <h2 id="nearby-title">Cheaper pickup nearby</h2>
+        <p id="nearby-status" class="summary-status" role="status" aria-live="polite"></p>
+        <ul id="nearby-list" class="nearby-list"></ul>
+        <p class="summary-disclaimer">Based on past trips (March to May 2026), not guaranteed. Typical fare before tip from a neighbouring zone, same day and hour. Click a zone to make it the pickup.</p>
+      </section>
       <section id="leave-by-panel" class="leave-by-panel" hidden aria-labelledby="leave-by-title">
         <h2 id="leave-by-title">Leave by</h2>
         {# US16 #45: two ways to plan the departure. #}
@@ -194,5 +201,6 @@
   <script src="{% static 'routes/js/save-plan.js' %}"></script>
   <script src="{% static 'zones/js/fare.js' %}"></script>
   <script src="{% static 'zones/js/windows.js' %}"></script>
+  <script src="{% static 'routes/js/nearby.js' %}"></script>
 </body>
 </html>

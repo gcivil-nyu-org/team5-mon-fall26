@@ -30,9 +30,11 @@ function updateHourLabel() {
   hourValue.textContent = `${hour}:00–${hour}:59`;
 }
 
-function openSavedRoute(pickup, dropoff) {
+// Select a pickup and dropoff together: a saved route (US13) or a cheaper
+// nearby pickup (US19, via taxiscope:select-route).
+function selectRoute(pickup, dropoff, unavailableMessage) {
   if (!zoneLayers.has(pickup) || !zoneLayers.has(dropoff)) {
-    showError("This saved route's zones are unavailable.");
+    showError(unavailableMessage);
     return;
   }
   pickupZoneId = pickup;
@@ -273,11 +275,16 @@ document.addEventListener("taxiscope:map-ready", (event) => {
   sameZoneBtn.addEventListener("click", selectSameZone);
 
   if (document.body.dataset.savedPickup && document.body.dataset.savedDropoff) {
-    openSavedRoute(
+    selectRoute(
       Number(document.body.dataset.savedPickup),
-      Number(document.body.dataset.savedDropoff)
+      Number(document.body.dataset.savedDropoff),
+      "This saved route's zones are unavailable."
     );
   }
+
+  document.addEventListener("taxiscope:select-route", (event) => {
+    selectRoute(event.detail.pickup, event.detail.dropoff, "This zone is unavailable.");
+  });
 
   dayFilter.addEventListener("change", () => {
     window.clearTimeout(hourRequestTimer);

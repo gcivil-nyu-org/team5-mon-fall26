@@ -15,6 +15,18 @@ Entry format:
 
 ## Log
 
+### 2026-10-31 — us19-cheaper-nearby (US19, #48)
+**What changed:**
+- New public endpoint `GET /api/routes/nearby?from=&to=&day=&hour=` (`routes/views.py` `nearby_api`, `routes/urls.py`), backed by `cheaper_nearby()` in `routes/planning.py` and `load_zone_neighbors()` (cached) in `zones/stats.py`. No new table, no new dependency.
+- Map: "Cheaper pickup nearby" section in the trip summary (`zones/templates/zones/map.html`, `zones/static/zones/css/map.css`, new `routes/static/routes/js/nearby.js`). `filters.js`: `openSavedRoute` became `selectRoute(pickup, dropoff, unavailableMessage)` and also handles the new `taxiscope:select-route` event.
+- `docs/decisions.md` (US19 section, plus an Open item on a minimum saving) and High Level Design §16.
+
+**Decisions made (also in `docs/decisions.md`):** adjacent = shares a border (US18 file); any lower average fare counts, equal does not; both routes need `MIN_TRIP_COUNT`; destination never suggested; up to 3, biggest saving first, tie to the lower zone id; `neighbor_count` tells islands apart from "none cheaper"; same-zone trips show no suggestions.
+
+**Tests:** `routes/tests/test_nearby.py` (24), `zones/tests/nearby.test.js` (13), `zones/tests/select_route.test.js` (3). Full Django suite (394, 4 skipped) and all 48 Node tests pass. black and flake8 pass.
+
+**Next step:** ask the Product Owner about a minimum saving (Open in `decisions.md`). Check the section by hand on Integration once `develop` deploys.
+
 ### 2026-10-30 — us18-zone-neighbors (US18, #47)
 **What changed:**
 - `scripts/build_zone_neighbors.py` (shapely 2.1.2, not in `requirements.txt`) reads `zones/data/taxi_zones.geojson` and writes `zones/data/zone_neighbors.json`: 263 zones, 611 adjacent pairs. Zones with no neighbour are islands: 1, 46, 103, 104, 105, 199, 202.

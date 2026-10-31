@@ -463,6 +463,52 @@ header h1 {
   font-size: 12px;
 }
 
+/* Cheaper pickup nearby (US19) */
+.nearby-panel {
+  margin-top: 0.9rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid #ddd;
+}
+
+#nearby-panel[hidden] {
+  display: none;
+}
+
+.nearby-panel h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.nearby-list {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nearby-list:empty {
+  display: none;
+}
+
+.nearby-zone {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.45rem;
+  border: 1px solid #00804a;
+  border-radius: 4px;
+  background: #e8f5ee;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nearby-zone:hover {
+  background: #d3ecdf;
+}
+
 .leave-by-panel {
   margin-top: 0.9rem;
   padding-top: 0.7rem;

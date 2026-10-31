@@ -7,6 +7,7 @@ app_name = "routes"
 urlpatterns = [
     path("api/routes/leave-by", views.leave_by_api, name="leave_by_api"),
     path("api/routes/cheapest", views.cheapest_api, name="cheapest_api"),
+    path("api/routes/nearby", views.nearby_api, name="nearby_api"),
     path("saved-routes/save/", views.save_route, name="save_route"),
     path("saved-routes/", views.my_routes, name="my_routes"),
     path(
