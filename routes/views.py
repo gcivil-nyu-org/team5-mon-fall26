@@ -40,7 +40,7 @@ from .day_plans import (
 from .planning import (
     cheaper_nearby,
     cheapest_in_window,
-    day_plan_legs,
+    day_plan_calendar,
     leave_by,
     plan_calendar,
 )
@@ -362,13 +362,16 @@ def _render_day_plan(request, plan, status=200, error=None, add_form=None):
     """The day plan page: stops, legs with statistics, and the edit forms.
     A blocked or invalid change shows its message with status 400."""
     stops = list(plan.stops.select_related("zone"))
+    # The legs come from day_plan_calendar() so the button and the file agree.
+    calendar = day_plan_calendar(plan, stops, datetime.now(NYC_TZ))
     return render(
         request,
         "routes/day_plan_detail.html",
         {
             "plan": plan,
             "stops": stops,
-            "legs": day_plan_legs(plan, stops),
+            "legs": calendar["legs"],
+            "calendar": calendar,
             "warning": out_of_order_warning(stops),
             "error": error,
             "can_add": len(stops) < DayPlan.MAX_STOPS,
@@ -484,6 +487,26 @@ def reorder_day_plan(request, plan_id):
             status=400,
         )
     return JsonResponse({"ok": True})
+
+
+@login_required
+@require_GET
+def day_plan_calendar_ics(request, plan_id):
+    """GET /day-plans/<id>/calendar.ics (US21 #50 part 2): one event per leg.
+
+    The same day_plan_calendar() as the day plan page's button. The file
+    names nobody, and the filename only has the plan id.
+    """
+    plan = _own_day_plan(request, plan_id)
+    stops = list(plan.stops.select_related("zone"))
+    now = datetime.now(NYC_TZ)
+    weekly = request.GET.get("repeat") == "weekly"
+    events = day_plan_calendar(plan, stops, now, weekly=weekly)["events"]
+    response = HttpResponse(
+        build_ics(events, now), content_type="text/calendar; charset=utf-8"
+    )
+    response["Content-Disposition"] = f'attachment; filename="day-plan-{plan.pk}.ics"'
+    return response
 
 
 @login_required

@@ -15,6 +15,19 @@ Entry format:
 
 ## Log
 
+### 2026-10-31 — us21-day-plan-calendar (US21 #50, part 2)
+**What changed:**
+- `routes/planning.py` `day_plan_calendar(plan, stops, now, weekly=False)`: one `CalendarEvent` per leg from `day_plan_legs()`, the button label and the no-data warning.
+- New endpoint `GET /day-plans/<id>/calendar.ics` (`routes/views.py` `day_plan_calendar_ics`, `routes/urls.py`). The day plan page now takes its legs from `day_plan_calendar()`, so the page, the button and the file agree (no extra queries).
+- Day plan page (`routes/templates/routes/day_plan_detail.html`): calendar form under the trips (warning, "Repeat every week", button with the date).
+- `docs/decisions.md` (new US21 part 2 section, replacing the "second part of US21" line in US20) and a paragraph at the end of High Level Design §17.
+
+**Decisions made (also in `docs/decisions.md`):** the first leg's leave time picks the date; a leave time earlier than or equal to the previous leg's moves that leg and the ones after it to the next day (changed after review); end = start + rounded typical duration, zero-length without data; reminder 15 minutes before each event; UIDs `dayplan-<id>-leg-<n>@taxiscope`.
+
+**Tests:** `routes/tests/test_day_plan_calendar.py` (27). One US20 test narrowed: an in-order plan must not show the out-of-order warning (it checked for any "⚠", and the calendar warning also uses one). Full Django suite (553, 4 skipped) and all 86 Node tests pass; black, flake8 and `makemigrations --check` pass.
+
+**Next step:** check the downloaded file by hand in Google Calendar and Apple Calendar.
+
 ### 2026-10-31 — us20-day-plans, Pass B (US20, #49)
 **What changed:**
 - `routes/day_plans.py`: `move_stop`, `reorder_stops`, `remove_stop`, `add_stop`, `set_leave_time` and `DayPlanError`; every change locks the plan row and renumbers row by row.

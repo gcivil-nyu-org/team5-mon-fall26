@@ -69,6 +69,11 @@ urlpatterns = [
         name="reorder_day_plan",
     ),
     path(
+        "day-plans/<int:plan_id>/calendar.ics",
+        views.day_plan_calendar_ics,
+        name="day_plan_calendar",
+    ),
+    path(
         "day-plans/<int:plan_id>/delete/",
         views.delete_day_plan,
         name="delete_day_plan",

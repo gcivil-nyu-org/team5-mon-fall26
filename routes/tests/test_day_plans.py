@@ -378,7 +378,8 @@ class DayPlanPagesTests(DayPlanTestCase):
             "⚠ Leave times are not in order: Midtown Center (07:30) is before "
             "Brooklyn Heights (08:00).",
         )
-        self.assertNotContains(self.page(), "⚠")
+        # Only the out-of-order warning: the calendar form can show its own ⚠.
+        self.assertNotContains(self.page(), "Leave times are not in order")
 
     def test_page_query_count(self):
         # Session and user, the plan, its stops, 2 per leg, then the
