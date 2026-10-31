@@ -15,6 +15,49 @@ Entry format:
 
 ## Log
 
+### 2026-10-31 — us20-day-plans, Pass B (US20, #49)
+**What changed:**
+- `routes/day_plans.py`: `move_stop`, `reorder_stops`, `remove_stop`, `add_stop`, `set_leave_time` and `DayPlanError`; every change locks the plan row and renumbers row by row.
+- `routes/forms.py`: `DayPlanDayForm`, `StopTimeForm`, `AddStopForm` (zones with a shape, borough then name), `MoveStopForm`. `routes/views.py` and `routes/urls.py`: change day, set leave time, add, move, remove, reorder (JSON), delete (confirmation page `delete_day_plan.html`).
+- Day plan page: day form, a row per stop (drag handle, leave time, ↑ ↓, Remove), add-stop form, Delete link; My day plans has a Delete link. `routes/base.html` has a `scripts` block.
+- SortableJS 1.15.6 vendored in `routes/static/routes/vendor/sortable/` (sha256 in `docs/decisions.md`); new `routes/static/routes/js/day-plan-sort.js`.
+- Map builder: a disabled "Save day plan" explains why in its title.
+- Review follow-up: stop rows on the day plan page are numbered again; the stop-count messages are shared constants in `routes/day_plans.py` (`TOO_FEW_STOPS`, `TOO_FEW_TO_REMOVE`, `TOO_MANY_STOPS`), used by the forms, the rules and the page.
+- `docs/decisions.md` (reorder/remove/add, pages, SortableJS) and the rest of High Level Design §18.
+
+**Decisions made (also in `docs/decisions.md`):** blocked or invalid edits re-render the plan page with the message and status 400; the reorder endpoint takes comma-separated stop ids and returns JSON; SortableJS pinned and vendored.
+
+**Tests:** `routes/tests/test_day_plan_edits.py` (40: rules from the worked example, views, and ownership/sign-in/method/CSRF for every endpoint), `zones/tests/day_plan_sort.test.js` (6), `zones/tests/day_plan.test.js` (+1, Save title). Two Pass A page tests updated for the new stop rows and the add-stop query. Full Django suite (526, 4 skipped) and all 86 Node tests pass; black, flake8 and `makemigrations --check` pass.
+
+**Next step:** check the day plan page in the browser (drag and drop, buttons); then US21 part 2, the day plan calendar export.
+
+### 2026-10-31 — us20-day-plans, Pass A (US20, #49)
+**What changed:**
+- Models `routes.DayPlan` and `routes.DayPlanStop`, migration `routes/migrations/0003_day_plan.py`. `routes/day_plans.py`: `create_day_plan()`, `out_of_order_warning()`.
+- `routes/forms.py` `DayPlanForm`; `POST /day-plans/save/` (`save_day_plan`); `GET /day-plans/` (`my_day_plans`) and `GET /day-plans/<id>/` (`open_day_plan`, read-only). `routes/planning.py` `day_plan_legs()`.
+- Map: Day plan block under the Pickup/Dropoff rows (`zones/templates/zones/map.html`, `zones/static/zones/css/map.css`, new `routes/static/routes/js/day-plan.js`), reworked after manual testing: "+ Add stop" arms one map click per stop, the newest leg becomes the selection, and the day and newest leave hour sync with the header filters. `filters.js`: `selectRoute` accepts a null dropoff; new `taxiscope:set-time`, `taxiscope:stop-picking` and `taxiscope:stop-picked` events. "Day plans" link in the map header and a new nav on the routes pages (`routes/templates/routes/base.html`).
+- `docs/decisions.md` (US20 section, Pass A bullets) and High Level Design §18 (first part).
+
+**Decisions made (also in `docs/decisions.md`):** chain of 3–10 stops, leave time on every stop but the last; unique `(day_plan, position)`; two queries per leg, not batched; builder defaults (map hour, then +1 hour, at most 23:45); calendar export of a day plan is US21 part 2, after US20.
+
+**Tests:** `routes/tests/test_day_plans.py` (45), `zones/tests/day_plan.test.js` (24), `zones/tests/select_route.test.js` (+7: null dropoff, set-time, stop picking). Full Django suite (486, 4 skipped) and all 79 Node tests pass; black, flake8 and `makemigrations --check` pass.
+
+**Next step:** Pass B: change day and leave times, add/remove/move/reorder stops (SortableJS 1.15.6, download approved), delete with confirmation.
+
+### 2026-10-31 — us21-calendar-export (US21, #50)
+**What changed:**
+- New `routes/calendar.py` (standard library only): `CalendarEvent`, `next_occurrence()`, `escape_text()`, `fold_line()`, `build_ics()`, with a fixed `America/New_York` `VTIMEZONE`.
+- `routes/planning.py`: `plan_calendar(plan, now, weekly=False)` builds the event and the page's button label and warning from `plan_result()`.
+- New endpoint `GET /plans/<id>/calendar.ics` (`routes/views.py` `plan_calendar_ics`, `routes/urls.py`). `open_plan` now gets its result from `plan_calendar()`, so the stats are read once and the button and the file agree.
+- Plan page (`routes/templates/routes/plan_detail.html`, `routes/static/routes/css/routes.css`): warning when there is no estimate, "Repeat every week" checkbox, and a button with the date.
+- `docs/decisions.md` (US21 section) and High Level Design §17. No migration, no new dependency.
+
+**Decisions made (also in `docs/decisions.md`):** New York wall-clock times with `TZID` and `VTIMEZONE`; next date whose start has not passed (start >= now, compared in UTC); event on the leave date; zero-length events when there is no estimate; reminders 15 min (1 h for arrival-only); stable UID with no personal data; optional weekly repeat.
+
+**Tests:** `routes/tests/test_calendar.py` (47): date rules incl. the Nov 1 2026 DST change, folding/escaping, VTIMEZONE vs zoneinfo 2026–2030, events with and without data, privacy, endpoint, repeat, plan page. Full Django suite (441, 4 skipped) and all 48 Node tests pass; black and flake8 pass.
+
+**Next step:** check the downloaded files by hand in Google Calendar and Apple Calendar (expect Google to ignore the reminders).
+
 ### 2026-10-31 — us19-cheaper-nearby (US19, #48)
 **What changed:**
 - New public endpoint `GET /api/routes/nearby?from=&to=&day=&hour=` (`routes/views.py` `nearby_api`, `routes/urls.py`), backed by `cheaper_nearby()` in `routes/planning.py` and `load_zone_neighbors()` (cached) in `zones/stats.py`. No new table, no new dependency.

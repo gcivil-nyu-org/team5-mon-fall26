@@ -2,8 +2,10 @@ from django import forms
 from django.db import IntegrityError, transaction
 
 from zones.models import Zone
+from zones.views import load_zone_shapes
 
-from .models import DAY_CHOICES, SavedRoute, TripPlan
+from .day_plans import TOO_FEW_STOPS, TOO_MANY_STOPS, create_day_plan
+from .models import DAY_CHOICES, DayPlan, SavedRoute, TripPlan
 
 NAME_TAKEN = "You already have a saved route with this name."
 
@@ -106,3 +108,133 @@ class TripPlanForm(PlanTimeForm):
                 raise
             self.add_error("name", PLAN_NAME_TAKEN)
             return None
+
+
+DAY_PLAN_NAME_TAKEN = "You already have a day plan with this name."
+TIME_PER_STOP = "Give a leave time for every stop except the last."
+
+
+class DayPlanForm(forms.Form):
+    """A day plan built on the map (US20 #49). `stops` is a comma-separated
+    list of zone ids in order; `leave_times` has one HH:MM per stop except
+    the last, in 15-minute steps."""
+
+    name = forms.CharField(max_length=50)
+    day_of_week = forms.TypedChoiceField(choices=DAY_CHOICES, coerce=int, label="Day")
+    stops = forms.CharField()
+    leave_times = forms.CharField()
+
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def clean_name(self):
+        name = self.cleaned_data["name"]
+        if DayPlan.objects.filter(user=self.user, name=name).exists():
+            raise forms.ValidationError(DAY_PLAN_NAME_TAKEN)
+        return name
+
+    def clean_stops(self):
+        try:
+            ids = [int(value) for value in self.cleaned_data["stops"].split(",")]
+        except ValueError:
+            raise forms.ValidationError("Stops must be zone ids.")
+        if len(ids) < DayPlan.MIN_STOPS:
+            raise forms.ValidationError(TOO_FEW_STOPS)
+        if len(ids) > DayPlan.MAX_STOPS:
+            raise forms.ValidationError(TOO_MANY_STOPS)
+        zones = Zone.objects.in_bulk(ids)
+        unknown = sorted(set(ids) - set(zones))
+        if unknown:
+            raise forms.ValidationError(
+                f"Unknown zone: {', '.join(str(i) for i in unknown)}."
+            )
+        return [zones[zone_id] for zone_id in ids]
+
+    def clean_leave_times(self):
+        times = []
+        for value in self.cleaned_data["leave_times"].split(","):
+            try:
+                time = forms.TimeField(input_formats=["%H:%M"]).clean(value.strip())
+            except forms.ValidationError:
+                raise forms.ValidationError("Leave times must be HH:MM.")
+            if time.minute % 15:
+                raise forms.ValidationError(QUARTER_HOUR)
+            times.append(time)
+        return times
+
+    def clean(self):
+        cleaned = super().clean()
+        stops, times = cleaned.get("stops"), cleaned.get("leave_times")
+        if stops is not None and times is not None and len(times) != len(stops) - 1:
+            self.add_error("leave_times", TIME_PER_STOP)
+        return cleaned
+
+    def save(self):
+        data = self.cleaned_data
+        try:
+            return create_day_plan(
+                self.user,
+                data["name"],
+                data["day_of_week"],
+                data["stops"],
+                data["leave_times"],
+            )
+        except IntegrityError:
+            # A second request may have saved the same name after validation.
+            if not DayPlan.objects.filter(user=self.user, name=data["name"]).exists():
+                raise
+            self.add_error("name", DAY_PLAN_NAME_TAKEN)
+            return None
+
+
+# ---- US20 Pass B: editing a saved day plan ----
+
+
+def _quarter_hour(time):
+    if time.minute % 15:
+        raise forms.ValidationError(QUARTER_HOUR)
+    return time
+
+
+class DayPlanDayForm(forms.Form):
+    day_of_week = forms.TypedChoiceField(choices=DAY_CHOICES, coerce=int, label="Day")
+
+
+class StopTimeForm(forms.Form):
+    leave_time = forms.TimeField(input_formats=["%H:%M"], label="Leave at")
+
+    def clean_leave_time(self):
+        return _quarter_hour(self.cleaned_data["leave_time"])
+
+
+class ZoneChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, zone):
+        return f"{zone.borough}: {zone.name}"
+
+
+class AddStopForm(forms.Form):
+    """A stop added at the end, plus when the rider leaves the old last stop.
+    Only zones with a shape can be chosen, like on the map (not 264/265)."""
+
+    zone = ZoneChoiceField(queryset=Zone.objects.none(), label="Next stop")
+    leave_time = forms.TimeField(
+        input_formats=["%H:%M"], label="Leave the last stop at"
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        shape_ids = [
+            feature["properties"]["LocationID"]
+            for feature in load_zone_shapes()["features"]
+        ]
+        self.fields["zone"].queryset = Zone.objects.filter(
+            zone_id__in=shape_ids
+        ).order_by("borough", "name")
+
+    def clean_leave_time(self):
+        return _quarter_hour(self.cleaned_data["leave_time"])
+
+
+class MoveStopForm(forms.Form):
+    direction = forms.ChoiceField(choices=[("up", "Up"), ("down", "Down")])

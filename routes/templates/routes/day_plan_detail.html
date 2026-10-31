@@ -1,0 +1,102 @@
+{% extends "routes/base.html" %}
+{% load static %}
+
+{% block title %}{{ plan.name }}{% endblock %}
+
+{% block content %}
+  <h1>{{ plan.name }}</h1>
+  <p class="plan-inputs">{{ plan.get_day_of_week_display }}: {{ stops|length }} stops, {{ legs|length }} trips</p>
+  {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+  {% if warning %}<p class="warning">⚠ {{ warning }}</p>{% endif %}
+
+  <form method="post" action="{% url 'routes:change_day_plan_day' plan.pk %}" class="inline-form day-form">
+    {% csrf_token %}
+    <label for="day-plan-day">Day</label>
+    <select id="day-plan-day" name="day_of_week">
+      {% for value, label in days %}<option value="{{ value }}"{% if value == plan.day_of_week %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <button type="submit">Change day</button>
+  </form>
+
+  <h2>Stops</h2>
+  <p class="plan-note">Drag a stop, or use ↑ and ↓, to change the order. The places move; the leave times stay in order.</p>
+  <p id="day-plan-sort-status" class="sort-status" role="status" aria-live="polite"></p>
+  <ol id="day-plan-stops" class="day-plan-stops" data-reorder-url="{% url 'routes:reorder_day_plan' plan.pk %}">
+    {% for stop in stops %}
+      <li data-stop-id="{{ stop.pk }}">
+        <span class="drag-handle" title="Drag to reorder" aria-hidden="true">⠿</span>
+        <span class="stop-number">{{ forloop.counter }}.</span>
+        <span class="stop-name">{{ stop.zone.name }} ({{ stop.zone.borough }})</span>
+        {% if not forloop.last %}
+          <form method="post" action="{% url 'routes:set_day_plan_stop_time' plan.pk stop.pk %}" class="inline-form">
+            {% csrf_token %}
+            <label>Leave <input type="time" name="leave_time" step="900" value="{{ stop.leave_label }}" required></label>
+            <button type="submit">Save time</button>
+          </form>
+        {% endif %}
+        <form method="post" action="{% url 'routes:move_day_plan_stop' plan.pk stop.pk %}" class="inline-form">
+          {% csrf_token %}
+          <button type="submit" name="direction" value="up" aria-label="Move {{ stop.zone.name }} up"{% if forloop.first %} disabled{% endif %}>↑</button>
+          <button type="submit" name="direction" value="down" aria-label="Move {{ stop.zone.name }} down"{% if forloop.last %} disabled{% endif %}>↓</button>
+        </form>
+        <form method="post" action="{% url 'routes:remove_day_plan_stop' plan.pk stop.pk %}" class="inline-form">
+          {% csrf_token %}
+          <button type="submit" class="remove-stop" aria-label="Remove {{ stop.zone.name }}">Remove</button>
+        </form>
+      </li>
+    {% endfor %}
+  </ol>
+
+  {% if can_add %}
+    <form method="post" action="{% url 'routes:add_day_plan_stop' plan.pk %}" class="add-stop-form">
+      {% csrf_token %}
+      <h3>Add a stop at the end</h3>
+      <div class="field">{{ add_form.zone.label_tag }} {{ add_form.zone }}</div>
+      <div class="field">
+        {% with last_stop=stops|last %}<label for="{{ add_form.leave_time.id_for_label }}">Leave {{ last_stop.zone.name }} at</label>{% endwith %}
+        <input type="time" name="leave_time" id="{{ add_form.leave_time.id_for_label }}" step="900" required value="{{ add_form.leave_time.value|default_if_none:'' }}">
+      </div>
+      <button type="submit">Add stop</button>
+    </form>
+  {% else %}
+    <p class="plan-note">{{ too_many_stops }}</p>
+  {% endif %}
+
+  <h2>Trips</h2>
+  {% for leg in legs %}
+    <section class="day-plan-leg" aria-labelledby="leg-{{ leg.number }}">
+      <h3 id="leg-{{ leg.number }}">{{ leg.number }}. {{ leg.from.name }} → {{ leg.to.name }}, leave {{ leg.leave }}</h3>
+      <dl class="plan-result">
+        <div>
+          <dt>Typical fare before tip (min / avg / max)</dt>
+          <dd>{% if leg.stats.enough_data %}${{ leg.stats.fare_min }} / ${{ leg.stats.fare_avg }} / ${{ leg.stats.fare_max }}{% else %}Not enough data{% endif %}</dd>
+        </div>
+        <div>
+          <dt>Typical journey time</dt>
+          <dd>{% if leg.stats.enough_data %}{{ leg.stats.avg_duration_min|floatformat:1 }} min{% else %}Not enough data{% endif %}</dd>
+        </div>
+        {% with best=leg.windows.best worst=leg.windows.worst %}
+        <div>
+          <dt>Best time on {{ plan.get_day_of_week_display }}</dt>
+          <dd>{% if leg.windows.enough_data %}Cheapest: {{ best.fare.hour|stringformat:"02d" }}:00–{{ best.fare.hour|stringformat:"02d" }}:59 (avg ${{ best.fare.fare_avg }}); Fastest: {{ best.duration.hour|stringformat:"02d" }}:00–{{ best.duration.hour|stringformat:"02d" }}:59 ({{ best.duration.avg_duration_min|floatformat:1 }} min){% else %}Not enough data{% endif %}</dd>
+        </div>
+        <div>
+          <dt>Worst time on {{ plan.get_day_of_week_display }}</dt>
+          <dd>{% if leg.windows.enough_data %}Most expensive: {{ worst.fare.hour|stringformat:"02d" }}:00–{{ worst.fare.hour|stringformat:"02d" }}:59 (avg ${{ worst.fare.fare_avg }}); Slowest: {{ worst.duration.hour|stringformat:"02d" }}:00–{{ worst.duration.hour|stringformat:"02d" }}:59 ({{ worst.duration.avg_duration_min|floatformat:1 }} min){% else %}Not enough data{% endif %}</dd>
+        </div>
+        {% endwith %}
+      </dl>
+    </section>
+  {% endfor %}
+  <p class="plan-note">Based on past trips (March to May 2026), not a guarantee.</p>
+
+  <div class="saved-route-actions">
+    <a href="{% url 'routes:delete_day_plan' plan.pk %}">Delete</a>
+    <a href="{% url 'routes:my_day_plans' %}">All day plans</a>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'routes/vendor/sortable/Sortable.min.js' %}"></script>
+  <script src="{% static 'routes/js/day-plan-sort.js' %}"></script>
+{% endblock %}

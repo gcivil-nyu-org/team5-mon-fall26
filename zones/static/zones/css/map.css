@@ -370,6 +370,133 @@ header h1 {
   cursor: pointer;
 }
 
+/* Day plan builder (US20), under the Pickup and Dropoff rows */
+.day-plan-panel {
+  margin-top: 0.5rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid #d6dbe3;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+#day-plan-panel[hidden],
+#day-plan-add[hidden],
+#day-plan-form[hidden],
+#day-plan-open[hidden],
+#day-plan-signin[hidden] {
+  display: none;
+}
+
+.day-plan-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.day-plan-title {
+  font-weight: 600;
+}
+
+.day-plan-add {
+  padding: 0.2rem 0.5rem;
+  border: 1px solid #0057b8;
+  border-radius: 4px;
+  background: #fff;
+  color: #0057b8;
+  font: inherit;
+  cursor: pointer;
+}
+
+.day-plan-add[aria-pressed="true"] {
+  background: #0057b8;
+  color: #fff;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.day-plan-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.day-plan-stops {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0.4rem 0 0;
+  padding-left: 1.3rem;
+}
+
+.day-plan-stops:empty {
+  display: none;
+}
+
+.day-plan-stops li > * {
+  vertical-align: middle;
+}
+
+.day-plan-stop-name {
+  display: inline-block;
+  max-width: 9.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.day-plan-stops input[type="time"] {
+  margin-left: 0.3rem;
+  padding: 0.05rem 0.2rem;
+  font: inherit;
+}
+
+.day-plan-remove {
+  margin-left: 0.2rem;
+  padding: 0 0.3rem;
+  border: 0;
+  background: none;
+  color: #b3261e;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#day-plan-form {
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+}
+
+.day-plan-fields {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.day-plan-fields select,
+.day-plan-fields input {
+  min-width: 0;
+  padding: 0.25rem;
+  font: inherit;
+}
+
+.day-plan-fields input {
+  flex: 1;
+}
+
+.day-plan-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.3rem;
+}
+
+.day-plan-buttons button {
+  padding: 0.25rem 0.55rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+#day-plan-status:empty {
+  display: none;
+}
+
 /* Trip summary panel (US8) */
 .summary-toggle {
   display: flex;

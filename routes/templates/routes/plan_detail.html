@@ -36,6 +36,12 @@
   {% else %}
     <p class="plan-empty">Not enough data</p>
   {% endif %}
+  {# US21 #50: download the plan as a calendar event. #}
+  <form method="get" action="{% url 'routes:plan_calendar' plan.pk %}" class="calendar-form">
+    {% if calendar.warning %}<p class="warning">⚠ {{ calendar.warning }}</p>{% endif %}
+    <label class="calendar-repeat"><input type="checkbox" name="repeat" value="weekly"> Repeat every week</label>
+    <button type="submit">{{ calendar.button_label }}</button>
+  </form>
   <p class="plan-note">Recalculated just now. Estimate from past trips (March to May 2026), not a guarantee.</p>
 
   <div class="saved-route-actions">

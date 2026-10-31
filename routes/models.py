@@ -84,3 +84,57 @@ class TripPlan(models.Model):
     @property
     def time_label(self):
         return self.time.strftime("%H:%M")
+
+
+class DayPlan(models.Model):
+    """US20 #49: a day of trips as an ordered chain of stops. Leg i runs
+    from stop i to stop i+1 and leaves at stop i's leave time."""
+
+    MIN_STOPS = 3
+    MAX_STOPS = 10
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="day_plans"
+    )
+    name = models.CharField(max_length=50)
+    day_of_week = models.PositiveSmallIntegerField(choices=DAY_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "name"], name="unique_user_day_plan_name"
+            )
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class DayPlanStop(models.Model):
+    """One stop of a day plan. Every stop except the last has a leave time."""
+
+    day_plan = models.ForeignKey(
+        DayPlan, on_delete=models.CASCADE, related_name="stops"
+    )
+    zone = models.ForeignKey(
+        Zone, on_delete=models.CASCADE, related_name="day_plan_stops"
+    )
+    position = models.PositiveSmallIntegerField()  # 0-based
+    leave_time = models.TimeField(null=True, blank=True)  # null on the last stop
+
+    class Meta:
+        ordering = ["position"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["day_plan", "position"], name="unique_day_plan_stop_position"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.day_plan.name} #{self.position}"
+
+    @property
+    def leave_label(self):
+        return self.leave_time.strftime("%H:%M") if self.leave_time else ""

@@ -1,11 +1,15 @@
 """Estimate when to leave for an arrival time from hourly route statistics."""
 
+from datetime import datetime, timedelta
 from math import floor
 
 from django.conf import settings
 
 from zones.models import RouteHourStats
-from zones.stats import load_zone_neighbors, route_stats
+from zones.stats import load_zone_neighbors, route_stats, route_windows
+from zones.views import NYC_TZ
+
+from .calendar import CalendarEvent, next_occurrence
 
 
 def leave_by(pickup, dropoff, day, arrive_hour, arrive_minute):
@@ -221,3 +225,136 @@ def cheaper_nearby(pickup, dropoff, day, hour):
             for row in rows
         ],
     }
+
+
+MONTH_NAMES = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+]
+CALENDAR_NOTE = "Based on past trips (March to May 2026), not a guarantee."
+ARRIVE_NO_DATA = (
+    "Not enough past trips to estimate when to leave for this route at this hour."
+)
+CHEAPEST_NO_DATA = "Not enough past trips to find the cheapest hour for this route."
+
+
+def _date_label(start):
+    """Like "Fri, Nov 6, 08:45", without depending on the server's locale."""
+    return (
+        f"{DAY_NAMES[start.weekday()][:3]}, {MONTH_NAMES[start.month - 1]} "
+        f"{start.day}, {start:%H:%M}"
+    )
+
+
+def _days_later(start, days, clock):
+    """The wall-clock time clock ("HH:MM") on the date `days` after start."""
+    date = start.date() + timedelta(days=days)
+    return datetime(
+        date.year, date.month, date.day, int(clock[:2]), int(clock[3:]), tzinfo=NYC_TZ
+    )
+
+
+def plan_calendar(plan, now, weekly=False):
+    """US21: the calendar event for a saved plan, plus the text the plan
+    page shows for it. Built from plan_result(), so the file and the page agree.
+
+    The event goes on the next New York date on which its start has not
+    passed. With an estimate it runs from the leave time to the arrival;
+    without one it is a zero-length event at the arrival time (Arrive by)
+    or the start time (Cheapest).
+    """
+    result = plan_result(plan)
+    pickup, dropoff = plan.pickup_zone.name, plan.dropoff_zone.name
+    plan_time = plan.time_label
+    plan_day = DAY_NAMES[plan.day_of_week]
+    warning = None
+    alarm_minutes = 15
+
+    if result["enough_data"]:
+        start = next_occurrence(
+            result["leave_day"], int(result["leave"][:2]), int(result["leave"][3:]), now
+        )
+        if plan.mode == plan.ARRIVE_BY:
+            arrive_day, arrive = plan.day_of_week, plan_time
+            lines = [
+                f"Leave by {result['leave_label']}",
+                f"Arrive by {plan_day} {plan_time}",
+            ]
+        else:
+            arrive_day, arrive = result["arrive_day"], result["arrive"]
+            lines = [
+                f"Leave at {result['leave_label']} "
+                f"(cheapest of the 3 hours from {plan_day} {plan_time})",
+                f"Expected arrival: {result['arrive_label']}",
+            ]
+        end = _days_later(start, (arrive_day - result["leave_day"]) % 7, arrive)
+        summary = f"Taxi: {pickup} → {dropoff}"
+        lines += [
+            f"Typical journey time: {result['avg_duration_min']:.1f} min",
+            f"Typical fare before tip: ${result['fare_avg']}",
+        ]
+        label = "Add to calendar"
+    else:
+        start = next_occurrence(plan.day_of_week, plan.time.hour, plan.time.minute, now)
+        end = start
+        if plan.mode == plan.ARRIVE_BY:
+            summary = f"Arrive at {dropoff} by {plan_time} (from {pickup})"
+            lines = [ARRIVE_NO_DATA, f"Arrive by {plan_day} {plan_time}"]
+            warning = (
+                f"{ARRIVE_NO_DATA} The calendar event will only show your arrival time."
+            )
+            label = "Add arrival time to calendar"
+            alarm_minutes = 60
+        else:
+            summary = f"Taxi: {pickup} → {dropoff} (from {plan_time})"
+            lines = [CHEAPEST_NO_DATA, f"Start from {plan_day} {plan_time}"]
+            warning = (
+                f"{CHEAPEST_NO_DATA} The calendar event will only show your start time."
+            )
+            label = "Add start time to calendar"
+
+    lines += [f"Plan: {plan.name}", CALENDAR_NOTE]
+    event = CalendarEvent(
+        uid=f"tripplan-{plan.pk}@taxiscope",
+        start=start,
+        end=end,
+        summary=summary,
+        description="\n".join(lines),
+        alarm_minutes=alarm_minutes,
+        weekly=weekly,
+    )
+    return {
+        "result": result,
+        "event": event,
+        "button_label": f"{label}: {_date_label(start)}",
+        "warning": warning,
+    }
+
+
+def day_plan_legs(plan, stops):
+    """US20: one entry per consecutive pair of stops: route_stats for the hour
+    of the leave time and route_windows for the plan's day (the same functions
+    as /api/routes and /api/routes/windows, so two queries per leg)."""
+    return [
+        {
+            "number": number,
+            "from": start.zone,
+            "to": end.zone,
+            "leave": start.leave_label,
+            "stats": route_stats(
+                start.zone_id, end.zone_id, plan.day_of_week, start.leave_time.hour
+            ),
+            "windows": route_windows(start.zone_id, end.zone_id, plan.day_of_week),
+        }
+        for number, (start, end) in enumerate(zip(stops, stops[1:]), start=1)
+    ]
