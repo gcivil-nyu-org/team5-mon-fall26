@@ -296,3 +296,7 @@ Entry format:
 - ~~Manual test with real zone data~~ Done 2026-10-23 on the real March–May 2026 data (see the US3 heatmap error fix entry above).
 - ~~Update progress.md and open PR~~ Done (PR #29, merged).
 - Consider adding heatmap tests for UI behavior (future story)
+
+   ### 2026-10-30 — us18-zone-neighbors (US18, #47)
+   **What changed:** `scripts/build_zone_neighbors.py` (shapely 2.1.2, not in requirements.txt) writes `zones/data/zone_neighbors.json`: 263 zones, 611 adjacent pairs; only islands have none. README: "Regenerate the adjacent zones". `docs/decisions.md`: adjacent zones.
+   **Tests:** `zones/tests/test_zone_neighbors.py` (two-way, no self, spot checks in Midtown, JFK and Staten Island, nothing across a river).
