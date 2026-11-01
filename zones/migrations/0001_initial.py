@@ -8,58 +8,114 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Zone',
+            name="Zone",
             fields=[
-                ('zone_id', models.IntegerField(primary_key=True, serialize=False)),
-                ('name', models.CharField(max_length=100)),
-                ('borough', models.CharField(max_length=50)),
+                ("zone_id", models.IntegerField(primary_key=True, serialize=False)),
+                ("name", models.CharField(max_length=100)),
+                ("borough", models.CharField(max_length=50)),
             ],
             options={
-                'ordering': ['zone_id'],
+                "ordering": ["zone_id"],
             },
         ),
         migrations.CreateModel(
-            name='RouteHourStats',
+            name="RouteHourStats",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('day_of_week', models.PositiveSmallIntegerField()),
-                ('hour', models.PositiveSmallIntegerField()),
-                ('trip_count', models.PositiveIntegerField()),
-                ('avg_duration_min', models.FloatField()),
-                ('fare_min', models.DecimalField(decimal_places=2, max_digits=8)),
-                ('fare_avg', models.DecimalField(decimal_places=2, max_digits=8)),
-                ('fare_max', models.DecimalField(decimal_places=2, max_digits=8)),
-                ('dropoff_zone', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='routes_to', to='zones.zone')),
-                ('pickup_zone', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='routes_from', to='zones.zone')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("day_of_week", models.PositiveSmallIntegerField()),
+                ("hour", models.PositiveSmallIntegerField()),
+                ("trip_count", models.PositiveIntegerField()),
+                ("avg_duration_min", models.FloatField()),
+                ("fare_min", models.DecimalField(decimal_places=2, max_digits=8)),
+                ("fare_avg", models.DecimalField(decimal_places=2, max_digits=8)),
+                ("fare_max", models.DecimalField(decimal_places=2, max_digits=8)),
+                (
+                    "dropoff_zone",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="routes_to",
+                        to="zones.zone",
+                    ),
+                ),
+                (
+                    "pickup_zone",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="routes_from",
+                        to="zones.zone",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['pickup_zone', 'dropoff_zone', 'day_of_week', 'hour'],
-                'indexes': [models.Index(fields=['pickup_zone', 'dropoff_zone', 'day_of_week', 'hour'], name='zones_route_pickup__9024a1_idx')],
-                'constraints': [models.UniqueConstraint(fields=('pickup_zone', 'dropoff_zone', 'day_of_week', 'hour'), name='unique_route_hour_stats')],
+                "ordering": ["pickup_zone", "dropoff_zone", "day_of_week", "hour"],
+                "indexes": [
+                    models.Index(
+                        fields=["pickup_zone", "dropoff_zone", "day_of_week", "hour"],
+                        name="zones_route_pickup__9024a1_idx",
+                    )
+                ],
+                "constraints": [
+                    models.UniqueConstraint(
+                        fields=("pickup_zone", "dropoff_zone", "day_of_week", "hour"),
+                        name="unique_route_hour_stats",
+                    )
+                ],
             },
         ),
         migrations.CreateModel(
-            name='ZoneHourStats',
+            name="ZoneHourStats",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('day_of_week', models.PositiveSmallIntegerField()),
-                ('hour', models.PositiveSmallIntegerField()),
-                ('trip_count', models.PositiveIntegerField()),
-                ('avg_duration_min', models.FloatField()),
-                ('fare_min', models.DecimalField(decimal_places=2, max_digits=8)),
-                ('fare_avg', models.DecimalField(decimal_places=2, max_digits=8)),
-                ('fare_max', models.DecimalField(decimal_places=2, max_digits=8)),
-                ('zone', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='hour_stats', to='zones.zone')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("day_of_week", models.PositiveSmallIntegerField()),
+                ("hour", models.PositiveSmallIntegerField()),
+                ("trip_count", models.PositiveIntegerField()),
+                ("avg_duration_min", models.FloatField()),
+                ("fare_min", models.DecimalField(decimal_places=2, max_digits=8)),
+                ("fare_avg", models.DecimalField(decimal_places=2, max_digits=8)),
+                ("fare_max", models.DecimalField(decimal_places=2, max_digits=8)),
+                (
+                    "zone",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="hour_stats",
+                        to="zones.zone",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['zone', 'day_of_week', 'hour'],
-                'indexes': [models.Index(fields=['zone', 'day_of_week', 'hour'], name='zones_zoneh_zone_id_cb087b_idx')],
-                'constraints': [models.UniqueConstraint(fields=('zone', 'day_of_week', 'hour'), name='unique_zone_hour_stats')],
+                "ordering": ["zone", "day_of_week", "hour"],
+                "indexes": [
+                    models.Index(
+                        fields=["zone", "day_of_week", "hour"],
+                        name="zones_zoneh_zone_id_cb087b_idx",
+                    )
+                ],
+                "constraints": [
+                    models.UniqueConstraint(
+                        fields=("zone", "day_of_week", "hour"),
+                        name="unique_zone_hour_stats",
+                    )
+                ],
             },
         ),
     ]

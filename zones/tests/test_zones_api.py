@@ -23,8 +23,12 @@ def add_stats(zone, day, hour, trip_count):
 
 class ZonesApiTests(TestCase):
     def setUp(self):
-        self.jfk = Zone.objects.create(zone_id=132, name="JFK Airport", borough="Queens")
-        self.midtown = Zone.objects.create(zone_id=161, name="Midtown Center", borough="Manhattan")
+        self.jfk = Zone.objects.create(
+            zone_id=132, name="JFK Airport", borough="Queens"
+        )
+        self.midtown = Zone.objects.create(
+            zone_id=161, name="Midtown Center", borough="Manhattan"
+        )
         add_stats(self.jfk, day=0, hour=9, trip_count=500)
         add_stats(self.midtown, day=0, hour=9, trip_count=1200)
         add_stats(self.jfk, day=1, hour=9, trip_count=7)  # other day, must not leak in
@@ -77,8 +81,12 @@ class ZonesApiTests(TestCase):
         self.assertIn(data["hour"], range(24))
 
     def test_bad_day_or_hour_returns_400(self):
-        for params in ({"day": 7, "hour": 9}, {"day": 0, "hour": 24},
-                       {"day": "mon", "hour": 9}, {"day": -1, "hour": 0}):
+        for params in (
+            {"day": 7, "hour": 9},
+            {"day": 0, "hour": 24},
+            {"day": "mon", "hour": 9},
+            {"day": -1, "hour": 0},
+        ):
             with self.subTest(params=params):
                 self.assertEqual(self.get(**params).status_code, 400)
 
@@ -93,7 +101,9 @@ class ZonesApiGZipTests(TestCase):
     client accepts it (GZipMiddleware), and as plain JSON otherwise."""
 
     def test_gzip_accept_encoding_returns_compressed_response(self):
-        response = self.client.get(reverse("zones:zones_api"), HTTP_ACCEPT_ENCODING="gzip")
+        response = self.client.get(
+            reverse("zones:zones_api"), HTTP_ACCEPT_ENCODING="gzip"
+        )
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers.get("Content-Encoding"), "gzip")

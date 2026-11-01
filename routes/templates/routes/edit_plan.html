@@ -1,0 +1,24 @@
+{% extends "routes/base.html" %}
+
+{% block title %}Edit plan{% endblock %}
+
+{% block content %}
+  <h1>Edit plan</h1>
+  <p><strong>{{ plan.name }}</strong>: {{ plan.pickup_zone.name }} → {{ plan.dropoff_zone.name }} ({{ plan.get_mode_display }})</p>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="field">
+      <label for="{{ form.day_of_week.id_for_label }}">Day</label>
+      {{ form.day_of_week }}
+      {{ form.day_of_week.errors }}
+    </div>
+    <div class="field">
+      <label for="id_time">{% if plan.mode == "arrive_by" %}Arrival time{% else %}Start time{% endif %}</label>
+      <input type="time" name="time" id="id_time" step="900" required
+             value="{{ form.time.value|default:plan.time_label }}">
+      {{ form.time.errors }}
+    </div>
+    <button type="submit">Save changes</button>
+  </form>
+  <p><a href="{% url 'routes:open_plan' plan.pk %}">Cancel</a></p>
+{% endblock %}

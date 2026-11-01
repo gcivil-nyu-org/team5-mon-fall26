@@ -1,5 +1,10 @@
 # team5-mon-fall26
 
+| Branch | Build | Coverage | Environment |
+|---|---|---|---|
+| `develop` | [![Build Status (develop)](https://app.travis-ci.com/gcivil-nyu-org/team5-mon-fall26.svg?branch=develop)](https://app.travis-ci.com/gcivil-nyu-org/team5-mon-fall26) | [![Coverage Status (develop)](https://coveralls.io/repos/github/gcivil-nyu-org/team5-mon-fall26/badge.svg?branch=develop)](https://coveralls.io/github/gcivil-nyu-org/team5-mon-fall26?branch=develop) | [Integration](http://taxiscope-integration-env.eba-gfaktp8z.us-east-2.elasticbeanstalk.com/) |
+| `main` | [![Build Status (main)](https://app.travis-ci.com/gcivil-nyu-org/team5-mon-fall26.svg?branch=main)](https://app.travis-ci.com/gcivil-nyu-org/team5-mon-fall26) | [![Coverage Status (main)](https://coveralls.io/repos/github/gcivil-nyu-org/team5-mon-fall26/badge.svg?branch=main)](https://coveralls.io/github/gcivil-nyu-org/team5-mon-fall26?branch=main) | [Production](http://taxiscope-env.eba-gfaktp8z.us-east-2.elasticbeanstalk.com/) |
+
 TaxiScope NYC. See `CLAUDE.md` and `docs/` for the project docs.
 
 ## Run it locally
@@ -58,3 +63,33 @@ python manage.py import_trips --month 2026-03 --month 2026-04 --month 2026-05
 Downloads any missing monthly file into `data/raw/` (about 65 MB each, gitignored), then replaces all statistics in one transaction. Re-running is safe. Running it with fewer months replaces the statistics with just those months. At the end it prints a report: rows read, removed per cleaning rule, and kept, for each month and in total.
 
 For the three months above it takes about 1.5 minutes and up to about 1.2 GB of memory (measured on a laptop against a local PostgreSQL).
+
+## Development checks
+
+CI (see `docs/ci.md`) runs these on every push. Install the extra tools once:
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+Then, from the repo root:
+
+```bash
+black .                        # reformat; CI only checks (black --check .)
+flake8                         # lint (config in .flake8)
+coverage run manage.py test    # Django tests, instrumented for coverage
+coverage report                # per-file and total coverage (config in .coveragerc)
+node --test zones/tests/*.test.js   # JavaScript tests
+```
+
+## Regenerate the adjacent zones
+
+`zones/data/zone_neighbors.json` (US18) lists, for every zone, the zones that share a border with it. It is committed, so you only need this after rebuilding `taxi_zones.geojson`. The script needs `shapely`, which the app does not use, so it is not in `requirements.txt`:
+
+```bash
+pip install shapely==2.1.2
+python scripts/build_zone_neighbors.py
+python manage.py test zones.tests.test_zone_neighbors
+```
+
+The rule (a shared border of at least 10 m; corners and rivers do not count) is in `docs/decisions.md` (adjacent zones).

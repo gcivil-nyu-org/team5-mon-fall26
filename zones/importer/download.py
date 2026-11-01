@@ -7,7 +7,9 @@ import shutil
 from datetime import datetime
 from urllib.request import Request, urlopen
 
-TRIP_URL = "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_{month}.parquet"
+TRIP_URL = (
+    "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_{month}.parquet"
+)
 # CloudFront has rejected urllib's default User-Agent before.
 USER_AGENT = "TaxiScope-NYC-import/1.0"
 TIMEOUT_S = 60

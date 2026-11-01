@@ -1,0 +1,63 @@
+os: linux
+dist: jammy
+language: python
+python:
+  - "3.12"
+
+services:
+  - postgresql
+
+addons:
+  postgresql: "14" # highest version bundled with the jammy image; 16 needs dist: noble
+
+env:
+  global:
+    - SECRET_KEY=travis-ci-dummy-secret-key-not-for-production
+    - DEBUG=True
+    - DATABASE_URL=postgres://postgres@localhost:5432/taxiscope_test
+
+before_script:
+  - psql -c 'create database taxiscope_test;' -U postgres
+
+install:
+  - pip install -r requirements-dev.txt
+
+script:
+  - black --check .
+  - flake8
+  - coverage run manage.py test
+  - coverage report
+  - node --test zones/tests/*.test.js
+
+after_success:
+  - COVERALLS_SERVICE_NAME=travis-pro CI_BRANCH=$TRAVIS_BRANCH coveralls
+
+# Credentials come from the hidden Travis repository settings
+# AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, never from this file.
+# Pull request builds never deploy. Cron builds are skipped by the condition.
+deploy:
+  - provider: elasticbeanstalk
+    edge: true
+    region: us-east-2
+    app: taxiscope
+    env: Taxiscope-integration-env
+    bucket: elasticbeanstalk-us-east-2-933164653260
+    wait_until_deployed: true
+    on:
+      branch: develop
+      condition: "$TRAVIS_EVENT_TYPE != cron"
+  - provider: elasticbeanstalk
+    edge: true
+    region: us-east-2
+    app: taxiscope
+    env: taxiscope-env
+    bucket: elasticbeanstalk-us-east-2-933164653260
+    wait_until_deployed: true
+    on:
+      branch: main
+      condition: "$TRAVIS_EVENT_TYPE != cron"
+
+notifications:
+  email:
+    on_success: never
+    on_failure: always

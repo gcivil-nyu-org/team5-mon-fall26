@@ -8,9 +8,25 @@
   <link rel="stylesheet" href="{% static 'zones/vendor/leaflet/leaflet.css' %}">
   <link rel="stylesheet" href="{% static 'zones/css/map.css' %}">
 </head>
-<body>
+<body{% if saved_route %} data-saved-pickup="{{ saved_route.pickup_zone_id }}" data-saved-dropoff="{{ saved_route.dropoff_zone_id }}"{% endif %}>
   <header>
     <h1>TaxiScope NYC</h1>
+    {# US10 #39, US11 #40: account links; the map never needs an account (US9). #}
+    <nav class="account-nav" aria-label="Account">
+      <a href="{% url 'routes:my_routes' %}">Routes</a>
+      <a href="{% url 'routes:my_plans' %}">Plans</a>
+      <a href="{% url 'routes:my_day_plans' %}">Day plans</a>
+      {% if user.is_authenticated %}
+        <a href="{% url 'accounts:account' %}" class="account-email" title="My account">{{ user.email }}</a>
+        <form method="post" action="{% url 'accounts:signout' %}" class="signout-form">
+          {% csrf_token %}
+          <button type="submit" class="link-button">Sign out</button>
+        </form>
+      {% else %}
+        <a href="{% url 'accounts:signin' %}">Sign in</a>
+        <a href="{% url 'accounts:signup' %}">Sign up</a>
+      {% endif %}
+    </nav>
   </header>
   <section class="filters" aria-label="Taxi trip time filters">
     <label for="day-filter">Day of week</label>
@@ -29,6 +45,7 @@
     <span id="filter-status" role="status" aria-live="polite"></span>
   </section>
   <aside class="zone-selection" aria-live="polite" aria-label="Selected zone information">
+    {% if saved_route %}<p class="saved-route-heading">Saved route: {{ saved_route.name }}</p>{% endif %}
     <div class="selection-row">
       <span class="selection-label pickup-label">Pickup:</span>
       <span id="pickup-zone" class="selection-name">Click a zone</span>
@@ -39,6 +56,54 @@
       <span id="dropoff-zone" class="selection-name">—</span>
       <button type="button" id="same-zone-trip" class="same-zone-btn" hidden>Trip within this zone</button>
       <button id="clear-dropoff" class="clear-btn" hidden aria-label="Clear dropoff">&times;</button>
+    </div>
+    {# US20 #49: build a multi-stop day plan, one "+ Add stop" and map click at a time. #}
+    <section id="day-plan-panel" class="day-plan-panel" hidden aria-label="Day plan">
+      {% if user.is_authenticated %}
+        <div class="day-plan-head">
+          <span class="day-plan-title">Day plan</span>
+          <button type="button" id="day-plan-add" class="day-plan-add" aria-pressed="false" hidden>+ Add stop</button>
+        </div>
+        <ol id="day-plan-stops" class="day-plan-stops"></ol>
+        <form id="day-plan-form" method="post" action="{% url 'routes:save_day_plan' %}" hidden>
+          {% csrf_token %}
+          <div class="day-plan-fields">
+            <select id="day-plan-day" name="day_of_week" aria-label="Day" required>
+              <option value="0">Monday</option>
+              <option value="1">Tuesday</option>
+              <option value="2">Wednesday</option>
+              <option value="3">Thursday</option>
+              <option value="4">Friday</option>
+              <option value="5">Saturday</option>
+              <option value="6">Sunday</option>
+            </select>
+            <input id="day-plan-name" name="name" type="text" maxlength="50" required
+                   placeholder="Day plan name" aria-label="Day plan name" aria-describedby="day-plan-status">
+          </div>
+          <div class="day-plan-buttons">
+            <button type="button" id="day-plan-clear">Clear</button>
+            <button type="submit" id="day-plan-save" disabled>Save day plan</button>
+          </div>
+        </form>
+        <p id="day-plan-status" class="summary-status" role="status" aria-live="polite"></p>
+        <a id="day-plan-open" href="{% url 'routes:my_day_plans' %}" hidden>Open day plan</a>
+      {% else %}
+        <a id="day-plan-signin" href="{% url 'accounts:signin' %}?next={% url 'zones:map' %}" hidden>Sign in to plan a day</a>
+      {% endif %}
+    </section>
+    <div id="save-route-panel" hidden>
+      {% if user.is_authenticated %}
+        <form id="save-route-form" method="post" action="{% url 'routes:save_route' %}">
+          {% csrf_token %}
+          <label for="route-name">Route name</label>
+          <input id="route-name" name="name" type="text" maxlength="50" required
+                 placeholder="Office → Home" aria-describedby="save-route-status">
+          <button id="save-route-button" type="submit">Save this route</button>
+        </form>
+      {% endif %}
+      <a id="save-route-signin" href="{% url 'accounts:signin' %}?next={% url 'zones:map' %}"
+         {% if user.is_authenticated %}hidden{% endif %}>Sign in to save routes</a>
+      <p id="save-route-status" class="summary-status" role="status" aria-live="polite"></p>
     </div>
     <button id="summary-toggle" class="summary-toggle" type="button" hidden
             aria-expanded="false" aria-controls="summary-panel">
@@ -55,6 +120,92 @@
       </dl>
       <p id="windows-status" class="summary-status" role="status" aria-live="polite"></p>
       <p class="summary-disclaimer">Based on historical taxi data; actual fares and travel times may vary.</p>
+      {# US19 #48: adjacent pickup zones where this trip is historically cheaper. #}
+      <section id="nearby-panel" class="nearby-panel" hidden aria-labelledby="nearby-title">
+        <h2 id="nearby-title">Cheaper pickup nearby</h2>
+        <p id="nearby-status" class="summary-status" role="status" aria-live="polite"></p>
+        <ul id="nearby-list" class="nearby-list"></ul>
+        <p class="summary-disclaimer">Based on past trips (March to May 2026), not guaranteed. Typical fare before tip from a neighbouring zone, same day and hour. Click a zone to make it the pickup.</p>
+      </section>
+      <section id="leave-by-panel" class="leave-by-panel" hidden aria-labelledby="leave-by-title">
+        <h2 id="leave-by-title">Leave by</h2>
+        {# US16 #45: two ways to plan the departure. #}
+        <div class="plan-modes" role="radiogroup" aria-label="How to plan">
+          <label><input type="radio" name="plan-mode" value="arrive" checked> Arrive by</label>
+          <label><input type="radio" name="plan-mode" value="cheapest"> Cheapest in the next 3 hours</label>
+        </div>
+        <div id="arrive-by-mode">
+        <form id="leave-by-form">
+          <label for="leave-by-day">Day</label>
+          <select id="leave-by-day" name="day" required>
+            <option value="0">Monday</option>
+            <option value="1">Tuesday</option>
+            <option value="2">Wednesday</option>
+            <option value="3">Thursday</option>
+            <option value="4">Friday</option>
+            <option value="5">Saturday</option>
+            <option value="6">Sunday</option>
+          </select>
+          <label for="leave-by-arrive">Arrival time</label>
+          <input id="leave-by-arrive" name="arrive" type="time" step="900" required>
+          <button type="submit">Find when to leave</button>
+        </form>
+        <p id="leave-by-status" class="summary-status" role="status" aria-live="polite"></p>
+        <dl id="leave-by-result" class="summary-values" hidden>
+          <div><dt>Leave by</dt><dd id="leave-by-time"></dd></div>
+          <div><dt>Typical journey time</dt><dd id="leave-by-duration"></dd></div>
+          <div><dt>Typical fare before tip</dt><dd id="leave-by-fare"></dd></div>
+        </dl>
+        </div>
+        <div id="cheapest-mode" hidden>
+          <form id="cheapest-form">
+            <label for="cheapest-day">Day</label>
+            <select id="cheapest-day" name="day" required>
+              <option value="0">Monday</option>
+              <option value="1">Tuesday</option>
+              <option value="2">Wednesday</option>
+              <option value="3">Thursday</option>
+              <option value="4">Friday</option>
+              <option value="5">Saturday</option>
+              <option value="6">Sunday</option>
+            </select>
+            <label for="cheapest-start">Start time</label>
+            <input id="cheapest-start" name="start" type="time" step="900" required>
+            <div class="plan-buttons">
+              <button type="button" id="cheapest-now">Now</button>
+              <button type="submit">Find the cheapest hour</button>
+            </div>
+          </form>
+          <p id="cheapest-status" class="summary-status" role="status" aria-live="polite"></p>
+          <div id="cheapest-result" hidden>
+            <table class="cheapest-hours">
+              <thead><tr><th scope="col">Hour</th><th scope="col">Typical fare before tip</th></tr></thead>
+              <tbody id="cheapest-hours"></tbody>
+            </table>
+            <dl id="cheapest-best" class="summary-values" hidden>
+              <div><dt>Leave at</dt><dd id="cheapest-leave"></dd></div>
+              <div><dt>Typical journey time</dt><dd id="cheapest-duration"></dd></div>
+              <div><dt>Expected arrival</dt><dd id="cheapest-arrive"></dd></div>
+            </dl>
+          </div>
+        </div>
+        {# US17 #46: save the plan behind the result shown above. #}
+        <div id="save-plan-panel" hidden>
+          {% if user.is_authenticated %}
+            <form id="save-plan-form" method="post" action="{% url 'routes:save_plan' %}">
+              {% csrf_token %}
+              <label for="plan-name">Plan name</label>
+              <input id="plan-name" name="name" type="text" maxlength="50" required
+                     placeholder="Friday night home" aria-describedby="save-plan-status">
+              <button id="save-plan-button" type="submit">Save this plan</button>
+            </form>
+          {% else %}
+            <a id="save-plan-signin" href="{% url 'accounts:signin' %}?next={% url 'zones:map' %}">Sign in to save this plan</a>
+          {% endif %}
+          <p id="save-plan-status" class="summary-status" role="status" aria-live="polite"></p>
+        </div>
+        <p class="summary-disclaimer">Estimate from past trips (March to May 2026), not a guarantee.</p>
+      </section>
     </section>
     <button id="clear-selection" class="clear-all-btn" hidden>Clear selection</button>
   </aside>
@@ -79,7 +230,13 @@
   <script src="{% static 'zones/js/filters.js' %}"></script>
   <script src="{% static 'zones/js/heatmap.js' %}"></script>
   <script src="{% static 'zones/js/trip-summary.js' %}"></script>
+  <script src="{% static 'routes/js/save-route.js' %}"></script>
+  <script src="{% static 'routes/js/leave-by.js' %}"></script>
+  <script src="{% static 'routes/js/cheapest.js' %}"></script>
+  <script src="{% static 'routes/js/save-plan.js' %}"></script>
   <script src="{% static 'zones/js/fare.js' %}"></script>
   <script src="{% static 'zones/js/windows.js' %}"></script>
+  <script src="{% static 'routes/js/nearby.js' %}"></script>
+  <script src="{% static 'routes/js/day-plan.js' %}"></script>
 </body>
 </html>

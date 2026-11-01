@@ -39,12 +39,24 @@ class CleaningRuleTests(SimpleTestCase):
         self.assert_rule(
             "pickup_outside_month",
             removed_rows=[
-                {"pickup_at": "2026-02-28 23:59:59", "dropoff_at": "2026-03-01 00:15:00"},
-                {"pickup_at": "2026-04-01 00:00:00", "dropoff_at": "2026-04-01 00:15:00"},
+                {
+                    "pickup_at": "2026-02-28 23:59:59",
+                    "dropoff_at": "2026-03-01 00:15:00",
+                },
+                {
+                    "pickup_at": "2026-04-01 00:00:00",
+                    "dropoff_at": "2026-04-01 00:15:00",
+                },
             ],
             kept_rows=[
-                {"pickup_at": "2026-03-01 00:00:00", "dropoff_at": "2026-03-01 00:15:00"},
-                {"pickup_at": "2026-03-31 23:59:59", "dropoff_at": "2026-04-01 00:14:59"},
+                {
+                    "pickup_at": "2026-03-01 00:00:00",
+                    "dropoff_at": "2026-03-01 00:15:00",
+                },
+                {
+                    "pickup_at": "2026-03-31 23:59:59",
+                    "dropoff_at": "2026-04-01 00:14:59",
+                },
             ],
         )
 
@@ -214,8 +226,14 @@ class KeptColumnsTests(SimpleTestCase):
 
     def test_day_of_week_is_monday_zero(self):
         kept, _ = run_clean(
-            {"pickup_at": "2026-03-02 10:00:00", "dropoff_at": "2026-03-02 10:20:00"},  # Monday
-            {"pickup_at": "2026-03-08 10:00:00", "dropoff_at": "2026-03-08 10:20:00"},  # Sunday
+            {
+                "pickup_at": "2026-03-02 10:00:00",
+                "dropoff_at": "2026-03-02 10:20:00",
+            },  # Monday
+            {
+                "pickup_at": "2026-03-08 10:00:00",
+                "dropoff_at": "2026-03-08 10:20:00",
+            },  # Sunday
         )
 
         self.assertEqual(kept["day_of_week"].tolist(), [0, 6])

@@ -37,17 +37,13 @@ class ZoneSelectionTemplateTests(TestCase):
     def test_clear_buttons_hidden_by_default(self):
         content = self.response.content.decode()
         self.assertIn('id="clear-pickup"', content)
-        clear_pickup_match = re.search(
-            r'<button[^>]*id="clear-pickup"[^>]*>', content
-        )
+        clear_pickup_match = re.search(r'<button[^>]*id="clear-pickup"[^>]*>', content)
         self.assertIsNotNone(clear_pickup_match)
         self.assertIn("hidden", clear_pickup_match.group(0))
 
     def test_clear_selection_hidden_by_default(self):
         content = self.response.content.decode()
-        clear_sel_match = re.search(
-            r'<button[^>]*id="clear-selection"[^>]*>', content
-        )
+        clear_sel_match = re.search(r'<button[^>]*id="clear-selection"[^>]*>', content)
         self.assertIsNotNone(clear_sel_match)
         self.assertIn("hidden", clear_sel_match.group(0))
 
@@ -56,23 +52,35 @@ class ZoneSelectionTemplateTests(TestCase):
 
     def test_trip_summary_is_inside_selection_panel(self):
         html = self.response.content.decode()
-        selection = html[html.index('<aside class="zone-selection"'):]
-        selection = selection[:selection.index('</aside>')]
+        selection = html[html.index('<aside class="zone-selection"') :]
+        selection = selection[: selection.index("</aside>")]
         self.assertIn('id="summary-toggle"', selection)
         self.assertIn('id="summary-panel"', selection)
-        for field in ('fare-range', 'trip-duration', 'best-fare',
-                      'best-duration', 'worst-fare', 'worst-duration'):
+        for field in (
+            "fare-range",
+            "trip-duration",
+            "best-fare",
+            "best-duration",
+            "worst-fare",
+            "worst-duration",
+        ):
             self.assertIn(f'id="{field}"', selection)
-        for label in ('Cheapest:', 'Fastest:', 'Most expensive:', 'Slowest:'):
+        for label in ("Cheapest:", "Fastest:", "Most expensive:", "Slowest:"):
             self.assertIn(label, selection)
 
     def test_existing_components_write_to_one_summary(self):
         html = self.response.content.decode()
-        for field in ('fare-range', 'trip-duration', 'best-fare',
-                      'best-duration', 'worst-fare', 'worst-duration'):
+        for field in (
+            "fare-range",
+            "trip-duration",
+            "best-fare",
+            "best-duration",
+            "worst-fare",
+            "worst-duration",
+        ):
             self.assertEqual(html.count(f'id="{field}"'), 1)
-        self.assertIn('zones/js/fare.js', html)
-        self.assertIn('zones/js/windows.js', html)
+        self.assertIn("zones/js/fare.js", html)
+        self.assertIn("zones/js/windows.js", html)
 
 
 class FiltersJsSyntaxTests(SimpleTestCase):

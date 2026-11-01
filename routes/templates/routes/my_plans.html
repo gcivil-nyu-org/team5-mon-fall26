@@ -1,0 +1,25 @@
+{% extends "routes/base.html" %}
+
+{% block title %}My plans{% endblock %}
+
+{% block content %}
+  <h1>My plans</h1>
+  {% if plans %}
+    <ul class="saved-route-list">
+      {% for plan in plans %}
+        <li>
+          <strong>{{ plan.name }}</strong>
+          <span>{{ plan.pickup_zone.name }} → {{ plan.dropoff_zone.name }}</span>
+          <span>{{ plan.get_mode_display }}: {{ plan.get_day_of_week_display }} {{ plan.time_label }}</span>
+          <div class="saved-route-actions">
+            <a href="{% url 'routes:open_plan' plan.pk %}">Open</a>
+            <a href="{% url 'routes:edit_plan' plan.pk %}">Edit</a>
+            <a href="{% url 'routes:delete_plan' plan.pk %}">Delete</a>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No saved plans yet. Select a pickup and dropoff on the map, get a "Leave by" result, then choose "Save this plan".</p>
+  {% endif %}
+{% endblock %}

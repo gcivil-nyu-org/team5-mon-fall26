@@ -20,26 +20,48 @@ class WindowData:
 
     @classmethod
     def setUpTestData(cls):
-        cls.midtown = Zone.objects.create(zone_id=161, name="Midtown Center", borough="Manhattan")
-        cls.ues = Zone.objects.create(zone_id=237, name="Upper East Side South", borough="Manhattan")
+        cls.midtown = Zone.objects.create(
+            zone_id=161, name="Midtown Center", borough="Manhattan"
+        )
+        cls.ues = Zone.objects.create(
+            zone_id=237, name="Upper East Side South", borough="Manhattan"
+        )
         cls.jfk = Zone.objects.create(zone_id=132, name="JFK Airport", borough="Queens")
 
-        add_route_stats(cls.midtown, cls.ues, 0, 3, 5, fare_avg="12.00", avg_duration_min=9.0)
-        add_route_stats(cls.midtown, cls.ues, 0, 7, 50, fare_avg="20.00", avg_duration_min=15.0)
-        add_route_stats(cls.midtown, cls.ues, 0, 8, 412, fare_avg="17.43", avg_duration_min=11.62)
-        add_route_stats(cls.midtown, cls.ues, 0, 9, 4, fare_avg="5.00", avg_duration_min=2.0)
-        add_route_stats(cls.midtown, cls.ues, 0, 17, 300, fare_avg="25.50", avg_duration_min=30.0)
-        add_route_stats(cls.midtown, cls.ues, 0, 18, 200, fare_avg="25.50", avg_duration_min=35.0)
+        add_route_stats(
+            cls.midtown, cls.ues, 0, 3, 5, fare_avg="12.00", avg_duration_min=9.0
+        )
+        add_route_stats(
+            cls.midtown, cls.ues, 0, 7, 50, fare_avg="20.00", avg_duration_min=15.0
+        )
+        add_route_stats(
+            cls.midtown, cls.ues, 0, 8, 412, fare_avg="17.43", avg_duration_min=11.62
+        )
+        add_route_stats(
+            cls.midtown, cls.ues, 0, 9, 4, fare_avg="5.00", avg_duration_min=2.0
+        )
+        add_route_stats(
+            cls.midtown, cls.ues, 0, 17, 300, fare_avg="25.50", avg_duration_min=30.0
+        )
+        add_route_stats(
+            cls.midtown, cls.ues, 0, 18, 200, fare_avg="25.50", avg_duration_min=35.0
+        )
         # Other day: must not leak into Monday.
-        add_route_stats(cls.midtown, cls.ues, 1, 4, 99, fare_avg="1.00", avg_duration_min=1.0)
+        add_route_stats(
+            cls.midtown, cls.ues, 1, 4, 99, fare_avg="1.00", avg_duration_min=1.0
+        )
 
         # Pickup only: all trips from Midtown.
         add_zone_stats(cls.midtown, 0, 8, 900, fare_avg="21.07", avg_duration_min=14.25)
         add_zone_stats(cls.midtown, 0, 10, 100, fare_avg="30.00", avg_duration_min=20.0)
 
         # Only one hour with enough trips.
-        add_route_stats(cls.jfk, cls.ues, 0, 8, 7, fare_avg="70.00", avg_duration_min=40.0)
-        add_route_stats(cls.jfk, cls.ues, 0, 9, 4, fare_avg="65.00", avg_duration_min=38.0)
+        add_route_stats(
+            cls.jfk, cls.ues, 0, 8, 7, fare_avg="70.00", avg_duration_min=40.0
+        )
+        add_route_stats(
+            cls.jfk, cls.ues, 0, 9, 4, fare_avg="65.00", avg_duration_min=38.0
+        )
 
 
 class RouteWindowsTests(WindowData, TestCase):
@@ -80,7 +102,12 @@ class RouteWindowsTests(WindowData, TestCase):
         self.assertEqual([h["hour"] for h in hours], [3, 7, 8, 17, 18])
         self.assertEqual(
             hours[2],
-            {"hour": 8, "trip_count": 412, "fare_avg": Decimal("17.43"), "avg_duration_min": 11.62},
+            {
+                "hour": 8,
+                "trip_count": 412,
+                "fare_avg": Decimal("17.43"),
+                "avg_duration_min": 11.62,
+            },
         )
 
     def test_other_day_does_not_leak(self):
@@ -111,8 +138,14 @@ class RouteWindowsTests(WindowData, TestCase):
     def assert_not_enough(self, result):
         self.assertEqual(
             result,
-            {"enough_data": False, "hours": [], "by_fare": [], "by_duration": [],
-             "best": None, "worst": None},
+            {
+                "enough_data": False,
+                "hours": [],
+                "by_fare": [],
+                "by_duration": [],
+                "best": None,
+                "worst": None,
+            },
         )
 
 
@@ -126,8 +159,18 @@ class RouteWindowsApiTests(WindowData, TestCase):
         response = self.get(**{"from": 161, "day": 0})
 
         self.assertEqual(response.status_code, 200)
-        eight = {"hour": 8, "trip_count": 900, "fare_avg": "21.07", "avg_duration_min": 14.25}
-        ten = {"hour": 10, "trip_count": 100, "fare_avg": "30.00", "avg_duration_min": 20.0}
+        eight = {
+            "hour": 8,
+            "trip_count": 900,
+            "fare_avg": "21.07",
+            "avg_duration_min": 14.25,
+        }
+        ten = {
+            "hour": 10,
+            "trip_count": 100,
+            "fare_avg": "30.00",
+            "avg_duration_min": 20.0,
+        }
         self.assertEqual(
             response.json(),
             {
@@ -160,8 +203,12 @@ class RouteWindowsApiTests(WindowData, TestCase):
     def test_from_equals_to_reads_that_route_row(self):
         # A trip within one zone (US5 #7 follow-up) reads the 161 -> 161
         # route rows, not the zone rows for all trips from 161 (8:00, 10:00).
-        add_route_stats(self.midtown, self.midtown, 0, 12, 20, fare_avg="9.00", avg_duration_min=6.0)
-        add_route_stats(self.midtown, self.midtown, 0, 22, 8, fare_avg="11.00", avg_duration_min=5.0)
+        add_route_stats(
+            self.midtown, self.midtown, 0, 12, 20, fare_avg="9.00", avg_duration_min=6.0
+        )
+        add_route_stats(
+            self.midtown, self.midtown, 0, 22, 8, fare_avg="11.00", avg_duration_min=5.0
+        )
 
         data = self.get(**{"from": 161, "to": 161, "day": 0}).json()
 

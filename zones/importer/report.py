@@ -49,7 +49,9 @@ def _block(title, report):
 
 def _cells_line(label, stats):
     small = int((stats["trip_count"] < REPORT_MIN_TRIPS).sum())
-    return f"{label:<{LABEL_WIDTH + 2}}{len(stats):>{NUMBER_WIDTH},}  ({small:,} with fewer than {REPORT_MIN_TRIPS} trips)"
+    count = f"{len(stats):>{NUMBER_WIDTH},}"
+    note = f"({small:,} with fewer than {REPORT_MIN_TRIPS} trips)"
+    return f"{label:<{LABEL_WIDTH + 2}}{count}  {note}"
 
 
 def format_report(months, zone_stats, route_stats):
@@ -59,7 +61,10 @@ def format_report(months, zone_stats, route_stats):
     blocks.append(_block(f"Total ({len(months)} {plural})", total_report(months)))
     blocks.append(
         "\n".join(
-            [_cells_line("Zone cells", zone_stats), _cells_line("Route cells", route_stats)]
+            [
+                _cells_line("Zone cells", zone_stats),
+                _cells_line("Route cells", route_stats),
+            ]
         )
     )
     return "\n\n".join(blocks)

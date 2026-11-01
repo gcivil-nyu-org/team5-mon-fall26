@@ -54,10 +54,14 @@ class SameZoneJsTests(SimpleTestCase):
         self.assertIn("function selectSameZone", self.js)
 
     def test_select_same_zone_sets_dropoff_to_pickup(self):
-        self.assertIn("dropoffZoneId = pickupZoneId", function_body(self.js, "selectSameZone"))
+        self.assertIn(
+            "dropoffZoneId = pickupZoneId", function_body(self.js, "selectSameZone")
+        )
 
     def test_select_same_zone_dispatches_zones_selected(self):
-        self.assertIn("taxiscope:zones-selected", function_body(self.js, "selectSameZone"))
+        self.assertIn(
+            "taxiscope:zones-selected", function_body(self.js, "selectSameZone")
+        )
 
     def test_button_wired_on_map_ready(self):
         self.assertIn('sameZoneBtn.addEventListener("click", selectSameZone)', self.js)
@@ -74,7 +78,9 @@ class SameZoneJsTests(SimpleTestCase):
     def test_style_zone_handles_both(self):
         style = function_body(self.js, "styleZone")
         self.assertIn("isPickup && isDropoff", style)
-        self.assertLess(style.index("isPickup && isDropoff"), style.index("if (isPickup)"))
+        self.assertLess(
+            style.index("isPickup && isDropoff"), style.index("if (isPickup)")
+        )
 
     def test_outline_is_dashed_dropoff_color(self):
         outline = function_body(self.js, "updateSameZoneOutline")
@@ -83,7 +89,9 @@ class SameZoneJsTests(SimpleTestCase):
 
     def test_outline_in_own_non_interactive_pane(self):
         self.assertIn("createPane", self.js)
-        self.assertIn("interactive: false", function_body(self.js, "updateSameZoneOutline"))
+        self.assertIn(
+            "interactive: false", function_body(self.js, "updateSameZoneOutline")
+        )
 
     def test_outline_updated_on_every_selection_change(self):
         for name in ("selectZone", "clearPickup", "clearDropoff", "selectSameZone"):

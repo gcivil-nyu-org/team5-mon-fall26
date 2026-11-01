@@ -19,13 +19,25 @@ class WindowsPanelTemplateTests(TestCase):
     def test_rows_hidden_until_a_route_is_selected(self):
         html = self.response.content.decode()
         for row_id in ("best-row", "worst-row"):
-            row = html[html.index(f'id="{row_id}"'):]
-            self.assertIn("hidden", row[:row.index(">")])
+            row = html[html.index(f'id="{row_id}"') :]
+            self.assertIn("hidden", row[: row.index(">")])
 
     def test_best_and_worst_are_labeled(self):
-        for text in ("Best", "Worst", "Cheapest", "Fastest", "Most expensive", "Slowest"):
+        for text in (
+            "Best",
+            "Worst",
+            "Cheapest",
+            "Fastest",
+            "Most expensive",
+            "Slowest",
+        ):
             self.assertContains(self.response, text)
-        for element_id in ("best-fare", "best-duration", "worst-fare", "worst-duration"):
+        for element_id in (
+            "best-fare",
+            "best-duration",
+            "worst-fare",
+            "worst-duration",
+        ):
             self.assertContains(self.response, f'id="{element_id}"')
 
     def test_best_and_worst_rows_have_distinct_classes(self):
@@ -39,7 +51,9 @@ class WindowsPanelTemplateTests(TestCase):
     def test_windows_js_loaded_after_filters_js(self):
         html = self.response.content.decode()
         self.assertIn("zones/js/windows.js", html)
-        self.assertLess(html.index("zones/js/filters.js"), html.index("zones/js/windows.js"))
+        self.assertLess(
+            html.index("zones/js/filters.js"), html.index("zones/js/windows.js")
+        )
 
 
 class WindowsJsTests(SimpleTestCase):

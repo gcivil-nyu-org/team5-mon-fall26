@@ -60,9 +60,7 @@ class AnonymousAccessTests(TestCase):
 
     @patch("zones.views.unknown_zone_ids", return_value=False)
     @patch("zones.views.route_windows", return_value={"enough_data": False})
-    def test_route_windows_accessible_without_login(
-        self, mock_windows, mock_unknown
-    ):
+    def test_route_windows_accessible_without_login(self, mock_windows, mock_unknown):
         response = self.client.get(
             reverse("zones:route_windows_api"),
             {"from": self.zone.zone_id, "day": 0},

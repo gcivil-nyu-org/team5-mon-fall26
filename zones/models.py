@@ -22,9 +22,7 @@ class ZoneHourStats(models.Model):
     day_of_week follows Python's Monday=0 .. Sunday=6 convention.
     """
 
-    zone = models.ForeignKey(
-        Zone, on_delete=models.CASCADE, related_name="hour_stats"
-    )
+    zone = models.ForeignKey(Zone, on_delete=models.CASCADE, related_name="hour_stats")
     day_of_week = models.PositiveSmallIntegerField()
     hour = models.PositiveSmallIntegerField()
     trip_count = models.PositiveIntegerField()
@@ -78,9 +76,7 @@ class RouteHourStats(models.Model):
             )
         ]
         indexes = [
-            models.Index(
-                fields=["pickup_zone", "dropoff_zone", "day_of_week", "hour"]
-            ),
+            models.Index(fields=["pickup_zone", "dropoff_zone", "day_of_week", "hour"]),
         ]
         ordering = ["pickup_zone", "dropoff_zone", "day_of_week", "hour"]
 

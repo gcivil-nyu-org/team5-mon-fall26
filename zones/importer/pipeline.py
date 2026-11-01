@@ -56,11 +56,15 @@ def run_import(months, data_dir, progress=lambda message: None):
 
         zone_acc = combine_partials(zone_acc, partial_totals(kept, ZONE_KEYS))
         route_acc = combine_partials(route_acc, partial_totals(kept, ROUTE_KEYS))
-        progress(f"{month}: {reports[-1].rows_read:,} read, {reports[-1].rows_kept:,} kept")
+        progress(
+            f"{month}: {reports[-1].rows_read:,} read, {reports[-1].rows_kept:,} kept"
+        )
         del kept
 
     zone_stats = finalize(zone_acc)
     route_stats = finalize(route_acc)
-    progress(f"Writing {len(zone_stats):,} zone cells and {len(route_stats):,} route cells")
+    progress(
+        f"Writing {len(zone_stats):,} zone cells and {len(route_stats):,} route cells"
+    )
     zones_loaded, _, _ = load_all(lookup, zone_stats, route_stats)
     return ImportResult(reports, zone_stats, route_stats, zones_loaded)

@@ -46,6 +46,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "zones",
+    "accounts",
+    "routes",
 ]
 
 MIDDLEWARE = [
@@ -95,7 +97,8 @@ DATABASES["default"]["ENGINE"] = "django.db.backends.postgresql"
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+        "NAME": "django.contrib.auth.password_validation."
+        "UserAttributeSimilarityValidator",
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
@@ -140,6 +143,17 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
 
+# Accounts (US10, US11): where sign-in lives and where users land after
+# signing in or out. A page that needs an account sends guests to
+# LOGIN_URL with ?next= set, and they come back after signing in.
+LOGIN_URL = "accounts:signin"
+LOGIN_REDIRECT_URL = "zones:map"
+LOGOUT_REDIRECT_URL = "zones:map"
+
 # Minimum trips in a day/hour cell before the API shows its statistics
 # (see docs/decisions.md, US5 #7). Shared by US5, US6 and US7.
 MIN_TRIP_COUNT = 5
+
+# Directory for collected static files in production (served by the Elastic
+# Beanstalk proxy, see .ebextensions/01_static.config)
+STATIC_ROOT = BASE_DIR / "staticfiles"

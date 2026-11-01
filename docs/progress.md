@@ -15,6 +15,136 @@ Entry format:
 
 ## Log
 
+### 2026-10-31 — us21-day-plan-calendar (US21 #50, part 2)
+**What changed:**
+- `routes/planning.py` `day_plan_calendar(plan, stops, now, weekly=False)`: one `CalendarEvent` per leg from `day_plan_legs()`, the button label and the no-data warning.
+- New endpoint `GET /day-plans/<id>/calendar.ics` (`routes/views.py` `day_plan_calendar_ics`, `routes/urls.py`). The day plan page now takes its legs from `day_plan_calendar()`, so the page, the button and the file agree (no extra queries).
+- Day plan page (`routes/templates/routes/day_plan_detail.html`): calendar form under the trips (warning, "Repeat every week", button with the date).
+- `docs/decisions.md` (new US21 part 2 section, replacing the "second part of US21" line in US20) and a paragraph at the end of High Level Design §17.
+
+**Decisions made (also in `docs/decisions.md`):** the first leg's leave time picks the date; a leave time earlier than or equal to the previous leg's moves that leg and the ones after it to the next day (changed after review); end = start + rounded typical duration, zero-length without data; reminder 15 minutes before each event; UIDs `dayplan-<id>-leg-<n>@taxiscope`.
+
+**Tests:** `routes/tests/test_day_plan_calendar.py` (27). One US20 test narrowed: an in-order plan must not show the out-of-order warning (it checked for any "⚠", and the calendar warning also uses one). Full Django suite (553, 4 skipped) and all 86 Node tests pass; black, flake8 and `makemigrations --check` pass.
+
+**Next step:** check the downloaded file by hand in Google Calendar and Apple Calendar.
+
+### 2026-10-31 — us20-day-plans, Pass B (US20, #49)
+**What changed:**
+- `routes/day_plans.py`: `move_stop`, `reorder_stops`, `remove_stop`, `add_stop`, `set_leave_time` and `DayPlanError`; every change locks the plan row and renumbers row by row.
+- `routes/forms.py`: `DayPlanDayForm`, `StopTimeForm`, `AddStopForm` (zones with a shape, borough then name), `MoveStopForm`. `routes/views.py` and `routes/urls.py`: change day, set leave time, add, move, remove, reorder (JSON), delete (confirmation page `delete_day_plan.html`).
+- Day plan page: day form, a row per stop (drag handle, leave time, ↑ ↓, Remove), add-stop form, Delete link; My day plans has a Delete link. `routes/base.html` has a `scripts` block.
+- SortableJS 1.15.6 vendored in `routes/static/routes/vendor/sortable/` (sha256 in `docs/decisions.md`); new `routes/static/routes/js/day-plan-sort.js`.
+- Map builder: a disabled "Save day plan" explains why in its title.
+- Review follow-up: stop rows on the day plan page are numbered again; the stop-count messages are shared constants in `routes/day_plans.py` (`TOO_FEW_STOPS`, `TOO_FEW_TO_REMOVE`, `TOO_MANY_STOPS`), used by the forms, the rules and the page.
+- `docs/decisions.md` (reorder/remove/add, pages, SortableJS) and the rest of High Level Design §18.
+
+**Decisions made (also in `docs/decisions.md`):** blocked or invalid edits re-render the plan page with the message and status 400; the reorder endpoint takes comma-separated stop ids and returns JSON; SortableJS pinned and vendored.
+
+**Tests:** `routes/tests/test_day_plan_edits.py` (40: rules from the worked example, views, and ownership/sign-in/method/CSRF for every endpoint), `zones/tests/day_plan_sort.test.js` (6), `zones/tests/day_plan.test.js` (+1, Save title). Two Pass A page tests updated for the new stop rows and the add-stop query. Full Django suite (526, 4 skipped) and all 86 Node tests pass; black, flake8 and `makemigrations --check` pass.
+
+**Next step:** check the day plan page in the browser (drag and drop, buttons); then US21 part 2, the day plan calendar export.
+
+### 2026-10-31 — us20-day-plans, Pass A (US20, #49)
+**What changed:**
+- Models `routes.DayPlan` and `routes.DayPlanStop`, migration `routes/migrations/0003_day_plan.py`. `routes/day_plans.py`: `create_day_plan()`, `out_of_order_warning()`.
+- `routes/forms.py` `DayPlanForm`; `POST /day-plans/save/` (`save_day_plan`); `GET /day-plans/` (`my_day_plans`) and `GET /day-plans/<id>/` (`open_day_plan`, read-only). `routes/planning.py` `day_plan_legs()`.
+- Map: Day plan block under the Pickup/Dropoff rows (`zones/templates/zones/map.html`, `zones/static/zones/css/map.css`, new `routes/static/routes/js/day-plan.js`), reworked after manual testing: "+ Add stop" arms one map click per stop, the newest leg becomes the selection, and the day and newest leave hour sync with the header filters. `filters.js`: `selectRoute` accepts a null dropoff; new `taxiscope:set-time`, `taxiscope:stop-picking` and `taxiscope:stop-picked` events. "Day plans" link in the map header and a new nav on the routes pages (`routes/templates/routes/base.html`).
+- `docs/decisions.md` (US20 section, Pass A bullets) and High Level Design §18 (first part).
+
+**Decisions made (also in `docs/decisions.md`):** chain of 3–10 stops, leave time on every stop but the last; unique `(day_plan, position)`; two queries per leg, not batched; builder defaults (map hour, then +1 hour, at most 23:45); calendar export of a day plan is US21 part 2, after US20.
+
+**Tests:** `routes/tests/test_day_plans.py` (45), `zones/tests/day_plan.test.js` (24), `zones/tests/select_route.test.js` (+7: null dropoff, set-time, stop picking). Full Django suite (486, 4 skipped) and all 79 Node tests pass; black, flake8 and `makemigrations --check` pass.
+
+**Next step:** Pass B: change day and leave times, add/remove/move/reorder stops (SortableJS 1.15.6, download approved), delete with confirmation.
+
+### 2026-10-31 — us21-calendar-export (US21, #50)
+**What changed:**
+- New `routes/calendar.py` (standard library only): `CalendarEvent`, `next_occurrence()`, `escape_text()`, `fold_line()`, `build_ics()`, with a fixed `America/New_York` `VTIMEZONE`.
+- `routes/planning.py`: `plan_calendar(plan, now, weekly=False)` builds the event and the page's button label and warning from `plan_result()`.
+- New endpoint `GET /plans/<id>/calendar.ics` (`routes/views.py` `plan_calendar_ics`, `routes/urls.py`). `open_plan` now gets its result from `plan_calendar()`, so the stats are read once and the button and the file agree.
+- Plan page (`routes/templates/routes/plan_detail.html`, `routes/static/routes/css/routes.css`): warning when there is no estimate, "Repeat every week" checkbox, and a button with the date.
+- `docs/decisions.md` (US21 section) and High Level Design §17. No migration, no new dependency.
+
+**Decisions made (also in `docs/decisions.md`):** New York wall-clock times with `TZID` and `VTIMEZONE`; next date whose start has not passed (start >= now, compared in UTC); event on the leave date; zero-length events when there is no estimate; reminders 15 min (1 h for arrival-only); stable UID with no personal data; optional weekly repeat.
+
+**Tests:** `routes/tests/test_calendar.py` (47): date rules incl. the Nov 1 2026 DST change, folding/escaping, VTIMEZONE vs zoneinfo 2026–2030, events with and without data, privacy, endpoint, repeat, plan page. Full Django suite (441, 4 skipped) and all 48 Node tests pass; black and flake8 pass.
+
+**Next step:** check the downloaded files by hand in Google Calendar and Apple Calendar (expect Google to ignore the reminders).
+
+### 2026-10-31 — us19-cheaper-nearby (US19, #48)
+**What changed:**
+- New public endpoint `GET /api/routes/nearby?from=&to=&day=&hour=` (`routes/views.py` `nearby_api`, `routes/urls.py`), backed by `cheaper_nearby()` in `routes/planning.py` and `load_zone_neighbors()` (cached) in `zones/stats.py`. No new table, no new dependency.
+- Map: "Cheaper pickup nearby" section in the trip summary (`zones/templates/zones/map.html`, `zones/static/zones/css/map.css`, new `routes/static/routes/js/nearby.js`). `filters.js`: `openSavedRoute` became `selectRoute(pickup, dropoff, unavailableMessage)` and also handles the new `taxiscope:select-route` event.
+- `docs/decisions.md` (US19 section, plus an Open item on a minimum saving) and High Level Design §16.
+
+**Decisions made (also in `docs/decisions.md`):** adjacent = shares a border (US18 file); any lower average fare counts, equal does not; both routes need `MIN_TRIP_COUNT`; destination never suggested; up to 3, biggest saving first, tie to the lower zone id; `neighbor_count` tells islands apart from "none cheaper"; same-zone trips show no suggestions.
+
+**Tests:** `routes/tests/test_nearby.py` (24), `zones/tests/nearby.test.js` (13), `zones/tests/select_route.test.js` (3). Full Django suite (394, 4 skipped) and all 48 Node tests pass. black and flake8 pass.
+
+**Next step:** ask the Product Owner about a minimum saving (Open in `decisions.md`). Check the section by hand on Integration once `develop` deploys.
+
+### 2026-10-30 — us18-zone-neighbors (US18, #47)
+**What changed:**
+- `scripts/build_zone_neighbors.py` (shapely 2.1.2, not in `requirements.txt`) reads `zones/data/taxi_zones.geojson` and writes `zones/data/zone_neighbors.json`: 263 zones, 611 adjacent pairs. Zones with no neighbour are islands: 1, 46, 103, 104, 105, 199, 202.
+- README: "Regenerate the adjacent zones". `docs/decisions.md`: adjacent zones section.
+
+**Decisions made (also in `docs/decisions.md`):** adjacent zones instead of walking distance, because trips only record the zone; a shared border of at least 10 m counts, a touching corner or a river does not; shapely pinned to 2.1.2 and kept out of `requirements.txt`.
+
+**Tests:** `zones/tests/test_zone_neighbors.py`: every zone covered, two-way, no self, spot checks (Midtown, JFK, Staten Island), nothing across a river; 4 rule tests on small squares skip when shapely isn't installed (as on Travis). Full suite passes; black and flake8 clean.
+
+**Next step:** the story that suggests a cheaper pickup zone next to the rider's can read `zone_neighbors.json`.
+
+### 2026-10-30 — us17-trip-plans (US17, #46)
+**What changed:**
+- `routes.TripPlan` model and migration `routes/migrations/0002_trip_plan.py` (user, name, pickup, dropoff, mode, day, time; CASCADE links; unique name per user).
+- `POST /plans/save/` and the map's "Save this plan" form under both Leave by results (`routes/static/routes/js/save-plan.js`); guests get a sign-in link. `leave-by.js` and `cheapest.js` now send `taxiscope:plan-result` / `taxiscope:plan-cleared`.
+- Pages: My plans (`/plans/`), open (`/plans/<id>/`, result recalculated with `routes.planning.plan_result`), edit day or time, delete. Header link "Plans".
+- Docs: `docs/decisions.md` and the High Level Design (section 15).
+
+**Decisions made:** see "save and manage Leave by plans" in `decisions.md` (store inputs only, quarter-hour rule only for Arrive by).
+
+**Tests:** `routes/tests/test_trip_plans.py` (save, validation, ownership and 404s, recalculation, edit, delete, account deletion) and `zones/tests/save_plan.test.js`; `leave_by.test.js` updated for the new events. Full suite passes; black and flake8 clean.
+
+**Next step:** US18 (adjacent zones) is independent.
+
+### 2026-10-30 — us16-cheapest (US16, #45)
+**What changed:**
+- `routes/planning.py`: `cheapest_in_window()` compares the start hour and the next 2 hours (crossing midnight and Sunday→Monday), skips hours under `MIN_TRIP_COUNT`, picks the lowest average fare (earlier hour on a tie), and works out when to leave and the expected arrival.
+- New public endpoint `GET /api/routes/cheapest?from=&to=&day=&start=HH:MM` (`routes/views.py`, `routes/urls.py`).
+- Map: the Leave by panel now has two options, "Arrive by" (US15) and "Cheapest in the next 3 hours", with a Now button (New York time) or a custom day and start time in 15-minute steps. It lists the 3 hours with typical fares, highlights the cheapest and shows its journey time and expected arrival (`zones/templates/zones/map.html`, `routes/static/routes/js/cheapest.js`, `zones/static/zones/css/map.css`).
+- Docs: `docs/decisions.md` and the High Level Design (section 14).
+
+**Decisions made:** see "cheapest in the next 3 hours" in `decisions.md` (any-minute `start` for Now, tie rule, midnight wrap).
+
+**Tests:** `routes/tests/test_cheapest.py` (rule, midnight and week wrap, sparse hours, validation, page) and `zones/tests/cheapest.test.js`. Full suite passes; black and flake8 clean.
+
+**Next step:** US17 saves these plans; `cheapest.js` already sends a `taxiscope:plan-result` event for it.
+
+### 2026-10-27 — setup/ci (Sprint 6 CI setup, not a story)
+**What changed:**
+- `requirements-dev.txt` (black, flake8, coverage, coveralls pinned on top of `requirements.txt`), `.flake8` (max-line-length 88, `E203` ignored), `.coveragerc` (measures the project's own code; omits venvs, migrations, tests, `manage.py`, `wsgi.py`, `asgi.py`, `scripts/`).
+- Reformatted the whole codebase with black in its own commit (no behavior change — full suite passed before and after). Fixed the 5 remaining flake8 findings by hand: an unused import in `zones/admin.py`, and four lines over 88 characters split across variables/strings in `scripts/build_zone_shapes.py`, `taxiscope/settings.py`, `zones/importer/report.py`, `zones/tests/test_importer_download.py`.
+- Added `.travis.yml`: Travis CI (`app.travis-ci.com`), `dist: jammy`, PostgreSQL 14 (the version bundled with that image — 16 needs `dist: noble`, not used here), `python 3.12`. Script: `black --check .`, `flake8`, `coverage run manage.py test`, `coverage report`, `node --test zones/tests/*.test.js`. `after_success` uploads to Coveralls tagged by branch. Email notification on failure only. No deploy step yet.
+- Added `docs/ci.md` explaining the pipeline, the PostgreSQL version choice, the secrets used (CI-only dummy values, no real credentials), and what still needs manual setup in Travis's and Coveralls' own settings.
+- `zones/tests/test_models.py`: added `__str__` tests for `Zone`, `ZoneHourStats`, and new create/read-back + `__str__` tests for `RouteHourStats` (previously untested at all). This closed the only coverage gap.
+- README: Travis and Coveralls badges (develop and main), a "Development checks" section for running black/flake8/coverage/both test suites locally.
+- `.gitignore`: ignore the local `.coverage` data file and `htmlcov/`.
+
+**Decisions made (also in `docs/decisions.md`):** Travis CI + Coveralls (closes the "CI tooling" Open item); PostgreSQL 14 on Travis's `jammy` image; `.flake8`/`.coveragerc` scope; no enforced coverage threshold in CI (one-time 85%+ check per the course ask, not a gate).
+
+**Tests:** `coverage run manage.py test`: 225 tests, OK, 100% coverage of the project's own code (`taxiscope/`, `zones/`, excluding tests/migrations/wsgi/asgi/manage.py/scripts — up from 99.31% with 3 untested lines before this session). `node --test zones/tests/*.test.js`: 7 tests, OK. `black --check .` and `flake8` both clean. Every CI command run locally in the order `.travis.yml` uses it, against the local `taxiscope-db` Postgres 16 container (Travis itself runs Postgres 14 on `jammy`, not verified by an actual Travis build yet).
+
+**Known risk, flagged in `docs/ci.md`:** community reports describe PostgreSQL occasionally failing to auto-start on Travis's `jammy` image; if the first real build fails at the `services` step, try adding `group: previous` next to `dist: jammy`.
+
+**CD added (same day, same branch):**
+- Compared the source bundle running on production (`eb deploy --staged` from `c84c5d2`) with the repo. Committed its `Procfile` and `.ebextensions/01_static.config` unchanged, and added `STATIC_ROOT` to settings (`staticfiles/` was already in `.gitignore`).
+- Replaced the bundle's `.platform/hooks/predeploy` migrate/collectstatic scripts with `.ebextensions/02_django.config` `container_commands` (migrate `leader_only`).
+- Pinned `gunicorn==26.2.0` in `requirements.txt`.
+- `.travis.yml` `deploy`: dpl v2 Elastic Beanstalk, `develop` → `Taxiscope-integration-env`, `main` → `taxiscope-env`, `wait_until_deployed`, cron builds skipped. `docs/ci.md` has a new "Continuous deployment" section. Decisions are in `docs/decisions.md` (closes the AWS hosting Open item for the app).
+- Checked locally: black, flake8, 225 Django tests at 100% coverage, 7 Node tests, `collectstatic` with `DEBUG=False` (141 files into a temp dir), and gunicorn with `DEBUG=False` serving `/api/zones` (200). Travis's lint API reported no warnings. No real deploy has run from Travis yet.
+
+**Next step:** PR `setup/ci` → `develop` is open, not merged. After it merges, check that the first Travis deploy to `Taxiscope-integration-env` succeeds: `01_migrate` must reach the database, so its security group must allow the integration instance security group. Only then open `develop` → `main`. Travis runs Python 3.12 but Elastic Beanstalk runs 3.14, and the project decision still says 3.12, so align them in a later change. Optionally add a GitHub branch-protection rule requiring the Travis check before merging.
+
 ### 2026-10-25 — docs/release-prep (release prep, not a story)
 **What changed:**
 - `docs/decisions.md`: the Product Owner (Shyam) confirmed the US7 best/worst ranking rule (fare and duration ranked separately) and the US5/US6 `MIN_TRIP_COUNT = 5` setting. Added a US9 note on why "no personal data collected" holds: OpenStreetMap tile requests and hosting access logs see visitor IPs, but the app itself stores none.
