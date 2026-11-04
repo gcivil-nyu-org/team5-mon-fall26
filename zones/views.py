@@ -4,6 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_GET
@@ -34,11 +35,73 @@ def map_view(request, saved_route=None):
     )
 
 
+LINK_NOT_ON_MAP = "A zone in the link isn't on the map, so it was left out."
+LINK_SAME_ZONE = "The link named the same zone for A and B, so B was left out."
+
+
+def _link_zone(request, key):
+    """(zone id or None, valid) for ?a= or ?b= on the compare page. Missing
+    or empty is valid; anything that is not a zone drawn on the map is not."""
+    raw = request.GET.get(key, "")
+    if raw == "":
+        return None, True
+    zone_id = _parse_int(raw, 1, MAX_ZONE_ID)
+    if zone_id in shape_zone_ids():
+        return zone_id, True
+    return None, False
+
+
+@require_GET
+def compare_view(request):
+    """US22 #69: compare two zones side by side, on its own public page.
+
+    /compare/?a=&b=&day=&hour= starts with those zones and that time. Ids
+    that are not zones on the map are left out with a message; a day or
+    hour out of range falls back to the current NYC day or hour.
+    """
+    now = datetime.now(NYC_TZ)
+    day = _parse_int(request.GET.get("day"), 0, 6)
+    hour = _parse_int(request.GET.get("hour"), 0, 23)
+    start_a, valid_a = _link_zone(request, "a")
+    start_b, valid_b = _link_zone(request, "b")
+    messages = []
+    if not (valid_a and valid_b):
+        messages.append(LINK_NOT_ON_MAP)
+    if start_a is not None and start_a == start_b:
+        start_b = None
+        messages.append(LINK_SAME_ZONE)
+    return render(
+        request,
+        "zones/compare.html",
+        {
+            "current_day": now.weekday() if day is None else day,
+            "current_hour": now.hour if hour is None else hour,
+            "min_trip_count": settings.MIN_TRIP_COUNT,
+            "start_a": start_a,
+            "start_b": start_b,
+            "link_message": " ".join(messages),
+            # "or choose from list": zones on the map, borough then name.
+            "zone_choices": Zone.objects.filter(zone_id__in=shape_zone_ids()).order_by(
+                "borough", "name"
+            ),
+        },
+    )
+
+
 @lru_cache(maxsize=1)
 def load_zone_shapes():
     """Read the zone GeoJSON once and keep it in memory."""
     with ZONE_SHAPES_PATH.open(encoding="utf-8") as f:
         return json.load(f)
+
+
+@lru_cache(maxsize=1)
+def shape_zone_ids():
+    """Ids of the zones drawn on the map (1..263; 264 and 265 have no shape)."""
+    return frozenset(
+        feature["properties"]["LocationID"]
+        for feature in load_zone_shapes()["features"]
+    )
 
 
 def _parse_int(value, low, high):

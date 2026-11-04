@@ -1,4 +1,6 @@
 // Heatmap component for US3: View Demand Heatmap
+// US22 #69: the 7x24 grid drawing is shared through window.TaxiScopeHeatmap,
+// so the compare page can draw two grids; the map's panel works as before.
 (function () {
   'use strict';
 
@@ -12,27 +14,32 @@
 
   const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-  // Listen for zone selection changes
-  document.addEventListener('taxiscope:zones-selected', function (e) {
-    if (e.detail.pickup) {
-      // Pickup zone selected - load its heatmap
-      // Get zone name from the pickup display element
-      const zoneName = document.getElementById('pickup-zone').textContent;
-      loadHeatmap(e.detail.pickup, zoneName);
-    } else {
-      // Pickup cleared
-      hideHeatmap();
-    }
-  });
+  window.TaxiScopeHeatmap = { renderGrid, valueRange };
 
-  // Listen for metric toggle
-  metricRadios.forEach(radio => {
-    radio.addEventListener('change', function () {
-      if (currentData) {
-        renderHeatmap(currentData, this.value);
+  // Pages without the map's heatmap panel (the compare page) only use renderGrid.
+  if (heatmapPanel) {
+    // Listen for zone selection changes
+    document.addEventListener('taxiscope:zones-selected', function (e) {
+      if (e.detail.pickup) {
+        // Pickup zone selected - load its heatmap
+        // Get zone name from the pickup display element
+        const zoneName = document.getElementById('pickup-zone').textContent;
+        loadHeatmap(e.detail.pickup, zoneName);
+      } else {
+        // Pickup cleared
+        hideHeatmap();
       }
     });
-  });
+
+    // Listen for metric toggle
+    metricRadios.forEach(radio => {
+      radio.addEventListener('change', function () {
+        if (currentData) {
+          renderHeatmap(currentData, this.value);
+        }
+      });
+    });
+  }
 
   function loadHeatmap(zoneId, zoneName) {
     currentZoneId = zoneId;
@@ -59,6 +66,28 @@
   }
 
   function renderHeatmap(data, metric) {
+    renderGrid(heatmapContainer, data, metric);
+  }
+
+  // Smallest and largest value of a metric in a 7x24 heatmap, or null
+  // when no cell has a value.
+  function valueRange(data, metric) {
+    const values = [];
+    data.heatmap.forEach(day => {
+      day.forEach(cell => {
+        if (cell[metric] !== null) {
+          values.push(cell[metric]);
+        }
+      });
+    });
+    if (values.length === 0) return null;
+    return { min: Math.min(...values), max: Math.max(...values) };
+  }
+
+  // Draw a 7x24 grid into container. options.highlight ({day, hour})
+  // outlines one cell; options.range ({min, max}) replaces the zone's own
+  // min and max, so two grids can share one colour scale.
+  function renderGrid(container, data, metric, options = {}) {
     const grid = document.createElement('div');
     grid.className = 'heatmap-grid';
 
@@ -77,16 +106,10 @@
     grid.appendChild(headerRow);
 
     // Find min/max for color scaling
-    const values = [];
-    data.heatmap.forEach(day => {
-      day.forEach(cell => {
-        if (cell[metric] !== null) {
-          values.push(cell[metric]);
-        }
-      });
-    });
-    const minVal = Math.min(...values);
-    const maxVal = Math.max(...values);
+    const range = options.range || valueRange(data, metric);
+    const minVal = range ? range.min : Infinity;
+    const maxVal = range ? range.max : -Infinity;
+    const highlight = options.highlight;
 
     // Add 7 day rows
     data.heatmap.forEach((dayData, dayIndex) => {
@@ -119,6 +142,9 @@
           cell.title = `${DAY_LABELS[dayIndex]} ${hourIndex}:00\n${displayValue}`;
           cell.textContent = ''; // No text inside, just color
         }
+        if (highlight && highlight.day === dayIndex && highlight.hour === hourIndex) {
+          cell.classList.add('is-selected');
+        }
 
         row.appendChild(cell);
       });
@@ -126,8 +152,8 @@
       grid.appendChild(row);
     });
 
-    heatmapContainer.innerHTML = '';
-    heatmapContainer.appendChild(grid);
+    container.innerHTML = '';
+    container.appendChild(grid);
   }
 
   function getColor(intensity) {
