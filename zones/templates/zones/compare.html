@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="{% static 'zones/css/map.css' %}">
   <link rel="stylesheet" href="{% static 'zones/css/compare.css' %}">
 </head>
-<body data-min-trip-count="{{ min_trip_count }}" data-start-a="{{ start_a|default_if_none:'' }}" data-start-b="{{ start_b|default_if_none:'' }}">
+<body data-min-trip-count="{{ min_trip_count }}" data-start-a="{{ start_a|default_if_none:'' }}" data-start-b="{{ start_b|default_if_none:'' }}" data-compare-url="{% url 'zones:compare' %}"{% if saved_comparison %} data-saved-a="{{ saved_comparison.zone_a_id }}" data-saved-b="{{ saved_comparison.zone_b_id }}"{% endif %}>
   {# US22 #69: the map page's header, copied (see docs/decisions.md), plus "Back to map". #}
   <header>
     <h1>TaxiScope NYC</h1>
@@ -48,6 +48,8 @@
   </section>
   <aside id="compare-card" class="zone-selection compare-card" aria-label="Compare two zones">
     <h2 class="compare-title">Compare two zones</h2>
+    {# US23 #70: hidden by compare.js once A or B no longer match the saved pair. #}
+    {% if saved_comparison %}<p id="saved-comparison-heading" class="saved-comparison-heading">Saved comparison: {{ saved_comparison.name }}</p>{% endif %}
     <div class="selection-row">
       <span class="selection-label compare-label-a">A <span aria-hidden="true">●</span></span>
       <span id="compare-a-zone" class="selection-name">Click a zone on the map to set A</span>
@@ -88,7 +90,23 @@
     <p class="summary-disclaimer">Fares cover all trips starting in each zone, so they reflect typical trip length too. Based on past taxi trips (March to May 2026).</p>
     <div class="compare-actions">
       <button type="button" id="weekly-toggle" class="compare-weekly-toggle" aria-expanded="false" aria-controls="weekly-strip">Show weekly pattern</button>
+      <a id="my-comparisons" href="{% url 'routes:my_comparisons' %}">My comparisons</a>
       <a id="exit-compare" href="{% url 'zones:map' %}">Exit compare</a>
+    </div>
+    {# US23 #70: save the two zones on screen, once both are picked. #}
+    <div id="save-comparison-panel" class="compare-save" hidden>
+      {% if user.is_authenticated %}
+        <form id="save-comparison-form" method="post" action="{% url 'routes:save_comparison' %}">
+          {% csrf_token %}
+          <label for="comparison-name">Comparison name</label>
+          <input id="comparison-name" name="name" type="text" maxlength="50" required
+                 placeholder="Office vs airport" aria-describedby="save-comparison-status">
+          <button id="save-comparison-button" type="submit">Save this comparison</button>
+        </form>
+      {% endif %}
+      <a id="save-comparison-signin" href="{% url 'accounts:signin' %}"
+         {% if user.is_authenticated %}hidden{% endif %}>Sign in to save comparisons</a>
+      <p id="save-comparison-status" class="summary-status" role="status" aria-live="polite"></p>
     </div>
   </aside>
   <section id="weekly-strip" class="weekly-strip" hidden aria-label="Weekly pattern">
@@ -121,6 +139,7 @@
   <script src="{% static 'zones/vendor/leaflet/leaflet.js' %}"></script>
   <script src="{% static 'zones/js/map.js' %}"></script>
   <script src="{% static 'zones/js/heatmap.js' %}"></script>
+  <script src="{% static 'routes/js/save-comparison.js' %}"></script>
   <script src="{% static 'zones/js/compare.js' %}"></script>
 </body>
 </html>

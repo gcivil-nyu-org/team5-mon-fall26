@@ -1,0 +1,25 @@
+{% extends "routes/base.html" %}
+
+{% block title %}My comparisons{% endblock %}
+
+{% block content %}
+  <h1>My comparisons</h1>
+  {% if comparisons %}
+    <ul class="saved-route-list">
+      {% for comparison in comparisons %}
+        <li>
+          <strong>{{ comparison.name }}</strong>
+          <span>A: {{ comparison.zone_a.name }} · B: {{ comparison.zone_b.name }}</span>
+          <small>Saved {{ comparison.created_at|date:"M j, Y" }}</small>
+          <div class="saved-route-actions">
+            <a href="{% url 'routes:open_comparison' comparison.pk %}">Open</a>
+            <a href="{% url 'routes:rename_comparison' comparison.pk %}">Rename</a>
+            <a href="{% url 'routes:delete_comparison' comparison.pk %}">Delete</a>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No saved comparisons yet. Pick two zones on the <a href="{% url 'zones:compare' %}">compare page</a> to save one.</p>
+  {% endif %}
+{% endblock %}

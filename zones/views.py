@@ -52,12 +52,14 @@ def _link_zone(request, key):
 
 
 @require_GET
-def compare_view(request):
+def compare_view(request, saved_comparison=None):
     """US22 #69: compare two zones side by side, on its own public page.
 
     /compare/?a=&b=&day=&hour= starts with those zones and that time. Ids
     that are not zones on the map are left out with a message; a day or
-    hour out of range falls back to the current NYC day or hour.
+    hour out of range falls back to the current NYC day or hour. An opened
+    saved comparison (US23 #70, ownership checked by the caller) gives the
+    zones instead of a= and b=.
     """
     now = datetime.now(NYC_TZ)
     day = _parse_int(request.GET.get("day"), 0, 6)
@@ -65,7 +67,9 @@ def compare_view(request):
     start_a, valid_a = _link_zone(request, "a")
     start_b, valid_b = _link_zone(request, "b")
     messages = []
-    if not (valid_a and valid_b):
+    if saved_comparison is not None:
+        start_a, start_b = saved_comparison.zone_a_id, saved_comparison.zone_b_id
+    elif not (valid_a and valid_b):
         messages.append(LINK_NOT_ON_MAP)
     if start_a is not None and start_a == start_b:
         start_b = None
@@ -80,6 +84,7 @@ def compare_view(request):
             "start_a": start_a,
             "start_b": start_b,
             "link_message": " ".join(messages),
+            "saved_comparison": saved_comparison,
             # "or choose from list": zones on the map, borough then name.
             "zone_choices": Zone.objects.filter(zone_id__in=shape_zone_ids()).order_by(
                 "borough", "name"

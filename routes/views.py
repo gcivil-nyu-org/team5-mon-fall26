@@ -11,21 +11,24 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
 from zones.stats import unknown_zone_ids
-from zones.views import MAX_ZONE_ID, NYC_TZ, _parse_int, map_view
+from zones.views import MAX_ZONE_ID, NYC_TZ, _parse_int, compare_view, map_view
 
 from .forms import (
+    COMPARISON_NAME_TAKEN,
     NAME_TAKEN,
     AddStopForm,
+    ComparisonNameForm,
     DayPlanDayForm,
     DayPlanForm,
     MoveStopForm,
     PlanTimeForm,
     RouteNameForm,
+    SavedComparisonForm,
     SavedRouteForm,
     StopTimeForm,
     TripPlanForm,
 )
-from .models import DayPlan, DayPlanStop, SavedRoute, TripPlan
+from .models import DayPlan, DayPlanStop, SavedComparison, SavedRoute, TripPlan
 from .calendar import build_ics
 from .day_plans import (
     TOO_MANY_STOPS,
@@ -518,3 +521,92 @@ def delete_day_plan(request, plan_id):
         messages.success(request, "Day plan deleted.")
         return redirect("routes:my_day_plans")
     return render(request, "routes/delete_day_plan.html", {"plan": plan})
+
+
+# ---- US23 #70: saved comparisons ----
+
+
+@require_POST
+def save_comparison(request):
+    """Save the two zones on the compare page for the current account; the
+    owner never comes from the client."""
+    if not request.user.is_authenticated:
+        return JsonResponse({"message": "Sign in to save comparisons"}, status=401)
+    form = SavedComparisonForm(request.user, request.POST)
+    if form.is_valid():
+        comparison = form.save()
+        if comparison is not None:
+            return JsonResponse(
+                {"id": comparison.pk, "name": comparison.name}, status=201
+            )
+    return JsonResponse({"errors": form.errors}, status=400)
+
+
+def _own_comparison(request, comparison_id):
+    return get_object_or_404(
+        SavedComparison.objects.select_related("zone_a", "zone_b"),
+        pk=comparison_id,
+        user=request.user,
+    )
+
+
+@login_required
+@require_GET
+def my_comparisons(request):
+    comparisons = SavedComparison.objects.filter(user=request.user).select_related(
+        "zone_a", "zone_b"
+    )
+    return render(request, "routes/my_comparisons.html", {"comparisons": comparisons})
+
+
+@login_required
+@require_GET
+def open_comparison(request, comparison_id):
+    comparison = _own_comparison(request, comparison_id)
+    return compare_view(request, saved_comparison=comparison)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def rename_comparison(request, comparison_id):
+    comparison = _own_comparison(request, comparison_id)
+    form = ComparisonNameForm(
+        request.user,
+        request.POST if request.method == "POST" else None,
+        comparison=comparison,
+        initial={"name": comparison.name},
+    )
+    if request.method == "POST" and form.is_valid():
+        comparison.name = form.cleaned_data["name"]
+        try:
+            with transaction.atomic():
+                comparison.save(update_fields=["name"])
+        except IntegrityError:
+            if (
+                not SavedComparison.objects.filter(
+                    user=request.user, name=comparison.name
+                )
+                .exclude(pk=comparison.pk)
+                .exists()
+            ):
+                raise
+            form.add_error("name", COMPARISON_NAME_TAKEN)
+        else:
+            messages.success(request, "Comparison renamed.")
+            return redirect("routes:my_comparisons")
+    return render(
+        request,
+        "routes/rename_comparison.html",
+        {"comparison": comparison, "form": form},
+    )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def delete_comparison(request, comparison_id):
+    comparison = _own_comparison(request, comparison_id)
+    if request.method == "POST":
+        comparison.delete()
+        messages.success(request, "Comparison deleted.")
+        return redirect("routes:my_comparisons")
+    return render(request, "routes/delete_comparison.html", {"comparison": comparison})

@@ -2,10 +2,10 @@ from django import forms
 from django.db import IntegrityError, transaction
 
 from zones.models import Zone
-from zones.views import load_zone_shapes
+from zones.views import load_zone_shapes, shape_zone_ids
 
 from .day_plans import TOO_FEW_STOPS, TOO_MANY_STOPS, create_day_plan
-from .models import DAY_CHOICES, DayPlan, SavedRoute, TripPlan
+from .models import DAY_CHOICES, DayPlan, SavedComparison, SavedRoute, TripPlan
 
 NAME_TAKEN = "You already have a saved route with this name."
 
@@ -43,6 +43,66 @@ class SavedRouteForm(RouteNameForm):
             ).exists():
                 raise
             self.add_error("name", NAME_TAKEN)
+            return None
+
+
+COMPARISON_NAME_TAKEN = "You already have a saved comparison with this name."
+SAME_ZONES = "Choose two different zones."
+
+
+class ComparisonNameForm(forms.Form):
+    """US23 #70: the name rules of saved routes (US13): required, trimmed,
+    at most 50 characters, unique per user."""
+
+    name = forms.CharField(max_length=50)
+
+    def __init__(self, user, *args, comparison=None, **kwargs):
+        self.user = user
+        self.comparison = comparison
+        super().__init__(*args, **kwargs)
+
+    def clean_name(self):
+        name = self.cleaned_data["name"]
+        matches = SavedComparison.objects.filter(user=self.user, name=name)
+        if self.comparison is not None:
+            matches = matches.exclude(pk=self.comparison.pk)
+        if matches.exists():
+            raise forms.ValidationError(COMPARISON_NAME_TAKEN)
+        return name
+
+
+class SavedComparisonForm(ComparisonNameForm):
+    """Two different zones from the compare page, only zones on the map."""
+
+    zone_a = forms.ModelChoiceField(queryset=Zone.objects.none())
+    zone_b = forms.ModelChoiceField(queryset=Zone.objects.none())
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        on_map = Zone.objects.filter(zone_id__in=shape_zone_ids())
+        self.fields["zone_a"].queryset = on_map
+        self.fields["zone_b"].queryset = on_map
+
+    def clean(self):
+        cleaned = super().clean()
+        zone_a, zone_b = cleaned.get("zone_a"), cleaned.get("zone_b")
+        if zone_a is not None and zone_a == zone_b:
+            self.add_error("zone_b", SAME_ZONES)
+        return cleaned
+
+    def save(self):
+        try:
+            with transaction.atomic():
+                return SavedComparison.objects.create(
+                    user=self.user, **self.cleaned_data
+                )
+        except IntegrityError:
+            # A second request may have saved the same name after validation.
+            if not SavedComparison.objects.filter(
+                user=self.user, name=self.cleaned_data["name"]
+            ).exists():
+                raise
+            self.add_error("name", COMPARISON_NAME_TAKEN)
             return None
 
 

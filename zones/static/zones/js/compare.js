@@ -8,6 +8,12 @@
   const SIDES = ["a", "b"];
   const LABEL = { a: "A", b: "B" };
   const minTrips = Number(document.body.dataset.minTripCount);
+  const compareUrl = document.body.dataset.compareUrl;
+  // US23 #70: an opened saved comparison, until A or B changes.
+  const savedHeading = document.getElementById("saved-comparison-heading");
+  let savedPair = document.body.dataset.savedA
+    ? { a: Number(document.body.dataset.savedA), b: Number(document.body.dataset.savedB) }
+    : null;
 
   const dayFilter = document.getElementById("day-filter");
   const hourFilter = document.getElementById("hour-filter");
@@ -60,6 +66,8 @@
   let weeklyOpen = false;
   // True while the first reload to the address's day and hour is running.
   let waitingForStart = false;
+  // True while the zones from the address are being picked.
+  let starting = true;
   const zoneLayers = new Map();
   const labels = { a: null, b: null };
 
@@ -93,15 +101,33 @@
   }
 
   // The address keeps the comparison, so Refresh and Back show it again.
+  // An opened saved comparison (US23) keeps its own address while A and B
+  // are the saved pair; once either changes it is a plain /compare/ link.
+  // Every change is announced for the save row (save-comparison.js).
   function updateAddress() {
-    if (!displayedTime || waitingForStart) return;
-    const params = new URLSearchParams();
-    for (const side of SIDES) {
-      if (state[side].zone !== null) params.set(side, state[side].zone);
+    if (starting) return;
+    const a = state.a.zone;
+    const b = state.b.zone;
+    if (savedPair && (a !== savedPair.a || b !== savedPair.b)) {
+      savedPair = null;
+      if (savedHeading) savedHeading.hidden = true;
     }
-    params.set("day", displayedTime.day);
-    params.set("hour", displayedTime.hour);
-    window.history.replaceState(null, "", `${window.location.pathname}?${params}`);
+    let address = `${window.location.pathname}${window.location.search || ""}`;
+    if (displayedTime && !waitingForStart) {
+      const params = new URLSearchParams();
+      if (!savedPair) {
+        for (const side of SIDES) {
+          if (state[side].zone !== null) params.set(side, state[side].zone);
+        }
+      }
+      params.set("day", displayedTime.day);
+      params.set("hour", displayedTime.hour);
+      address = `${savedPair ? window.location.pathname : compareUrl}?${params}`;
+      window.history.replaceState(null, "", address);
+    }
+    document.dispatchEvent(
+      new CustomEvent("taxiscope:compare-changed", { detail: { a, b, address } })
+    );
   }
 
   // ---- Picking ----
@@ -527,6 +553,8 @@
     if (startB !== null) setZone("b", startB);
     showMessage(linkMessage);
     renderCard();
+    starting = false;
+    updateAddress();
     if (waitingForStart) reloadZones();
 
     dayFilter.addEventListener("change", () => {

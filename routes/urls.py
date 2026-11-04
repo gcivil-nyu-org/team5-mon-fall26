@@ -25,6 +25,23 @@ urlpatterns = [
         views.delete_saved_route,
         name="delete_saved_route",
     ),
+    path("comparisons/save/", views.save_comparison, name="save_comparison"),
+    path("comparisons/", views.my_comparisons, name="my_comparisons"),
+    path(
+        "comparisons/<int:comparison_id>/open/",
+        views.open_comparison,
+        name="open_comparison",
+    ),
+    path(
+        "comparisons/<int:comparison_id>/rename/",
+        views.rename_comparison,
+        name="rename_comparison",
+    ),
+    path(
+        "comparisons/<int:comparison_id>/delete/",
+        views.delete_comparison,
+        name="delete_comparison",
+    ),
     path("plans/save/", views.save_plan, name="save_plan"),
     path("plans/", views.my_plans, name="my_plans"),
     path("plans/<int:plan_id>/", views.open_plan, name="open_plan"),

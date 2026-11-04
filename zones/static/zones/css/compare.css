@@ -35,6 +35,42 @@
   display: none;
 }
 
+/* US23 #70: an opened saved comparison, and the save row. */
+.saved-comparison-heading {
+  margin: 0 0 0.45rem;
+  color: #4c5565;
+  font-weight: 600;
+}
+
+.saved-comparison-heading[hidden],
+.compare-save[hidden],
+#save-comparison-signin[hidden] {
+  display: none;
+}
+
+.compare-save {
+  margin-top: 0.6rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid #ddd;
+}
+
+#save-comparison-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+#save-comparison-form label {
+  flex-basis: 100%;
+  font-weight: 600;
+}
+
+#comparison-name {
+  flex: 1;
+  min-width: 0;
+}
+
 #compare-message:empty,
 .compare-marks:empty {
   display: none;
@@ -93,6 +129,7 @@
 
 .compare-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.6rem;

@@ -72,12 +72,14 @@ function setup({ stats = {}, heatmaps = {}, start = {}, zonesFail = false } = {}
   const markers = [];
   const errors = [];
   const addresses = [];
+  const changes = [];
   const ids = [
     "day-filter", "hour-filter", "hour-value", "filter-status", "compare-message",
     "compare-a-zone", "compare-b-zone", "clear-a", "clear-b", "compare-table",
     "compare-when", "compare-marks", "weekly-toggle", "weekly-strip", "weekly-close",
     "weekly-a", "weekly-b", "weekly-a-title", "weekly-b-title",
     "swap-zones", "a-choose", "b-choose", "weekly-key-low", "weekly-key-high",
+    "saved-comparison-heading",
   ];
   for (const side of ["a", "b"]) {
     for (const cell of ["fare", "fare-avg", "fare-range", "time", "trips", "busiest"]) ids.push(`${side}-${cell}`);
@@ -97,7 +99,14 @@ function setup({ stats = {}, heatmaps = {}, start = {}, zonesFail = false } = {}
   const radios = [metric];
 
   const body = fakeElement("body");
-  body.dataset = { minTripCount: "5", startA: String(start.a ?? ""), startB: String(start.b ?? "") };
+  body.dataset = {
+    minTripCount: "5", compareUrl: "/compare/",
+    startA: String(start.a ?? ""), startB: String(start.b ?? ""),
+  };
+  if (start.saved) {
+    body.dataset.savedA = String(start.saved.a);
+    body.dataset.savedB = String(start.saved.b);
+  }
   body.style.setProperty = (name, value) => { body.style[name] = value; };
 
   const document = {
@@ -110,7 +119,10 @@ function setup({ stats = {}, heatmaps = {}, start = {}, zonesFail = false } = {}
     },
     querySelectorAll(selector) { return selector.includes("compare-metric") ? radios : []; },
     addEventListener(name, fn) { (listeners[name] ??= []).push(fn); },
-    dispatchEvent(event) { for (const fn of listeners[event.type] ?? []) fn(event); },
+    dispatchEvent(event) {
+      if (event.type === "taxiscope:compare-changed") changes.push(event.detail);
+      for (const fn of listeners[event.type] ?? []) fn(event);
+    },
   };
 
   const zoneLayers = {};
@@ -163,7 +175,7 @@ function setup({ stats = {}, heatmaps = {}, start = {}, zonesFail = false } = {}
       divIcon(options) { return options; },
     },
     setTimeout, clearTimeout,
-    location: { pathname: "/compare/" },
+    location: { pathname: start.path ?? "/compare/" },
     history: { replaceState(state, title, url) { addresses.push(url); } },
     addEventListener() {},
     fetch(url) {
@@ -193,7 +205,7 @@ function setup({ stats = {}, heatmaps = {}, start = {}, zonesFail = false } = {}
   for (const source of sources) vm.runInContext(source, context);
 
   const ui = {
-    elements, requests, held, markers, styles, panes, errors, metric, body, addresses,
+    elements, requests, held, markers, styles, panes, errors, metric, body, addresses, changes,
     text(id) { return elements[id].textContent; },
     async ready(day = 1, hour = 17) {
       document.dispatchEvent({
@@ -682,4 +694,58 @@ test("busiest hour with no zone, and for a zone with no trips", async () => {
   await ui.click(1);
   assert.equal(ui.text("a-busiest"), "Not enough data");
   assert.equal(ui.text("b-busiest"), "—");
+});
+
+// ---- US23 #70: saved comparisons ----
+
+test("every change announces the two zones and the address for the save row", async () => {
+  const ui = setup({ stats: { 1: enough("12.30", 10), 2: enough("60.50", 32.8) } });
+  await ui.ready();
+  await ui.click(1);
+  assert.deepEqual({ ...ui.changes.at(-1) }, { a: 1, b: null, address: "/compare/?a=1&day=1&hour=17" });
+  await ui.click(2);
+  assert.deepEqual({ ...ui.changes.at(-1) }, { a: 1, b: 2, address: "/compare/?a=1&b=2&day=1&hour=17" });
+  await ui.press("swap-zones");
+  assert.deepEqual({ ...ui.changes.at(-1) }, { a: 2, b: 1, address: "/compare/?a=2&b=1&day=1&hour=17" });
+});
+
+test("zones from the link are announced once, after both are picked", async () => {
+  const ui = setup({ stats: { 1: enough("12.30", 10), 2: enough("60.50", 32.8) }, start: { a: 1, b: 2 } });
+  await ui.ready();
+  assert.equal(ui.changes.length, 1);
+  assert.equal(ui.changes[0].a, 1);
+  assert.equal(ui.changes[0].b, 2);
+});
+
+test("an opened saved comparison keeps its own address while A and B match", async () => {
+  const ui = setup({
+    stats: { 1: enough("12.30", 10), 2: enough("60.50", 32.8), 3: enough("30.00", 20) },
+    start: { a: 1, b: 2, saved: { a: 1, b: 2 }, path: "/comparisons/5/open/" },
+  });
+  await ui.ready();
+  assert.equal(ui.addresses.at(-1), "/comparisons/5/open/?day=1&hour=17");
+  await ui.changeDay(2);
+  assert.equal(ui.addresses.at(-1), "/comparisons/5/open/?day=2&hour=17");
+  assert.equal(ui.elements["saved-comparison-heading"].hidden, false);
+
+  // Changing B turns it into a plain comparison.
+  await ui.click(3);
+  assert.equal(ui.addresses.at(-1), "/compare/?a=1&b=3&day=2&hour=17");
+  assert.equal(ui.elements["saved-comparison-heading"].hidden, true);
+  // Going back to the saved pair does not bring the saved address back.
+  await ui.click(3);
+  await ui.click(2);
+  assert.equal(ui.addresses.at(-1), "/compare/?a=1&b=2&day=2&hour=17");
+  assert.equal(ui.elements["saved-comparison-heading"].hidden, true);
+});
+
+test("swapping an opened saved comparison makes it a plain comparison", async () => {
+  const ui = setup({
+    stats: { 1: enough("12.30", 10), 2: enough("60.50", 32.8) },
+    start: { a: 1, b: 2, saved: { a: 1, b: 2 }, path: "/comparisons/5/open/" },
+  });
+  await ui.ready();
+  await ui.press("swap-zones");
+  assert.equal(ui.addresses.at(-1), "/compare/?a=2&b=1&day=1&hour=17");
+  assert.equal(ui.elements["saved-comparison-heading"].hidden, true);
 });

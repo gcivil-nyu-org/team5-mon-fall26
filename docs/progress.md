@@ -15,6 +15,19 @@ Entry format:
 
 ## Log
 
+### 2026-11-03 — us23-save-comparison (US23 #70)
+**What changed:**
+- Model `routes.SavedComparison` (user, name, zone A, zone B, created_at; CASCADE links; unique name per user; database check zone A ≠ zone B) and migration `routes/migrations/0004_saved_comparison.py`.
+- `routes/forms.py`: `ComparisonNameForm`, `SavedComparisonForm` (zones on the map only, A ≠ B, race on the name handled like saved routes). `routes/views.py` and `routes/urls.py`: `POST /comparisons/save/`, `/comparisons/` (My comparisons), `/comparisons/<id>/open/`, `/rename/`, `/delete/`. New templates `my_comparisons.html`, `rename_comparison.html`, `delete_comparison.html`; "Comparisons" in the routes pages' nav (`routes/base.html`).
+- Compare page: "Saved comparison: <name>", "My comparisons" link, and a "Save this comparison" row at the bottom of the card (new `routes/static/routes/js/save-comparison.js`; guests get "Sign in to save comparisons" that comes back to the same comparison). `zones/views.py` `compare_view` takes the saved comparison's zones. `compare.js` sends `taxiscope:compare-changed` after every change and keeps `/comparisons/<id>/open/?day=&hour=` while A and B are the saved pair, then switches to `/compare/?a=&b=&day=&hour=` and hides the heading.
+- `docs/decisions.md` (US23 section) and High Level Design §20. No new dependency; the map page is unchanged.
+
+**Decisions made (also in `docs/decisions.md`):** `CheckConstraint(condition=…)` for A ≠ B on top of the form check; A/B stored in the order picked; on an opened saved comparison `a=`/`b=` in the address are ignored and day/hour are not stored; once the pair changes the saved address does not come back; "My comparisons" linked from the compare card and the routes pages, not the map header.
+
+**Tests:** `routes/tests/test_saved_comparisons.py` (40: save, name rules, A ≠ B in the form and the database, zones on the map only, 401/405/CSRF, races, deleting the user and the account page, list/open/rename/delete, another user's comparison 404, guest redirects, links), `zones/tests/save_comparison.test.js` (7), `zones/tests/compare.test.js` (+4: change event, saved address). Full Django suite (622, 4 skipped) and all 137 Node tests pass; black, flake8 and `makemigrations --check` pass.
+
+**Next step:** check by hand: save from the compare page signed in and as a guest (sign in and come back), open, rename and delete from My comparisons, and the address switching from the saved one to `/compare/` after changing a zone.
+
 ### 2026-11-03 — us22-compare-zones (US22 #69)
 **What changed:**
 - New public page `GET /compare/` (`zones/views.py` `compare_view`, `zones/urls.py` `zones:compare`, `zones/templates/zones/compare.html`, `zones/static/zones/js/compare.js`, `zones/static/zones/css/compare.css`): the map's header, filters, demand colours and legend (`map.js` unchanged), a compare card (A/B rows with ×, "or choose from list", Swap A ↔ B, a table with average fare and range, typical time, trips this hour, busiest hour, the cheaper/faster marks), and a weekly pattern strip with both heatmaps on one colour scale. No new API endpoint, no migration, no new dependency.
