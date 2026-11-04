@@ -219,3 +219,11 @@ A signed-in rider can save the two zones on the compare page (US22). "Save this 
 | `GET/POST /comparisons/<id>/delete/` | Confirm, then delete |
 
 All comparison pages require sign-in, look comparisons up with `user=request.user` (another user's comparison gives 404), and use CSRF tokens on every form. Nothing is computed from the saved row except which zones to show: the statistics come from the same public endpoints as `/compare/`, for the day and hour chosen on the page.
+
+## 21. Fare reports (US24)
+
+A signed-in rider can report what they paid for a taxi ride, and optionally the Uber or Lyft price they were quoted at the same time. "Report a fare" in the trip summary opens `GET /reports/new/?from=&to=` with the pickup and dropoff filled in; guests see "Sign in to report a fare". The form posts to the same address (CSRF token); the owner comes from the session.
+
+The `reports_farereport` table (`reports.FareReport`) stores user, pickup zone, dropoff zone, ride date and time, taxi fare before tip, optional rideshare service and quote, status (`visible` or `held`) and the creation time. No addresses are stored. Every link uses `on_delete=CASCADE`, so deleting an account deletes its reports (US12).
+
+On save, the server sets the status: a fare below a third of, or above 3 times, the route's historical average at the ride's day and hour (`route_stats`) is held for review and does not appear publicly (`FareReport.objects.public()`); a route with too few trips to compare is published. Validation: fare and quote above $0 and up to $500, a quote and a service only together, a ride time in the past and no more than 30 days ago, and at most 10 reports per user per New York day. Held reports are checked in the Django admin (filter by status) until Epic 5.
