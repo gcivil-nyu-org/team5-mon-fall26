@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "zones",
     "accounts",
     "routes",
+    "reports",
 ]
 
 MIDDLEWARE = [
