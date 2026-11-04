@@ -13,6 +13,7 @@
     <h1>TaxiScope NYC</h1>
     {# US10 #39, US11 #40: account links; the map never needs an account (US9). #}
     <nav class="account-nav" aria-label="Account">
+      <a id="compare-link" href="{% url 'zones:compare' %}">Compare</a>
       <a href="{% url 'routes:my_routes' %}">Routes</a>
       <a href="{% url 'routes:my_plans' %}">Plans</a>
       <a href="{% url 'routes:my_day_plans' %}">Day plans</a>
@@ -238,5 +239,6 @@
   <script src="{% static 'zones/js/windows.js' %}"></script>
   <script src="{% static 'routes/js/nearby.js' %}"></script>
   <script src="{% static 'routes/js/day-plan.js' %}"></script>
+  <script src="{% static 'zones/js/compare-link.js' %}"></script>
 </body>
 </html>

@@ -1,0 +1,126 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Compare zones | TaxiScope NYC</title>
+  <link rel="stylesheet" href="{% static 'zones/vendor/leaflet/leaflet.css' %}">
+  <link rel="stylesheet" href="{% static 'zones/css/map.css' %}">
+  <link rel="stylesheet" href="{% static 'zones/css/compare.css' %}">
+</head>
+<body data-min-trip-count="{{ min_trip_count }}" data-start-a="{{ start_a|default_if_none:'' }}" data-start-b="{{ start_b|default_if_none:'' }}">
+  {# US22 #69: the map page's header, copied (see docs/decisions.md), plus "Back to map". #}
+  <header>
+    <h1>TaxiScope NYC</h1>
+    <nav class="account-nav" aria-label="Account">
+      <a id="back-to-map" href="{% url 'zones:map' %}">Back to map</a>
+      <a href="{% url 'routes:my_routes' %}">Routes</a>
+      <a href="{% url 'routes:my_plans' %}">Plans</a>
+      <a href="{% url 'routes:my_day_plans' %}">Day plans</a>
+      {% if user.is_authenticated %}
+        <a href="{% url 'accounts:account' %}" class="account-email" title="My account">{{ user.email }}</a>
+        <form method="post" action="{% url 'accounts:signout' %}" class="signout-form">
+          {% csrf_token %}
+          <button type="submit" class="link-button">Sign out</button>
+        </form>
+      {% else %}
+        <a href="{% url 'accounts:signin' %}">Sign in</a>
+        <a href="{% url 'accounts:signup' %}">Sign up</a>
+      {% endif %}
+    </nav>
+  </header>
+  <section class="filters" aria-label="Taxi trip time filters">
+    <label for="day-filter">Day of week</label>
+    <select id="day-filter">
+      <option value="0" {% if current_day == 0 %}selected{% endif %}>Monday</option>
+      <option value="1" {% if current_day == 1 %}selected{% endif %}>Tuesday</option>
+      <option value="2" {% if current_day == 2 %}selected{% endif %}>Wednesday</option>
+      <option value="3" {% if current_day == 3 %}selected{% endif %}>Thursday</option>
+      <option value="4" {% if current_day == 4 %}selected{% endif %}>Friday</option>
+      <option value="5" {% if current_day == 5 %}selected{% endif %}>Saturday</option>
+      <option value="6" {% if current_day == 6 %}selected{% endif %}>Sunday</option>
+    </select>
+    <label for="hour-filter">Hour</label>
+    <input id="hour-filter" type="range" min="0" max="23" value="{{ current_hour }}">
+    <output id="hour-value" for="hour-filter">{{ current_hour }}:00–{{ current_hour }}:59</output>
+    <span id="filter-status" role="status" aria-live="polite"></span>
+  </section>
+  <aside id="compare-card" class="zone-selection compare-card" aria-label="Compare two zones">
+    <h2 class="compare-title">Compare two zones</h2>
+    <div class="selection-row">
+      <span class="selection-label compare-label-a">A <span aria-hidden="true">●</span></span>
+      <span id="compare-a-zone" class="selection-name">Click a zone on the map to set A</span>
+      <button type="button" id="clear-a" class="clear-btn" hidden aria-label="Clear zone A">&times;</button>
+    </div>
+    <select id="a-choose" class="compare-choose" aria-label="Choose zone A from a list">
+      <option value="">or choose from list</option>
+      {% for zone in zone_choices %}<option value="{{ zone.zone_id }}">{{ zone.borough }}: {{ zone.name }}</option>{% endfor %}
+    </select>
+    <div class="selection-row">
+      <span class="selection-label compare-label-b">B <span aria-hidden="true">●</span></span>
+      <span id="compare-b-zone" class="selection-name">—</span>
+      <button type="button" id="clear-b" class="clear-btn" hidden aria-label="Clear zone B">&times;</button>
+    </div>
+    <select id="b-choose" class="compare-choose" aria-label="Choose zone B from a list">
+      <option value="">or choose from list</option>
+      {% for zone in zone_choices %}<option value="{{ zone.zone_id }}">{{ zone.borough }}: {{ zone.name }}</option>{% endfor %}
+    </select>
+    <button type="button" id="swap-zones" class="compare-swap" hidden>Swap A ↔ B</button>
+    <p id="compare-message" class="summary-status" role="status" aria-live="polite">{{ link_message }}</p>
+    <table id="compare-table" class="compare-table" hidden aria-live="polite">
+      <caption id="compare-when"></caption>
+      <thead>
+        <tr><td></td><th scope="col" class="compare-label-a">A</th><th scope="col" class="compare-label-b">B</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Average fare</th>
+          <td id="a-fare"><strong id="a-fare-avg">—</strong><small id="a-fare-range" class="compare-range"></small></td>
+          <td id="b-fare"><strong id="b-fare-avg">—</strong><small id="b-fare-range" class="compare-range"></small></td>
+        </tr>
+        <tr><th scope="row">Typical time</th><td id="a-time">—</td><td id="b-time">—</td></tr>
+        <tr><th scope="row">Trips this hour</th><td id="a-trips">—</td><td id="b-trips">—</td></tr>
+        <tr><th scope="row">Busiest hour</th><td id="a-busiest">—</td><td id="b-busiest">—</td></tr>
+      </tbody>
+    </table>
+    <p id="compare-marks" class="compare-marks" role="status" aria-live="polite"></p>
+    <p class="summary-disclaimer">Fares cover all trips starting in each zone, so they reflect typical trip length too. Based on past taxi trips (March to May 2026).</p>
+    <div class="compare-actions">
+      <button type="button" id="weekly-toggle" class="compare-weekly-toggle" aria-expanded="false" aria-controls="weekly-strip">Show weekly pattern</button>
+      <a id="exit-compare" href="{% url 'zones:map' %}">Exit compare</a>
+    </div>
+  </aside>
+  <section id="weekly-strip" class="weekly-strip" hidden aria-label="Weekly pattern">
+    <div class="weekly-head">
+      <h2>Weekly pattern</h2>
+      <div class="heatmap-controls">
+        <label><input type="radio" name="compare-metric" value="trip_count" checked> Trips</label>
+        <label><input type="radio" name="compare-metric" value="avg_duration_min"> Avg time</label>
+      </div>
+      <button type="button" id="weekly-close" class="clear-btn" aria-label="Close weekly pattern">&times;</button>
+    </div>
+    <p id="weekly-key" class="weekly-key">
+      <span id="weekly-key-low">Fewer</span>
+      <i class="weekly-key-bar" aria-hidden="true"></i>
+      <span id="weekly-key-high">more trips</span> · same scale for both zones
+    </p>
+    <div class="weekly-grids">
+      <div class="weekly-zone">
+        <h3 id="weekly-a-title" class="compare-label-a">A</h3>
+        <div id="weekly-a"></div>
+      </div>
+      <div class="weekly-zone">
+        <h3 id="weekly-b-title" class="compare-label-b">B</h3>
+        <div id="weekly-b"></div>
+      </div>
+    </div>
+  </section>
+  <div id="map"></div>
+
+  <script src="{% static 'zones/vendor/leaflet/leaflet.js' %}"></script>
+  <script src="{% static 'zones/js/map.js' %}"></script>
+  <script src="{% static 'zones/js/heatmap.js' %}"></script>
+  <script src="{% static 'zones/js/compare.js' %}"></script>
+</body>
+</html>

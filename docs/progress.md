@@ -15,6 +15,19 @@ Entry format:
 
 ## Log
 
+### 2026-11-03 — us22-compare-zones (US22 #69)
+**What changed:**
+- New public page `GET /compare/` (`zones/views.py` `compare_view`, `zones/urls.py` `zones:compare`, `zones/templates/zones/compare.html`, `zones/static/zones/js/compare.js`, `zones/static/zones/css/compare.css`): the map's header, filters, demand colours and legend (`map.js` unchanged), a compare card (A/B rows with ×, "or choose from list", Swap A ↔ B, a table with average fare and range, typical time, trips this hour, busiest hour, the cheaper/faster marks), and a weekly pattern strip with both heatmaps on one colour scale. No new API endpoint, no migration, no new dependency.
+- `zones/static/zones/js/heatmap.js`: the 7×24 drawing is now `TaxiScopeHeatmap.renderGrid` / `valueRange`; the map's heatmap panel is unchanged.
+- Map page: a "Compare" header link and `zones/static/zones/js/compare-link.js`, which carries the map's day, hour and pickup. Rendered map HTML before/after (guest and signed in) differs only by those two lines.
+- `docs/decisions.md` (US22 section) and High Level Design §19.
+
+**Decisions made (also in `docs/decisions.md`):** compare is its own page and the map page stays as it was; columns read `/api/routes` without `to`; a click fills the first empty side and a third zone replaces B; marks compared at the shown precision, in one sentence for one winner or two short sentences otherwise; the real trip count stays visible under 5 trips; `reloadZones` copied from `filters.js`; header markup copied into `compare.html` (shared include later). Added beyond the acceptance criteria: fare-meaning line, address state, carry-over link, choose from list, Swap, busiest hour.
+
+**Tests:** `zones/tests/test_compare_page.py` (29, incl. the map page's Compare link and that it has none of the compare page), `zones/tests/compare.test.js` (28), `zones/tests/compare_link.test.js` (4), `zones/tests/heatmap_grid.test.js` (8; its 4 map-panel tests passed on the old `heatmap.js` before the refactor). Full Django suite (582, 4 skipped) and all 126 Node tests pass; black, flake8 and `makemigrations --check` pass.
+
+**Next step:** check the compare page in the browser (header wrap, strip height and legend, A/B badges, the selected-hour outline and colour key); then US23 #70 (save a comparison) on a branch on top of this one.
+
 ### 2026-10-31 — us21-day-plan-calendar (US21 #50, part 2)
 **What changed:**
 - `routes/planning.py` `day_plan_calendar(plan, stops, now, weekly=False)`: one `CalendarEvent` per leg from `day_plan_legs()`, the button label and the no-data warning.
