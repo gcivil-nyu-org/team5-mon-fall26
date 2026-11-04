@@ -329,3 +329,11 @@ header {
   color: #4c5565;
   font-variant-numeric: tabular-nums;
 }
+
+/* Report a fare (US24) */
+.field .help {
+  display: block;
+  margin-top: 0.25rem;
+  color: #555;
+  font-size: 13px;
+}
