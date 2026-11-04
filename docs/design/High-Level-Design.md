@@ -206,3 +206,16 @@ A signed-in rider can plan several trips on one day as a chain of 3 to 10 stops 
 ## 19. Epic 3: Compare two zones (US22)
 
 `GET /compare/` is a public page with the map's header, day and hour filters, demand colours and legend (`map.js` unchanged; the map page itself only gains a "Compare" link). The rider picks zone A and zone B on the map or from a list (zones with a shape, borough then name); A is outlined in the pickup blue and B in the dropoff green. Each column calls the existing `/api/routes?from=<zone>&day=&hour=` (no `to`: all trips starting in the zone, `zone_hour_stats`) and `/api/zones/<id>/heatmap`, so there is no new endpoint and no new table. The table shows the average fare with its min–max range, typical time, trips this hour and the busiest hour of the selected day (computed in the browser from the heatmap). Changing the day or hour reloads `/api/zones` and both columns together; the heatmaps already cover the whole week. The cheaper and the faster zone are marked only when both have at least `MIN_TRIP_COUNT` trips, compared at the shown precision; otherwise each column shows "Not enough data" on its own. A weekly pattern strip draws both 7×24 heatmaps with the shared `heatmap.js` grid function, on one colour scale, with the selected cell outlined. The address (`/compare/?a=&b=&day=&hour=`, kept with `history.replaceState`) holds the state, so Refresh and Back keep the comparison; the server drops ids that are not zones on the map and falls back to the current NYC time for a day or hour out of range. The map's "Compare" link carries its day, hour and selected pickup.
+
+## 20. Epic 3: Saved comparisons (US23)
+
+A signed-in rider can save the two zones on the compare page (US22). "Save this comparison" appears at the bottom of the compare card once both zones are picked; guests see "Sign in to save comparisons". The browser posts `name`, `zone_a` and `zone_b` to `POST /comparisons/save/` (CSRF token in the `X-CSRFToken` header); the owner always comes from the session. The `routes_savedcomparison` table (`routes.SavedComparison`) stores user, name, zone A, zone B (in the order picked) and the creation time, with a unique name per user and a database check that zone A ≠ zone B. Every link uses `on_delete=CASCADE`, so deleting an account deletes its comparisons (US12).
+
+| Page | What it does |
+|---|---|
+| `GET /comparisons/` | My comparisons: name, zone A, zone B and date saved, with Open, Rename and Delete |
+| `GET /comparisons/<id>/open/` | The compare page with both zones and "Saved comparison: <name>". The address stays here while A and B are the saved pair, and becomes `/compare/?a=&b=&day=&hour=` once the rider changes them |
+| `GET/POST /comparisons/<id>/rename/` | Rename, with the same name rules as saved routes |
+| `GET/POST /comparisons/<id>/delete/` | Confirm, then delete |
+
+All comparison pages require sign-in, look comparisons up with `user=request.user` (another user's comparison gives 404), and use CSRF tokens on every form. Nothing is computed from the saved row except which zones to show: the statistics come from the same public endpoints as `/compare/`, for the day and hour chosen on the page.

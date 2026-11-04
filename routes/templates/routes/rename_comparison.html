@@ -1,0 +1,18 @@
+{% extends "routes/base.html" %}
+
+{% block title %}Rename comparison{% endblock %}
+
+{% block content %}
+  <h1>Rename comparison</h1>
+  <p>A: {{ comparison.zone_a.name }} · B: {{ comparison.zone_b.name }}</p>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="field">
+      <label for="{{ form.name.id_for_label }}">Comparison name</label>
+      {{ form.name }}
+      {{ form.name.errors }}
+    </div>
+    <button type="submit">Save name</button>
+  </form>
+  <p><a href="{% url 'routes:my_comparisons' %}">Cancel</a></p>
+{% endblock %}

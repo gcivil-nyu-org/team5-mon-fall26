@@ -1,0 +1,13 @@
+{% extends "routes/base.html" %}
+
+{% block title %}Delete comparison{% endblock %}
+
+{% block content %}
+  <h1>Delete comparison?</h1>
+  <p class="warning">Delete <strong>{{ comparison.name }}</strong> (A: {{ comparison.zone_a.name }} · B: {{ comparison.zone_b.name }}) from My comparisons?</p>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="danger-button">Delete comparison</button>
+  </form>
+  <p><a href="{% url 'routes:my_comparisons' %}">Cancel</a></p>
+{% endblock %}
