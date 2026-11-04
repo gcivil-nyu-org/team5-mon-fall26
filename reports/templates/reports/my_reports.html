@@ -1,0 +1,47 @@
+{% extends "routes/base.html" %}
+{% load tz %}
+
+{% block title %}My fare reports{% endblock %}
+
+{% block content %}
+  <h1>My fare reports</h1>
+  {% if reports %}
+    <p>Reports held for review are only shown to you until they are checked.</p>
+    <table class="report-table">
+      <thead>
+        <tr>
+          <th scope="col">Route</th>
+          <th scope="col">Ride (New York time)</th>
+          <th scope="col">Taxi fare before tip</th>
+          <th scope="col">Rideshare quote</th>
+          <th scope="col">Status</th>
+          <th scope="col">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for report in reports %}
+          <tr>
+            <td>{{ report.pickup_zone.name }} → {{ report.dropoff_zone.name }}</td>
+            <td>{{ report.ride_at|timezone:"America/New_York"|date:"M j, Y, g:i A" }}</td>
+            <td>${{ report.taxi_fare }}</td>
+            {% if report.rideshare_quote is not None %}
+              <td>{{ report.get_rideshare_service_display }} ${{ report.rideshare_quote }}</td>
+            {% else %}
+              <td>—</td>
+            {% endif %}
+            <td{% if report.status == "held" %} class="report-status-held"{% endif %}>{{ report.get_status_display }}</td>
+            <td>
+              <div class="saved-route-actions">
+                <a href="{% url 'reports:edit_report' report.pk %}">Edit</a>
+                <a href="{% url 'reports:delete_report' report.pk %}">Delete</a>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No fare reports yet. Select a pickup and dropoff on the map, then choose "Report a fare" in the trip summary.</p>
+  {% endif %}
+  <p><a href="{% url 'reports:report_fare' %}">Report a fare</a></p>
+{% endblock %}

@@ -19,6 +19,7 @@
       {% endfor %}
       <button type="submit">Submit fare report</button>
     </form>
+    <p><a href="{% url 'reports:my_reports' %}">My fare reports</a></p>
   {% else %}
     <p><a id="report-fare-signin" href="{{ signin_url }}">Sign in to report a fare</a></p>
   {% endif %}
