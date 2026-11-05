@@ -1,0 +1,25 @@
+{% extends "routes/base.html" %}
+
+{% block title %}Report a fare{% endblock %}
+
+{% block content %}
+  <h1>Report a fare</h1>
+  <p>Share what you paid for a taxi ride, and the Uber or Lyft price you were quoted at the same time, so other riders can see real, recent prices. Only the zones are stored, never addresses.</p>
+  {% if form %}
+    <form method="post" class="report-form" novalidate>
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      {% for field in form %}
+        <div class="field">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<small class="help">{{ field.help_text }}</small>{% endif %}
+          {{ field.errors }}
+        </div>
+      {% endfor %}
+      <button type="submit">Submit fare report</button>
+    </form>
+  {% else %}
+    <p><a id="report-fare-signin" href="{{ signin_url }}">Sign in to report a fare</a></p>
+  {% endif %}
+{% endblock %}
