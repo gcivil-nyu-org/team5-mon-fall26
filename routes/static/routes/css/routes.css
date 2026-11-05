@@ -337,3 +337,23 @@ header {
   color: #555;
   font-size: 13px;
 }
+
+/* My fare reports (US25) */
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.report-table th,
+.report-table td {
+  padding: 0.45rem 0.4rem;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+  vertical-align: top;
+}
+
+.report-status-held {
+  color: #8a5300;
+  font-weight: 600;
+}

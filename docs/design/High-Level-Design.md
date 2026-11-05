@@ -227,3 +227,15 @@ A signed-in rider can report what they paid for a taxi ride, and optionally the 
 The `reports_farereport` table (`reports.FareReport`) stores user, pickup zone, dropoff zone, ride date and time, taxi fare before tip, optional rideshare service and quote, status (`visible` or `held`) and the creation time. No addresses are stored. Every link uses `on_delete=CASCADE`, so deleting an account deletes its reports (US12).
 
 On save, the server sets the status: a fare below a third of, or above 3 times, the route's historical average at the ride's day and hour (`route_stats`) is held for review and does not appear publicly (`FareReport.objects.public()`); a route with too few trips to compare is published. Validation: fare and quote above $0 and up to $500, a quote and a service only together, a ride time in the past and no more than 30 days ago, and at most 10 reports per user per New York day. Held reports are checked in the Django admin (filter by status) until Epic 5.
+
+## 22. My fare reports (US25)
+
+A signed-in rider can see, correct and delete their own fare reports (US24).
+
+| Page | What it does |
+|---|---|
+| `GET /reports/` | My fare reports: route, ride date and time, taxi fare, rideshare quote, status ("Visible" or "Held for review"), newest first |
+| `GET/POST /reports/<id>/edit/` | The US24 form with the same rules; the review check runs again after the edit |
+| `GET/POST /reports/<id>/delete/` | Confirm, then delete; the report is removed everywhere, including the community summary |
+
+All three pages require sign-in, look reports up with `user=request.user` (another user's report gives 404), and use CSRF tokens on every form. When editing, the 30-day limit on the ride time counts from when the report was made, and the daily limit does not apply.

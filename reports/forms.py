@@ -102,17 +102,25 @@ class FareReportForm(forms.ModelForm):
             self.cleaned_data["rideshare_quote"], QUOTE_NOT_POSITIVE, QUOTE_TOO_HIGH
         )
 
+    @property
+    def editing(self):
+        return self.instance.pk is not None
+
     def clean_ride_at(self):
         ride_at = self.cleaned_data["ride_at"]
         if ride_at > self.now:
             raise forms.ValidationError(RIDE_IN_FUTURE)
-        if ride_at < self.now - MAX_AGE:
+        # US25 #72: an edit counts the 30 days from when the report was made,
+        # so a report keeps its ride time however late it is corrected.
+        reported = self.instance.created_at if self.editing else self.now
+        if ride_at < reported - MAX_AGE:
             raise forms.ValidationError(RIDE_TOO_OLD)
         return ride_at
 
     def clean(self):
         cleaned = super().clean()
-        if reports_today(self.user, self.now) >= DAILY_LIMIT:
+        # The daily limit is on new reports; editing one adds nothing.
+        if not self.editing and reports_today(self.user, self.now) >= DAILY_LIMIT:
             raise forms.ValidationError(DAILY_LIMIT_REACHED)
         service = cleaned.get("rideshare_service")
         quote = cleaned.get("rideshare_quote")
@@ -123,6 +131,8 @@ class FareReportForm(forms.ModelForm):
         return cleaned
 
     def save(self):
+        """Set the owner and run the review check, on a new report and
+        again after every edit (US25 #72)."""
         report = super().save(commit=False)
         report.user = self.user
         report.status = review_status(
