@@ -298,3 +298,10 @@ Backed by an analysis of the January to August 2026 yellow taxi files. The numbe
 - **30 days on an edit:** counted from when the report was made (`created_at`), not from the edit. A report can be corrected later without its ride time becoming "too old"; a new ride time still has to be within 30 days of the original report.
 - **Daily limit:** applies only to new reports. Editing does not count as a new report and is allowed after the 10th report of the day.
 - **Deleting:** removes the row, so it is gone from every list and from `FareReport.objects.public()` (the community summary in a later story). Held reports can be deleted too.
+
+## Our choices (recent rider reports, US26 #73, 2026-11-05)
+- **Public route endpoint:** GET /api/routes/reports?from=&to= requires two known zone ids and returns 400 for missing, invalid or unknown ids. No sign-in is needed. It reads only FareReport.objects.public() for the exact pickup and dropoff pair.
+- **Recent means ride time:** include rides with ride_at from the previous 90 days through now; future rides are excluded. Held reports are filtered out, and deleted reports have no row to read.
+- **Privacy threshold:** with fewer than 3 visible reports, return enough_data=false and the real report_count, with null medians and an empty recent_reports list. The trip summary says "Not enough reports yet". With 3 or more, return the report count and median taxi fare; count quotes and compute a rideshare median only from reports with a quote. Money medians use decimal arithmetic, rounded to cents with half up rounding.
+- **Recent five:** order by ride_at descending, then id descending for ties. Return the New York local ride_day (YYYY-MM-DD) and ride_hour (0-23), taxi_fare, rideshare_service (uber or lyft, or null), and rideshare_quote (or null). No reporter name or user id is queried or returned.
+- **Trip summary:** the "Rider reports (last 90 days)" row sits beside the historical fare range and loads when both zones are selected. Its five report lines and medians are independent of the historical day and hour filters. The existing "Report a fare" link remains available to sign in and submit a report.

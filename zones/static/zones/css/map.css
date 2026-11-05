@@ -567,6 +567,25 @@ header h1 {
   font-variant-numeric: tabular-nums;
 }
 
+#rider-reports-row[hidden] {
+  display: none;
+}
+
+#rider-reports-status,
+.rider-reports-list {
+  font-weight: 400;
+}
+
+.rider-reports-list {
+  margin: 0.4rem 0;
+  padding-left: 1.25rem;
+  font-size: 13px;
+}
+
+.rider-reports-list li {
+  margin: 0.25rem 0;
+}
+
 .summary-values .window-best,
 .summary-values .window-worst {
   padding: 0.35rem 0.5rem;
