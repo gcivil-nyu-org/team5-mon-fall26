@@ -81,6 +81,10 @@ Fare ranges (minimum, average, maximum) are computed after cleaning outliers (ze
 | `zone` | `zone_id`, `name`, `borough` (the boundary shape lives in the GeoJSON file, keyed by `zone_id`) |
 | `zone_hour_stats` | `zone_id`, `day_of_week`, `hour`, `trip_count`, `avg_duration_min`, `fare_min`, `fare_avg`, `fare_max` |
 | `route_hour_stats` | `pickup_zone_id`, `dropoff_zone_id`, `day_of_week`, `hour`, `trip_count`, `avg_duration_min`, `fare_min`, `fare_avg`, `fare_max` |
+| `rideshare_zone_hour_stats` | `zone_id` (pickup), `day_of_week`, `hour`, `trip_count`, `avg_duration_min`, `fare_min`, `fare_avg`, `fare_max`, `avg_wait_min` (null if no valid wait), `wait_count`, `fare_per_mile` (null if the miles round to 0) |
+| `rideshare_route_hour_stats` | `pickup_zone_id`, `dropoff_zone_id`, `day_of_week`, `hour`, and the same statistics as `rideshare_zone_hour_stats` |
+
+The two rideshare tables (US27 #74, Uber and Lyft combined, from the TLC High Volume FHV files) feed US28 #75 and US29 #76. They use the taxi units: fares before tip in dollars rounded half up to the cent, durations and waits in minutes. `avg_wait_min` averages only the `wait_count` trips whose wait (pickup minus request) is 0 to 60 minutes. `fare_per_mile` is the cell's total fare over its total miles. Each table has one unique constraint on its key columns and no separate index on the same columns. They are written by `zones/importer/rideshare/load.py`: one transaction that upserts the zones, deletes both rideshare tables and fills them with PostgreSQL `COPY`, then `ANALYZE`. The taxi tables are never touched. March 2026 alone gives 42,931 zone cells and 3,062,385 route cells (497 MB on disk after a first load).
 
 ## 8. API surface (Epic 1)
 

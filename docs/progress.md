@@ -15,6 +15,21 @@ Entry format:
 
 ## Log
 
+### 2026-11-07 — us27c-aggregate-store, PR 2 (US27c #84, part of US27 #74, stacked on PR #86)
+**What changed:**
+- Models `RideshareZoneHourStats` and `RideshareRouteHourStats` (shared abstract `RideshareStats`), migration `zones/0004_rideshare_stats` (creates the two tables only).
+- `zones/importer/rideshare/aggregate.py`: partial totals per batch with wait (valid only), wait count and miles in hundredths; `Totals` merges batches and months in large steps; `finalize` gives the averages, with a null wait where no wait is valid.
+- `zones/importer/rideshare/load.py`: `load_rideshare` upserts zones, deletes both rideshare tables and fills them with COPY in one transaction, then ANALYZE. Fare per mile = total fare cents / total mile hundredths, rounded half up.
+- Taxi helpers made reusable without changing taxi results: `partial_totals(**extra)`, `combine_partials(merge=)`, `MERGE`, `ratio_to_cents_decimal`, `stat_fields`, `analyze_stats(models)`.
+- Docs: the two tables in the HLD data model, a new section in `decisions.md`, the PR 2 scope in `docs/stories/US27.md`.
+- Local database: migrated, and March 2026 rideshare statistics loaded (42,931 zone cells, 3,062,385 route cells).
+
+**Decisions made (also in `docs/decisions.md`):** `fare_per_mile` nullable (miles rounding to 0); zone table FK named `zone`; no FK index on `zone`/`pickup_zone` (the unique index covers them); ANALYZE after the commit; merge every 4M partial rows; no VACUUM after the replace.
+
+**Tests:** `test_rideshare_aggregate.py` (16), `test_rideshare_load.py` (12), `test_rideshare_models.py` (7); `make_kept` in `rideshare_helpers.py`. Eight deliberate mutations (no transaction, wait count over all trips, merging only the last batch, rounding to even, and more) were each caught. Full Django suite 790 (4 skipped), 145 Node tests, coverage 100.00%, black and flake8 pass. March real-data numbers are in `decisions.md`.
+
+**Next step:** after #86 merges, retarget this PR to `develop`. Then PR 3, US27d #85: the `import_rideshare` command (months loop: `read_batches` → `clean_trips` → `Totals.add`, then `load_rideshare`), the report, README, and the March to May load (local, then AWS once from the PO's laptop). Plan for the route table at about twice its fresh size on RDS after a replace.
+
 ### 2026-11-07 — us27-rideshare-import, PR 1 (US27a #82 + US27b #83, part of US27 #74)
 **What changed:**
 - New package `zones/importer/rideshare/`: `download.py` (`fhvhv_tripdata_YYYY-MM.parquet` into `data/raw/`), `read.py` (`read_batches`: batches of 262,144 trips, only the 16 needed columns, renamed; provider and shared flags as booleans made in Arrow; missing columns are a `TripFileError`), `clean.py` (8 rules, first-failed-rule counting, `wait_valid` separate from removal, fare before tip and miles in integer units, `add_removed` across batches).
