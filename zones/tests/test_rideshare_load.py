@@ -1,7 +1,9 @@
 from decimal import Decimal
 from unittest import mock
 
-from django.test import TestCase
+from django.db import connection
+from django.test import TestCase, TransactionTestCase
+from django.test.utils import CaptureQueriesContext
 
 from zones.importer import aggregate as taxi_aggregate
 from zones.importer.load import load_all
@@ -206,3 +208,66 @@ class LoadRideshareTests(TestCase):
         load_rideshare(self.lookup, *stats_for(OTHER))
 
         self.assertEqual(RideshareRouteHourStats.objects.count(), 1)
+
+
+def statements(queries, verb):
+    return [q["sql"] for q in queries if q["sql"].lstrip().upper().startswith(verb)]
+
+
+class TruncateReplaceTests(TestCase):
+    """The rideshare replace empties the tables with TRUNCATE (docs/decisions.md,
+    US27d); the taxi replace keeps DELETE."""
+
+    def setUp(self):
+        self.lookup = read_zone_lookup()
+
+    def test_replace_truncates_both_rideshare_tables_only(self):
+        load_rideshare(self.lookup, *stats_for(HAND_CHECKED))
+
+        with CaptureQueriesContext(connection) as queries:
+            load_rideshare(self.lookup, *stats_for(OTHER))
+
+        truncates = statements(queries.captured_queries, "TRUNCATE")
+        self.assertEqual(len(truncates), 1)
+        for model in (RideshareZoneHourStats, RideshareRouteHourStats):
+            self.assertIn(model._meta.db_table, truncates[0])
+        for model in (ZoneHourStats, RouteHourStats, Zone):
+            self.assertNotIn(f'"{model._meta.db_table}"', truncates[0])
+        self.assertEqual(statements(queries.captured_queries, "DELETE"), [])
+
+    def test_taxi_replace_still_deletes(self):
+        empty = taxi_aggregate.finalize(
+            taxi_aggregate.partial_totals(
+                importer_helpers.make_kept((161, 237, 1, 8, 600, 1890)),
+                taxi_aggregate.ZONE_KEYS,
+            )
+        )
+        with CaptureQueriesContext(connection) as queries:
+            load_all(self.lookup, empty, empty.iloc[0:0])
+
+        self.assertEqual(statements(queries.captured_queries, "TRUNCATE"), [])
+        self.assertEqual(len(statements(queries.captured_queries, "DELETE")), 2)
+
+
+class TruncateRollbackTests(TransactionTestCase):
+    """Committed for real (no test transaction around it), so this shows that
+    PostgreSQL rolls back the TRUNCATE itself when the load fails."""
+
+    def test_failed_replace_after_truncate_keeps_the_committed_rows(self):
+        lookup = read_zone_lookup()
+        load_rideshare(lookup, *stats_for(HAND_CHECKED))
+        before = rideshare_rows()
+        real_copy_rows = rideshare_load.copy_rows
+
+        def fail_on_routes(model, columns, rows):
+            if model is RideshareRouteHourStats:
+                # Inside the transaction the old routes are gone by now.
+                self.assertFalse(RideshareRouteHourStats.objects.exists())
+                raise RuntimeError("connection lost")
+            return real_copy_rows(model, columns, rows)
+
+        with mock.patch.object(rideshare_load, "copy_rows", fail_on_routes):
+            with self.assertRaises(RuntimeError):
+                load_rideshare(lookup, *stats_for(OTHER))
+
+        self.assertEqual(rideshare_rows(), before)

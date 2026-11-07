@@ -15,6 +15,20 @@ Entry format:
 
 ## Log
 
+### 2026-11-07 — us27d-command-load, PR 3 (US27d #85, part of US27 #74, stacked on PR #87 and #86)
+**What changed:**
+- `python manage.py import_rideshare --month YYYY-MM [--month ...] [--data-dir PATH]` (`zones/management/commands/import_rideshare.py`) and `zones/importer/rideshare/pipeline.py`: download every missing month and check every file first, then read, clean and aggregate all months in batches, then one `load_rideshare`.
+- Report: `zones/importer/report.py` takes the rules, adds "Waits left out of the average" for rideshare, widens the label column to the longest label, and counts small cells with `settings.MIN_TRIP_COUNT`. The taxi report looks the same.
+- `zones/importer/rideshare/load.py`: the replace is now one `TRUNCATE` of both rideshare tables (after `SET CONSTRAINTS ALL IMMEDIATE`) in the same transaction. The taxi import keeps DELETE. `repeated_months` shared by both commands.
+- Docs: README ("Import the rideshare data" and the AWS load runbook), HLD (data import component and §9.4), `decisions.md` (US27d section), PR 3 scope in `docs/stories/US27.md`.
+- Local database: March to May 2026 rideshare statistics loaded (43,185 zone cells, 4,524,149 route cells, route table 733 MB).
+
+**Decisions made (also in `docs/decisions.md`):** TRUNCATE for the rideshare replace (PO); run deferred FK checks before it; download and check all files before reading; report reuse with the waits line; small-cell count from `MIN_TRIP_COUNT`; AWS load as a manual runbook.
+
+**Tests:** `test_import_rideshare_command.py` (15: several months, batches equal one read including the report, report per rule and in total, twice gives the same rows, fewer months, failure while writing, bad file and failed download before any trip is cleaned, download of a missing month, repeated/missing/bad month), `test_rideshare_load.py` (+3: TRUNCATE of the two rideshare tables only, taxi still DELETE, rollback after a real commit in a `TransactionTestCase`), `test_importer_report.py` (+5). Eight deliberate mutations caught. Full suite 813 (4 skipped), 145 Node tests, coverage 100.00%, black and flake8 pass. Real data: two full runs, 132 s and 115 s, peak RSS 2.15 GB, identical rows, no size growth.
+
+**Next step:** merge #86, then #87, then this PR, retargeting each to `develop`. After the Integration deploy has migrated, the PO runs the README runbook to load March to May into the shared RDS database (not done yet). Then US28 #75 and US29 #76.
+
 ### 2026-11-07 — us27c-aggregate-store, PR 2 (US27c #84, part of US27 #74, stacked on PR #86)
 **What changed:**
 - Models `RideshareZoneHourStats` and `RideshareRouteHourStats` (shared abstract `RideshareStats`), migration `zones/0004_rideshare_stats` (creates the two tables only).
