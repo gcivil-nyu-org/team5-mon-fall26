@@ -35,8 +35,22 @@ def _fare_before_tip_cents(trips):
     return ((trips["total_amount"] - trips["tip_amount"]) * 100).round()
 
 
-def _duration_seconds(trips):
+def duration_seconds(trips):
     return (trips["dropoff_at"] - trips["pickup_at"]).dt.total_seconds()
+
+
+def remove_failed(masks, rules, index):
+    """Count each trip once, under the first rule (in rules order) it fails.
+
+    Returns (removed_mask, removed) where removed maps each rule key, in
+    rules order, to the number of trips counted under it.
+    """
+    removed_mask = pd.Series(False, index=index)
+    removed = {}
+    for key, _ in rules:
+        removed[key] = int((masks[key] & ~removed_mask).sum())
+        removed_mask = removed_mask | masks[key]
+    return removed_mask, removed
 
 
 def rule_masks(trips, month, known_zone_ids):
@@ -49,7 +63,7 @@ def rule_masks(trips, month, known_zone_ids):
     pickup = trips["pickup_at"]
     valid_zones = list(set(known_zone_ids) - UNKNOWN_ZONE_IDS)
     fare_cents = _fare_before_tip_cents(trips)
-    duration_s = _duration_seconds(trips)
+    duration_s = duration_seconds(trips)
     distance = trips["trip_distance"]
 
     return {
@@ -76,20 +90,16 @@ def clean_trips(trips, month, known_zone_ids):
     each rule key, in RULES order, to the trips counted under it.
     """
     masks = rule_masks(trips, month, known_zone_ids)
-    already_removed = pd.Series(False, index=trips.index)
-    removed = {}
-    for key, _ in RULES:
-        removed[key] = int((masks[key] & ~already_removed).sum())
-        already_removed = already_removed | masks[key]
+    removed_mask, removed = remove_failed(masks, RULES, trips.index)
 
-    rows = trips[~already_removed]
+    rows = trips[~removed_mask]
     kept = pd.DataFrame(
         {
             "pickup_zone_id": rows["pickup_zone_id"].astype("int16"),
             "dropoff_zone_id": rows["dropoff_zone_id"].astype("int16"),
             "day_of_week": rows["pickup_at"].dt.dayofweek.astype("int8"),
             "hour": rows["pickup_at"].dt.hour.astype("int8"),
-            "duration_s": _duration_seconds(rows).astype("int64"),
+            "duration_s": duration_seconds(rows).astype("int64"),
             "fare_cents": _fare_before_tip_cents(rows).astype("int64"),
         }
     )
