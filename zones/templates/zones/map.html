@@ -114,6 +114,13 @@
       <p id="summary-route" class="summary-route"></p>
       <p id="summary-time" class="summary-route"></p>
       <dl class="summary-values">
+        <div id="rider-reports-row" hidden>
+          <dt>Rider reports (last 90 days)</dt>
+          <dd>
+            <p id="rider-reports-status" class="summary-status" role="status" aria-live="polite"></p>
+            <ul id="rider-reports-list" class="rider-reports-list"></ul>
+          </dd>
+        </div>
         <div><dt>Fare before tip (min / avg / max)</dt><dd id="fare-range">—</dd></div>
         <div><dt>Typical trip duration</dt><dd id="trip-duration">—</dd></div>
         <div id="best-row" class="window-best" hidden><dt>Best time</dt><dd>Cheapest: <span id="best-fare">—</span>; Fastest: <span id="best-duration">—</span></dd></div>
@@ -235,6 +242,7 @@
   <script src="{% static 'zones/js/trip-summary.js' %}"></script>
   <script src="{% static 'routes/js/save-route.js' %}"></script>
   <script src="{% static 'reports/js/report-fare-link.js' %}"></script>
+  <script src="{% static 'reports/js/route-reports.js' %}"></script>
   <script src="{% static 'routes/js/leave-by.js' %}"></script>
   <script src="{% static 'routes/js/cheapest.js' %}"></script>
   <script src="{% static 'routes/js/save-plan.js' %}"></script>

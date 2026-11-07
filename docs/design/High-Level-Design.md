@@ -239,3 +239,15 @@ A signed-in rider can see, correct and delete their own fare reports (US24).
 | `GET/POST /reports/<id>/delete/` | Confirm, then delete; the report is removed everywhere, including the community summary |
 
 All three pages require sign-in, look reports up with `user=request.user` (another user's report gives 404), and use CSRF tokens on every form. When editing, the 30-day limit on the ride time counts from when the report was made, and the daily limit does not apply.
+
+## 23. Recent rider reports (US26)
+
+The public trip summary shows "Rider reports (last 90 days)" next to the historical fare range for a selected pickup and dropoff. It also keeps the "Report a fare" link. The rider report row does not change when the historical day or hour filter changes.
+
+| Endpoint | Returns |
+|---|---|
+| GET /api/routes/reports?from=&to= | Visible fare reports for exactly that route with ride_at in the last 90 days. Both zone ids are required and must exist; bad ids return 400. No account is required. |
+
+The endpoint returns from, to, enough_data, report_count, median_taxi_fare, rideshare_quote_count, median_rideshare_quote and recent_reports. At least 3 visible reports are required to show medians or report details; with fewer, enough_data is false, both medians are null and recent_reports is empty, so the UI says "Not enough reports yet". Rideshare quote count and median use only reports that include an Uber or Lyft quote; the median is null if there are none. Money medians are rounded to cents.
+
+The five most recent reports are ordered by ride time, then id. Each gives the ride date and hour in New York time, taxi fare, rideshare service and quote. No username or user id is included. The query uses FareReport.objects.public(), so held reports stay out; deleted reports are absent from the table.
