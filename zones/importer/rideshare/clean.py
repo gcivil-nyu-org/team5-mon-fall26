@@ -78,9 +78,7 @@ def rule_masks(trips, month, known_zone_ids):
             trips["pickup_zone_id"].isin(valid_zones)
             & trips["dropoff_zone_id"].isin(valid_zones)
         ),
-        "fare_not_positive": ~(
-            (trips["base_passenger_fare"] > 0) & (fare_cents > 0)
-        ),
+        "fare_not_positive": ~((trips["base_passenger_fare"] > 0) & (fare_cents > 0)),
         "fare_over_max": fare_cents > MAX_FARE_CENTS,
         "bad_distance": ~((miles > 0) & (miles <= MAX_DISTANCE_MI)),
         "bad_duration": ~(
