@@ -31,7 +31,9 @@ def upsert_zones(lookup):
     return len(zones)
 
 
-def _stat_fields(row):
+def stat_fields(row):
+    """The statistics columns shared by every stats table, from one
+    finalize() row, as model field values."""
     return {
         "day_of_week": int(row.day_of_week),
         "hour": int(row.hour),
@@ -44,14 +46,14 @@ def _stat_fields(row):
 
 
 def _zone_stat(row):
-    return ZoneHourStats(zone_id=int(row.pickup_zone_id), **_stat_fields(row))
+    return ZoneHourStats(zone_id=int(row.pickup_zone_id), **stat_fields(row))
 
 
 def _route_stat(row):
     return RouteHourStats(
         pickup_zone_id=int(row.pickup_zone_id),
         dropoff_zone_id=int(row.dropoff_zone_id),
-        **_stat_fields(row),
+        **stat_fields(row),
     )
 
 
@@ -76,10 +78,10 @@ def replace_stats(zone_stats, route_stats, batch_size=BATCH_SIZE):
     return n_zone, n_route
 
 
-def analyze_stats():
+def analyze_stats(models=(ZoneHourStats, RouteHourStats)):
     """Refresh PostgreSQL's planner statistics after a full replacement."""
     with connection.cursor() as cursor:
-        for model in (ZoneHourStats, RouteHourStats):
+        for model in models:
             cursor.execute(f"ANALYZE {connection.ops.quote_name(model._meta.db_table)}")
 
 
