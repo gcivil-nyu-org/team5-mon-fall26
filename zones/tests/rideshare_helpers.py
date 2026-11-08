@@ -3,6 +3,7 @@ tests, with the raw TLC column names and types."""
 
 from datetime import datetime
 
+import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
@@ -108,3 +109,37 @@ def make_trips(*overrides):
     """Trips as read_batches() yields them: our names, booleans for the
     provider and shared flags."""
     return to_frame(make_table(*overrides))
+
+
+def make_kept(*rows):
+    """Cleaned trips as clean_trips() returns them. Each row is
+    (pickup, dropoff, day_of_week, hour, duration_s, fare_cents,
+    miles_hundredths, wait_s), with wait_s None for a wait left out of
+    the average (stored as 0 with wait_valid False, as clean_trips does)."""
+    kept = pd.DataFrame(
+        [(*row[:7], row[7] or 0, row[7] is not None) for row in rows],
+        columns=[
+            "pickup_zone_id",
+            "dropoff_zone_id",
+            "day_of_week",
+            "hour",
+            "duration_s",
+            "fare_cents",
+            "miles_hundredths",
+            "wait_s",
+            "wait_valid",
+        ],
+    )
+    return kept.astype(
+        {
+            "pickup_zone_id": "int16",
+            "dropoff_zone_id": "int16",
+            "day_of_week": "int8",
+            "hour": "int8",
+            "duration_s": "int64",
+            "fare_cents": "int64",
+            "miles_hundredths": "int64",
+            "wait_s": "int64",
+            "wait_valid": "bool",
+        }
+    )

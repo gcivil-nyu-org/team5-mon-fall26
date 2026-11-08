@@ -21,7 +21,7 @@ PARTIAL_COLUMNS = [
 ]
 
 # How each partial column is merged across months.
-_MERGE = {
+MERGE = {
     "trip_count": "sum",
     "duration_sum_s": "sum",
     "fare_sum_cents": "sum",
@@ -32,24 +32,32 @@ _MERGE = {
 CENT = Decimal("0.01")
 
 
-def partial_totals(kept, keys):
-    """Totals per cell for one month of cleaned trips, indexed by keys."""
+def partial_totals(kept, keys, **extra):
+    """Totals per cell for one month of cleaned trips, indexed by keys.
+
+    extra adds named aggregations after the taxi columns (the rideshare
+    import uses it for wait and miles); every column ends up int64.
+    """
     partials = kept.groupby(keys, sort=True).agg(
         trip_count=("fare_cents", "size"),
         duration_sum_s=("duration_s", "sum"),
         fare_sum_cents=("fare_cents", "sum"),
         fare_min_cents=("fare_cents", "min"),
         fare_max_cents=("fare_cents", "max"),
+        **extra,
     )
     return partials.astype("int64")
 
 
-def combine_partials(acc, part):
-    """Merge one month's partial totals into the running totals."""
+def combine_partials(acc, part, merge=MERGE):
+    """Merge one month's partial totals into the running totals.
+
+    merge maps each column to "sum", "min" or "max", in column order.
+    """
     if acc is None:
         return part
     combined = pd.concat([acc, part]).groupby(level=list(acc.index.names), sort=True)
-    return combined.agg(_MERGE)[PARTIAL_COLUMNS].astype("int64")
+    return combined.agg(merge)[list(merge)].astype("int64")
 
 
 def finalize(partials):
@@ -75,6 +83,15 @@ def cents_to_decimal(cents):
     return Decimal(int(cents)).scaleb(-2)
 
 
+def ratio_to_cents_decimal(numerator, denominator):
+    """numerator / denominator in dollars, rounded half up to the cent.
+
+    Exact: Decimal division keeps 28 significant digits, far more than
+    any sum of fares needs.
+    """
+    return (Decimal(int(numerator)) / int(denominator)).quantize(CENT, ROUND_HALF_UP)
+
+
 def average_cents_to_decimal(sum_cents, count):
     """Average fare in dollars, rounded half up to the cent."""
-    return (Decimal(int(sum_cents)) / (int(count) * 100)).quantize(CENT, ROUND_HALF_UP)
+    return ratio_to_cents_decimal(sum_cents, int(count) * 100)
