@@ -1,8 +1,9 @@
 """Writing the rideshare statistics to the database with COPY.
 
-load_rideshare() upserts the zones and replaces both rideshare tables in
-one transaction: if any step fails, the old zones and rideshare rows stay
-as they were. The taxi tables are never touched.
+load_rideshare() upserts the zones and replaces both rideshare tables
+(TRUNCATE, then COPY) in one transaction: if any step fails, the old
+zones and rideshare rows stay as they were. The taxi tables are never
+touched.
 """
 
 from django.db import connection, transaction
@@ -68,14 +69,35 @@ def copy_rows(model, columns, rows):
     return count
 
 
+def truncate_tables(models):
+    """Empty the tables with one TRUNCATE.
+
+    In PostgreSQL TRUNCATE is transactional: inside transaction.atomic()
+    a failure later on brings the old rows back. Unlike DELETE it leaves
+    no dead rows, so a replace does not double the table on disk.
+
+    PostgreSQL refuses to TRUNCATE a table while the transaction still
+    has deferred foreign key checks queued on it (rows written to it
+    earlier in the same transaction, as in a test). Django's foreign keys
+    are DEFERRABLE INITIALLY DEFERRED, so the queued checks are run first,
+    and checks are deferred again afterwards.
+    """
+    quote = connection.ops.quote_name
+    tables = ", ".join(quote(model._meta.db_table) for model in models)
+    with connection.cursor() as cursor:
+        cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
+        cursor.execute(f"TRUNCATE {tables}")
+        cursor.execute("SET CONSTRAINTS ALL DEFERRED")
+
+
 def replace_rideshare_stats(zone_stats, route_stats):
     """Empty both rideshare tables and fill them from the final stats.
 
-    DELETE (not TRUNCATE), as for taxis: readers keep the old rows until
-    the surrounding transaction commits.
+    TRUNCATE, not DELETE as for taxis (see docs/decisions.md, US27d): it
+    locks both tables until the surrounding transaction commits, which is
+    acceptable because refreshes are rare.
     """
-    for model in TABLES:
-        model.objects.all().delete()
+    truncate_tables(TABLES)
     n_zone = copy_rows(
         RideshareZoneHourStats,
         ZONE_COLUMNS,

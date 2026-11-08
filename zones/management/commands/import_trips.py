@@ -4,7 +4,7 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from zones.importer.download import parse_month
+from zones.importer.download import parse_month, repeated_months
 from zones.importer.pipeline import run_import
 from zones.importer.read import TripFileError
 from zones.importer.report import format_report
@@ -34,7 +34,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, months, data_dir, **options):
-        repeated = sorted({month for month in months if months.count(month) > 1})
+        repeated = repeated_months(months)
         if repeated:
             raise CommandError(
                 f"Each month can be given only once: {', '.join(repeated)}"

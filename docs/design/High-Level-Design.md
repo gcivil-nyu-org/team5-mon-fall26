@@ -51,7 +51,7 @@ We did not draw detailed class diagrams. The epic is read-heavy: it moves pre-ag
 | **Backend** (Django views) | Serves the pages and the JSON endpoints. Joins zone statistics with the zone shapes file, validates query parameters, and does no heavy computation. |
 | **Database** (PostgreSQL) | Stores zone information and precomputed zone-by-hour and route-by-hour statistics. |
 | **Zone shapes** (GeoJSON file) | Zone boundaries for the map. Loaded by the backend and joined to the statistics by zone id. |
-| **Data import** (Django management command, pandas) | Reads one or more monthly TLC trip files, one at a time, cleans them, aggregates by zone, day of week, and hour, and loads the results into the database. |
+| **Data import** (Django management commands, pandas/pyarrow) | `import_trips` (yellow taxi) and `import_rideshare` (Uber and Lyft, from the High Volume FHV files). Each reads one or more monthly TLC trip files, one at a time, cleans them, aggregates by zone (and route), day of week, and hour, and replaces its own statistics tables in one transaction. |
 | **NYC TLC Trip Record Data** (external) | Public source of historical trips and the taxi zone shapes. |
 
 Riders only talk to the Django app through their browser. The app only reads from the database and the shapes file. The import command is the only thing that writes trip statistics, and an admin runs it offline.
@@ -84,7 +84,7 @@ Fare ranges (minimum, average, maximum) are computed after cleaning outliers (ze
 | `rideshare_zone_hour_stats` | `zone_id` (pickup), `day_of_week`, `hour`, `trip_count`, `avg_duration_min`, `fare_min`, `fare_avg`, `fare_max`, `avg_wait_min` (null if no valid wait), `wait_count`, `fare_per_mile` (null if the miles round to 0) |
 | `rideshare_route_hour_stats` | `pickup_zone_id`, `dropoff_zone_id`, `day_of_week`, `hour`, and the same statistics as `rideshare_zone_hour_stats` |
 
-The two rideshare tables (US27 #74, Uber and Lyft combined, from the TLC High Volume FHV files) feed US28 #75 and US29 #76. They use the taxi units: fares before tip in dollars rounded half up to the cent, durations and waits in minutes. `avg_wait_min` averages only the `wait_count` trips whose wait (pickup minus request) is 0 to 60 minutes. `fare_per_mile` is the cell's total fare over its total miles. Each table has one unique constraint on its key columns and no separate index on the same columns. They are written by `zones/importer/rideshare/load.py`: one transaction that upserts the zones, deletes both rideshare tables and fills them with PostgreSQL `COPY`, then `ANALYZE`. The taxi tables are never touched. March 2026 alone gives 42,931 zone cells and 3,062,385 route cells (497 MB on disk after a first load).
+The two rideshare tables (US27 #74, Uber and Lyft combined, from the TLC High Volume FHV files) feed US28 #75 and US29 #76. They use the taxi units: fares before tip in dollars rounded half up to the cent, durations and waits in minutes. `avg_wait_min` averages only the `wait_count` trips whose wait (pickup minus request) is 0 to 60 minutes. `fare_per_mile` is the cell's total fare over its total miles. Each table has one unique constraint on its key columns and no separate index on the same columns. They are written by `python manage.py import_rideshare --month YYYY-MM [--month ...]` through `zones/importer/rideshare/load.py`: one transaction that upserts the zones, empties both rideshare tables with `TRUNCATE` (the taxi import uses `DELETE`) and fills them with PostgreSQL `COPY`, then `ANALYZE`. The taxi tables are never touched. March 2026 alone gives 42,931 zone cells and 3,062,385 route cells (497 MB on disk after a first load).
 
 ## 8. API surface (Epic 1)
 
@@ -124,6 +124,14 @@ When both zones are selected, the summary panel opens automatically. It combines
 ![Data import](images/06-seq-data-import.png)
 
 An admin runs the import command with the months to load. It cleans and aggregates the raw trips month by month and replaces the statistics in one transaction, so no rider request ever touches raw trip data.
+
+The rideshare import (`import_rideshare`, US27 #74) follows the same steps with larger files (about 22 million trips a month, against about 4 million for yellow taxis):
+1. Download any missing month (`fhvhv_tripdata_YYYY-MM.parquet`) into `data/raw/`, then open and check every file, so a missing month or a bad file fails before any trip is read.
+2. For each month, read the file in batches of 262,144 trips with only the needed columns, clean each batch (8 rules, each removed trip counted under the first rule it fails) and add it to running totals per zone cell and per route cell. Raw trips are never kept past their batch.
+3. Turn the totals into averages, then in one transaction upsert the zones, `TRUNCATE` both rideshare tables and fill them with `COPY`. A failure at any point rolls back to the old rows. `ANALYZE` runs after the commit.
+4. Print the report: per month and in total, rows read, removed per rule, kept and waits left out of the wait average, then the zone and route cell counts and how many have fewer than `MIN_TRIP_COUNT` trips.
+
+Integration and Production share one database, so the rideshare data is loaded into AWS once, from a laptop (README, "Load the rideshare data into the shared AWS database").
 
 ## 10. Deployment diagram
 
