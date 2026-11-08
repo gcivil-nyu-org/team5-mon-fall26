@@ -263,3 +263,14 @@ The public trip summary shows "Rider reports (last 90 days)" next to the histori
 The endpoint returns from, to, enough_data, report_count, median_taxi_fare, rideshare_quote_count, median_rideshare_quote and recent_reports. At least 3 visible reports are required to show medians or report details; with fewer, enough_data is false, both medians are null and recent_reports is empty, so the UI says "Not enough reports yet". Rideshare quote count and median use only reports that include an Uber or Lyft quote; the median is null if there are none. Money medians are rounded to cents.
 
 The five most recent reports are ordered by ride time, then id. Each gives the ride date and hour in New York time, taxi fare, rideshare service and quote. No username or user id is included. The query uses FareReport.objects.public(), so held reports stay out; deleted reports are absent from the table.
+
+## 24. Surge-pricing overlay (US29)
+
+The heatmap has a "Show likely surge hours" toggle. When it is on, the selected pickup zone's likely Uber/Lyft surge hours are marked on the 7 x 24 grid, a legend explains the rule, and hovering a marked cell shows its fare per mile and average wait. Real surge multipliers are not public, so the UI calls this an estimate from past trips.
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/zones/:id/surge` | For each of the 7 x 24 cells of the zone (`rideshare_zone_hour_stats`): `trip_count`, `fare_per_mile`, `avg_wait_min`, `surge_ratio` and `likely_surge`, plus the zone's `median_fare_per_mile`, the rule's ratio and minimum trip count, and `enough_data`. A cell is a likely surge hour when it has at least `MIN_TRIP_COUNT` (5) trips and its fare per mile is at least `SURGE_FARE_PER_MILE_RATIO` (1.25) times the median of the zone's hours with at least 5 trips. Cells with fewer trips are never marked and have null stats. Unknown zone: 404. Public, read-only. |
+
+The rule runs in `zones/stats.py` (`surge_grid`), one query per zone. No table is added; the rideshare tables come from US27.
+

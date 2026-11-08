@@ -35,6 +35,7 @@ Web app that shows NYC riders historical taxi demand, fares, and trip duration b
 ## API (Epic 1, all public and read-only)
 - `GET /api/zones?day=&hour=`: zones as GeoJSON with trip volume (defaults to current day and hour)
 - `GET /api/zones/:id/heatmap`: 7 x 24 trip volume and average duration
+- `GET /api/zones/:id/surge`: 7 x 24 likely Uber/Lyft surge hours, with fare per mile and average wait (US29 #76; rule in `docs/decisions.md`)
 - `GET /api/routes?from=&to=&day=&hour=`: fare min/avg/max, typical duration, trip volume (`to` optional)
 - `GET /api/routes/windows?from=&to=&day=`: hours of the day ranked, best and worst windows
 - Too few trips (fewer than MIN_TRIP_COUNT = 5 in settings.py): the API returns 200 with "enough_data": false and null stats, and the UI shows "Not enough data"

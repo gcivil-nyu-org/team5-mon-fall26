@@ -315,6 +315,61 @@ header h1 {
   );
 }
 
+/* Likely surge hours (US29 #76): a black ring with a white centre dot,
+   visible on every heatmap colour, and the same mark in the legend. */
+.heatmap-cell.is-surge,
+.surge-swatch {
+  position: relative;
+  box-shadow: inset 0 0 0 2px #111;
+}
+
+.heatmap-cell.is-surge::after,
+.surge-swatch::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 1px #111;
+}
+
+.surge-swatch {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 0.3rem;
+  vertical-align: -3px;
+  background: rgb(160, 50, 95);
+}
+
+.surge-legend {
+  margin: 0 0 0.7rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 4px;
+  background: #f4f6f9;
+  font-size: 12px;
+}
+
+.surge-legend[hidden] {
+  display: none;
+}
+
+.surge-legend p {
+  margin: 0.2rem 0;
+}
+
+.surge-status {
+  font-weight: 600;
+}
+
+.surge-note {
+  color: #4c5565;
+}
+
 .heatmap-panel .error {
   color: #c00;
   margin: 0.5rem 0;

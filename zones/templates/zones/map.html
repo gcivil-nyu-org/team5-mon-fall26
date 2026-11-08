@@ -230,6 +230,16 @@
         <input type="radio" name="heatmap-metric" value="avg_duration_min">
         Avg Duration
       </label>
+      {# US29 #76: mark the hours when Uber/Lyft is likely surging. #}
+      <label class="surge-toggle">
+        <input type="checkbox" id="surge-toggle">
+        Show likely surge hours
+      </label>
+    </div>
+    <div id="surge-legend" class="surge-legend" hidden>
+      <p><span class="surge-swatch" aria-hidden="true"></span> Likely surge hour: the Uber/Lyft fare per mile is at least {{ surge_ratio }}× this zone's typical hour of the week (hours with at least {{ min_trip_count }} trips). Hover a marked cell for its fare per mile and wait.</p>
+      <p id="surge-status" class="surge-status" role="status" aria-live="polite"></p>
+      <p class="surge-note">An estimate from past trips (March to May 2026): real surge multipliers are not public, so a yellow cab may or may not be cheaper on the day.</p>
     </div>
     <div id="heatmap-container"></div>
   </aside>

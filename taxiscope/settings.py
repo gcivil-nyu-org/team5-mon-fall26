@@ -6,6 +6,7 @@ For more information on this file, see
 https://docs.djangoproject.com/en/5.2/topics/settings/
 """
 
+from decimal import Decimal
 from pathlib import Path
 
 import environ
@@ -154,6 +155,11 @@ LOGOUT_REDIRECT_URL = "zones:map"
 # Minimum trips in a day/hour cell before the API shows its statistics
 # (see docs/decisions.md, US5 #7). Shared by US5, US6 and US7.
 MIN_TRIP_COUNT = 5
+
+# US29 #76: an hour is a "likely surge" hour when its rideshare fare per
+# mile is at least this many times the zone's median hour across the week
+# (hours with at least MIN_TRIP_COUNT trips). See docs/decisions.md.
+SURGE_FARE_PER_MILE_RATIO = Decimal("1.25")
 
 # Directory for collected static files in production (served by the Elastic
 # Beanstalk proxy, see .ebextensions/01_static.config)

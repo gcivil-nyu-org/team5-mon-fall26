@@ -9,6 +9,7 @@ urlpatterns = [
     path("compare/", views.compare_view, name="compare"),
     path("api/zones", views.zones_api, name="zones_api"),
     path("api/zones/<int:zone_id>/heatmap", views.heatmap_api, name="heatmap_api"),
+    path("api/zones/<int:zone_id>/surge", views.surge_api, name="surge_api"),
     path("api/routes", views.routes_api, name="routes_api"),
     path("api/routes/windows", views.route_windows_api, name="route_windows_api"),
 ]
