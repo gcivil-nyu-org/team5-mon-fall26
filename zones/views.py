@@ -14,6 +14,7 @@ from .stats import (
     rideshare_route_stats,
     route_stats,
     route_windows,
+    surge_grid,
     unknown_zone_ids,
 )
 
@@ -36,6 +37,9 @@ def map_view(request, saved_route=None):
             "current_day": now.weekday(),
             "current_hour": now.hour,
             "saved_route": saved_route,
+            # US29 #76: the surge legend states the rule's numbers.
+            "surge_ratio": settings.SURGE_FARE_PER_MILE_RATIO,
+            "min_trip_count": settings.MIN_TRIP_COUNT,
         },
     )
 
@@ -221,6 +225,31 @@ def heatmap_api(request, zone_id):
             "zone_name": zone.name,
             "borough": zone.borough,
             "heatmap": heatmap,
+        }
+    )
+
+
+@require_GET
+def surge_api(request, zone_id):
+    """GET /api/zones/:id/surge
+
+    US29 #76: for each of the 7 x 24 day/hour cells of the pickup zone,
+    whether it is a likely Uber/Lyft surge hour, with its fare per mile,
+    average wait and ratio to the zone's median hour. The rule is in
+    zones.stats.surge_grid and docs/decisions.md. Unknown zone: 404, as
+    for the heatmap.
+    """
+    try:
+        zone = Zone.objects.get(zone_id=zone_id)
+    except Zone.DoesNotExist:
+        return JsonResponse({"error": "Zone not found"}, status=404)
+
+    return JsonResponse(
+        {
+            "zone_id": zone_id,
+            "zone_name": zone.name,
+            "borough": zone.borough,
+            **surge_grid(zone_id),
         }
     )
 

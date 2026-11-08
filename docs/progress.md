@@ -15,6 +15,20 @@ Entry format:
 
 ## Log
 
+### 2026-11-08 — us29-surge-overlay (US29 #76, stacked on US27c #84 / US27d #85)
+**What changed:**
+- `GET /api/zones/:id/surge` (`zones/views.py`, `zones/urls.py`), backed by `surge_grid` in `zones/stats.py`, reading `RideshareZoneHourStats`. New setting `SURGE_FARE_PER_MILE_RATIO = Decimal("1.25")`.
+- "Show likely surge hours" toggle, legend and cell marks on the heatmap (`zones/templates/zones/map.html`, `zones/static/zones/js/heatmap.js`, `map.css`). The map view passes the ratio and `MIN_TRIP_COUNT` to the legend. The compare page's grids are unchanged.
+- Docs: `decisions.md` (US29 section), High Level Design section 24, `CLAUDE.md` API list, `docs/stories/US29.md`.
+
+**Decisions made (also in `decisions.md`):** the story's proposed rule (fare per mile at least 1.25 x the zone's median counted hour, at least 5 trips), pending PO confirmation; exact median for the rule, rounded only for display; too-few-trip hours never marked and left out of the median; wait needs its own 5 valid waits; overlay off by default and fetched on demand.
+
+**Tests:** new `zones/tests/test_surge_api.py` (rule, median, minimums, settings, endpoint, 404, template) and `zones/tests/surge_overlay.test.js` (on/off, marks, hover text, too-few-trip cells, zone change, late answers, no data, errors). `manage.py test` and `node --test zones/tests/*.test.js`: all OK; black 25.9.0 and flake8 clean.
+
+**Next step:**
+- Confirm the rule with the Product Owner (ratio 1.25, median of hours rather than trip-weighted). A different ratio is a one-line change in `settings.py`.
+- The branch starts from `us27c-aggregate-store` because the rideshare models are not in `develop` yet. Open the PR after US27c/US27d merge into `develop`.
+- Check how many hours get marked on the real March to May data (Integration) before the demo.
 ### 2026-11-08 — us28-taxi-vs-rideshare (US28 #75, stacked on US27c #84 / US27d #85)
 **What changed:**
 - `GET /api/routes/rideshare?from=&to=&day=&hour=` (`zones/views.py`, `zones/urls.py`), backed by `rideshare_route_stats` in `zones/stats.py`. Reads `RideshareRouteHourStats` (with `to`) or `RideshareZoneHourStats` (without). `/api/routes` and the new endpoint now share one validation helper, `_route_query`; `/api/routes` responses are unchanged.

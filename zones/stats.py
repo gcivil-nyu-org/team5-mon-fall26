@@ -2,8 +2,10 @@
 can be tested without HTTP."""
 
 import json
+from decimal import ROUND_HALF_UP, Decimal
 from functools import lru_cache
 from pathlib import Path
+from statistics import median
 
 from django.conf import settings
 
@@ -146,4 +148,89 @@ def route_windows(pickup_zone_id, dropoff_zone_id, day):
             "fare": max(hours, key=lambda h: h["fare_avg"]),
             "duration": max(hours, key=lambda h: h["avg_duration_min"]),
         },
+    }
+
+
+def surge_grid(zone_id):
+    """US29 #76: the 7 x 24 "likely surge" grid for one pickup zone, from
+    rideshare_zone_hour_stats (Uber and Lyft combined).
+
+    An hour counts when it has at least settings.MIN_TRIP_COUNT trips and
+    a fare per mile. The zone's typical fare per mile is the median of the
+    counted hours across the week (each hour counts once, whatever its
+    trips). A counted hour is a likely surge hour when its fare per mile
+    is at least settings.SURGE_FARE_PER_MILE_RATIO times that median.
+    Hours that do not count are never marked and have null fare per mile,
+    wait and ratio; avg_wait_min is also null when fewer than
+    MIN_TRIP_COUNT trips have a valid wait. No counted hour gives
+    enough_data False and a null median.
+    """
+    minimum = settings.MIN_TRIP_COUNT
+    cells = {
+        (row["day_of_week"], row["hour"]): row
+        for row in RideshareZoneHourStats.objects.filter(zone_id=zone_id).values(
+            "day_of_week",
+            "hour",
+            "trip_count",
+            "fare_per_mile",
+            "avg_wait_min",
+            "wait_count",
+        )
+    }
+    counted = {
+        key
+        for key, row in cells.items()
+        if row["trip_count"] >= minimum and row["fare_per_mile"] is not None
+    }
+    # Exact median (an even count can give half a cent); the rule uses it
+    # as is, and only the value shown is rounded to the cent.
+    typical = (
+        median(cells[key]["fare_per_mile"] for key in counted) if counted else None
+    )
+    threshold = typical * settings.SURGE_FARE_PER_MILE_RATIO if counted else None
+
+    grid = []
+    for day in range(7):
+        hours = []
+        for hour in range(24):
+            row = cells.get((day, hour))
+            if (day, hour) not in counted:
+                hours.append(
+                    {
+                        "trip_count": row["trip_count"] if row else None,
+                        "fare_per_mile": None,
+                        "avg_wait_min": None,
+                        "surge_ratio": None,
+                        "likely_surge": False,
+                    }
+                )
+                continue
+            fare_per_mile = row["fare_per_mile"]
+            hours.append(
+                {
+                    "trip_count": row["trip_count"],
+                    "fare_per_mile": fare_per_mile,
+                    "avg_wait_min": (
+                        row["avg_wait_min"] if row["wait_count"] >= minimum else None
+                    ),
+                    "surge_ratio": float(
+                        (fare_per_mile / typical).quantize(
+                            Decimal("0.01"), rounding=ROUND_HALF_UP
+                        )
+                    ),
+                    "likely_surge": fare_per_mile >= threshold,
+                }
+            )
+        grid.append(hours)
+
+    return {
+        "enough_data": bool(counted),
+        "median_fare_per_mile": (
+            typical.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            if counted
+            else None
+        ),
+        "surge_ratio_threshold": float(settings.SURGE_FARE_PER_MILE_RATIO),
+        "min_trip_count": minimum,
+        "surge": grid,
     }

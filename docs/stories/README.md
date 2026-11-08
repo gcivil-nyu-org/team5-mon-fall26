@@ -22,3 +22,4 @@ One file per user story, mirroring the ZenHub issue (story line, developer tasks
 | US9.md | #11 | Use Without an Account |
 | US27.md | #74 | Import Rideshare Trip Statistics (split into #82 to #85; written by hand, not by the sync script) |
 | US28.md | #75 | Compare Taxi and Rideshare Fares for My Trip (written by hand, not by the sync script) |
+| US29.md | #76 | Surge-Pricing Overlay (written by hand, not by the sync script) |
