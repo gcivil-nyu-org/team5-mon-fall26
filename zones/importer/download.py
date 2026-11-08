@@ -28,6 +28,11 @@ def parse_month(value):
     return value
 
 
+def repeated_months(months):
+    """The months given more than once, sorted."""
+    return sorted({month for month in months if months.count(month) > 1})
+
+
 def trip_file_path(month, data_dir):
     return data_dir / f"yellow_tripdata_{month}.parquet"
 

@@ -1,14 +1,26 @@
 import re
 
 import pandas as pd
+from django.conf import settings
 from django.test import SimpleTestCase
 
 from zones.importer.clean import RULES
-from zones.importer.report import MonthReport, format_report, total_report
+from zones.importer.report import (
+    REPORT_MIN_TRIPS,
+    WAITS_LABEL,
+    MonthReport,
+    format_report,
+    total_report,
+)
+from zones.importer.rideshare.clean import RULES as RIDESHARE_RULES
 
 
 def removed(**counts):
     return {key: counts.get(key, 0) for key, _ in RULES}
+
+
+def rideshare_removed(**counts):
+    return {key: counts.get(key, 0) for key, _ in RIDESHARE_RULES}
 
 
 MARCH = MonthReport("2026-03", 1000, removed(bad_distance=40, voided=3), 957)
@@ -97,3 +109,60 @@ class FormatReportTests(SimpleTestCase):
         # trip_count 4 and 1 are under 5; 5 is not.
         self.assertIn("2 with fewer than 5 trips", cells.splitlines()[0])
         self.assertIn("3 with fewer than 5 trips", cells.splitlines()[1])
+
+
+class RideshareReportTests(SimpleTestCase):
+    """The same layout with the rideshare rules and the waits line."""
+
+    def setUp(self):
+        self.march = MonthReport(
+            "2026-03",
+            1000,
+            rideshare_removed(shared_ride=30, fare_not_positive=7),
+            963,
+            waits_left_out=12,
+        )
+        self.april = MonthReport(
+            "2026-04", 500, rideshare_removed(unknown_zone=20), 480, waits_left_out=3
+        )
+        self.report = format_report(
+            [self.march, self.april], ZONE_STATS, ROUTE_STATS, RIDESHARE_RULES
+        )
+
+    def block(self, title):
+        return next(b for b in self.report.split("\n\n") if b.startswith(title))
+
+    def test_lists_the_rideshare_rules_in_order(self):
+        march = self.block("2026-03")
+        positions = [march.index(label) for _, label in RIDESHARE_RULES]
+
+        self.assertEqual(positions, sorted(positions))
+        self.assertNotIn("Voided", march)
+        self.assertEqual(number_after(dict(RIDESHARE_RULES)["shared_ride"], march), 30)
+        self.assertEqual(number_after("Rows removed", march), 37)
+
+    def test_waits_left_out_per_month_and_in_total(self):
+        march = self.block("2026-03")
+
+        self.assertEqual(number_after(WAITS_LABEL, march), 12)
+        self.assertIn("(1.25% of kept)", march)  # 12 / 963
+        total = self.block("Total")
+        self.assertEqual(number_after(WAITS_LABEL, total), 15)
+        self.assertEqual(number_after("Rows kept", total), 1443)
+
+    def test_numbers_line_up_under_the_longest_label(self):
+        march = self.block("2026-03").splitlines()[1:]
+        ends = {len(line.split("  (")[0]) for line in march}
+
+        self.assertEqual(len(ends), 1)
+
+    def test_taxi_report_has_no_waits_line(self):
+        report = format_report([MARCH, APRIL], ZONE_STATS, ROUTE_STATS)
+
+        self.assertNotIn(WAITS_LABEL, report)
+        self.assertIsNone(total_report([MARCH, APRIL]).waits_left_out)
+
+
+class ReportMinTripsTests(SimpleTestCase):
+    def test_uses_the_api_minimum_trip_count(self):
+        self.assertEqual(REPORT_MIN_TRIPS, settings.MIN_TRIP_COUNT)

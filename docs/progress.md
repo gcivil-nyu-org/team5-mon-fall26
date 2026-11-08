@@ -15,6 +15,50 @@ Entry format:
 
 ## Log
 
+### 2026-11-08 — us28-taxi-vs-rideshare (US28 #75, stacked on US27c #84 / US27d #85)
+**What changed:**
+- `GET /api/routes/rideshare?from=&to=&day=&hour=` (`zones/views.py`, `zones/urls.py`), backed by `rideshare_route_stats` in `zones/stats.py`. Reads `RideshareRouteHourStats` (with `to`) or `RideshareZoneHourStats` (without). `/api/routes` and the new endpoint now share one validation helper, `_route_query`; `/api/routes` responses are unchanged.
+- "Taxi vs. rideshare" section in the trip summary (`zones/templates/zones/map.html`, `zones/static/zones/js/rideshare.js`, styles in `map.css`): average fare before tip, fare range, duration, and the rideshare wait, side by side, plus which was cheaper and by how much.
+- Docs: `decisions.md` (US28 section), High Level Design section 24, `CLAUDE.md` API list, `docs/stories/US28.md`.
+
+**Decisions made (also in `decisions.md`):** same keys as `/api/routes` plus `avg_wait_min`; wait needs its own 5 valid waits; compared on `fare_avg` in whole cents, verdict only when both sides have enough data; section only with both zones; labeled historical, not live prices.
+
+**Tests:** new `zones/tests/test_rideshare_routes_api.py` (stats function, endpoint, validation, template) and `zones/tests/rideshare.test.js` (side by side, verdict both ways and equal, "Not enough data" per side, null wait, reloads on zone/day/hour, stale responses, errors). `manage.py test`: all OK; `node --test zones/tests/*.test.js`: all OK; black 25.9.0 and flake8 clean.
+
+**Next step:**
+- The branch starts from `us27c-aggregate-store` because the rideshare models are not in `develop` yet. Open the PR after US27c/US27d merge into `develop` (or rebase onto `develop` then).
+- Check on Integration once the March to May rideshare data is loaded (US27d runbook).
+- Not pushed; the user does all the git.
+
+### 2026-11-07 — us27d-command-load, PR 3 (US27d #85, part of US27 #74, stacked on PR #87 and #86)
+**What changed:**
+- `python manage.py import_rideshare --month YYYY-MM [--month ...] [--data-dir PATH]` (`zones/management/commands/import_rideshare.py`) and `zones/importer/rideshare/pipeline.py`: download every missing month and check every file first, then read, clean and aggregate all months in batches, then one `load_rideshare`.
+- Report: `zones/importer/report.py` takes the rules, adds "Waits left out of the average" for rideshare, widens the label column to the longest label, and counts small cells with `settings.MIN_TRIP_COUNT`. The taxi report looks the same.
+- `zones/importer/rideshare/load.py`: the replace is now one `TRUNCATE` of both rideshare tables (after `SET CONSTRAINTS ALL IMMEDIATE`) in the same transaction. The taxi import keeps DELETE. `repeated_months` shared by both commands.
+- Docs: README ("Import the rideshare data" and the AWS load runbook), HLD (data import component and §9.4), `decisions.md` (US27d section), PR 3 scope in `docs/stories/US27.md`.
+- Local database: March to May 2026 rideshare statistics loaded (43,185 zone cells, 4,524,149 route cells, route table 733 MB).
+
+**Decisions made (also in `docs/decisions.md`):** TRUNCATE for the rideshare replace (PO); run deferred FK checks before it; download and check all files before reading; report reuse with the waits line; small-cell count from `MIN_TRIP_COUNT`; AWS load as a manual runbook.
+
+**Tests:** `test_import_rideshare_command.py` (15: several months, batches equal one read including the report, report per rule and in total, twice gives the same rows, fewer months, failure while writing, bad file and failed download before any trip is cleaned, download of a missing month, repeated/missing/bad month), `test_rideshare_load.py` (+3: TRUNCATE of the two rideshare tables only, taxi still DELETE, rollback after a real commit in a `TransactionTestCase`), `test_importer_report.py` (+5). Eight deliberate mutations caught. Full suite 813 (4 skipped), 145 Node tests, coverage 100.00%, black and flake8 pass. Real data: two full runs, 132 s and 115 s, peak RSS 2.15 GB, identical rows, no size growth.
+
+**Next step:** merge #86, then #87, then this PR, retargeting each to `develop`. After the Integration deploy has migrated, the PO runs the README runbook to load March to May into the shared RDS database (not done yet). Then US28 #75 and US29 #76.
+
+### 2026-11-07 — us27c-aggregate-store, PR 2 (US27c #84, part of US27 #74, stacked on PR #86)
+**What changed:**
+- Models `RideshareZoneHourStats` and `RideshareRouteHourStats` (shared abstract `RideshareStats`), migration `zones/0004_rideshare_stats` (creates the two tables only).
+- `zones/importer/rideshare/aggregate.py`: partial totals per batch with wait (valid only), wait count and miles in hundredths; `Totals` merges batches and months in large steps; `finalize` gives the averages, with a null wait where no wait is valid.
+- `zones/importer/rideshare/load.py`: `load_rideshare` upserts zones, deletes both rideshare tables and fills them with COPY in one transaction, then ANALYZE. Fare per mile = total fare cents / total mile hundredths, rounded half up.
+- Taxi helpers made reusable without changing taxi results: `partial_totals(**extra)`, `combine_partials(merge=)`, `MERGE`, `ratio_to_cents_decimal`, `stat_fields`, `analyze_stats(models)`.
+- Docs: the two tables in the HLD data model, a new section in `decisions.md`, the PR 2 scope in `docs/stories/US27.md`.
+- Local database: migrated, and March 2026 rideshare statistics loaded (42,931 zone cells, 3,062,385 route cells).
+
+**Decisions made (also in `docs/decisions.md`):** `fare_per_mile` nullable (miles rounding to 0); zone table FK named `zone`; no FK index on `zone`/`pickup_zone` (the unique index covers them); ANALYZE after the commit; merge every 4M partial rows; no VACUUM after the replace.
+
+**Tests:** `test_rideshare_aggregate.py` (16), `test_rideshare_load.py` (12), `test_rideshare_models.py` (7); `make_kept` in `rideshare_helpers.py`. Eight deliberate mutations (no transaction, wait count over all trips, merging only the last batch, rounding to even, and more) were each caught. Full Django suite 790 (4 skipped), 145 Node tests, coverage 100.00%, black and flake8 pass. March real-data numbers are in `decisions.md`.
+
+**Next step:** after #86 merges, retarget this PR to `develop`. Then PR 3, US27d #85: the `import_rideshare` command (months loop: `read_batches` → `clean_trips` → `Totals.add`, then `load_rideshare`), the report, README, and the March to May load (local, then AWS once from the PO's laptop). Plan for the route table at about twice its fresh size on RDS after a replace.
+
 ### 2026-11-07 — us27-rideshare-import, PR 1 (US27a #82 + US27b #83, part of US27 #74)
 **What changed:**
 - New package `zones/importer/rideshare/`: `download.py` (`fhvhv_tripdata_YYYY-MM.parquet` into `data/raw/`), `read.py` (`read_batches`: batches of 262,144 trips, only the 16 needed columns, renamed; provider and shared flags as booleans made in Arrow; missing columns are a `TripFileError`), `clean.py` (8 rules, first-failed-rule counting, `wait_valid` separate from removal, fare before tip and miles in integer units, `add_removed` across batches).
