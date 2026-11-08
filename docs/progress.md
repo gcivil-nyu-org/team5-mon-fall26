@@ -15,6 +15,19 @@ Entry format:
 
 ## Log
 
+### 2026-11-07 — us27-rideshare-import, PR 1 (US27a #82 + US27b #83, part of US27 #74)
+**What changed:**
+- New package `zones/importer/rideshare/`: `download.py` (`fhvhv_tripdata_YYYY-MM.parquet` into `data/raw/`), `read.py` (`read_batches`: batches of 262,144 trips, only the 16 needed columns, renamed; provider and shared flags as booleans made in Arrow; missing columns are a `TripFileError`), `clean.py` (8 rules, first-failed-rule counting, `wait_valid` separate from removal, fare before tip and miles in integer units, `add_removed` across batches).
+- Shared helpers, taxi behaviour unchanged: `ensure_file(url, path)` in `zones/importer/download.py` (`ensure_trip_file` calls it); `duration_seconds` and `remove_failed` in `zones/importer/clean.py` (the taxi `clean_trips` uses them).
+- `docs/stories/US27.md` (the split into #82 to #85), a row in `docs/stories/README.md`, and two sections in `docs/decisions.md` (the PO's 12 decisions, and the read/clean choices with the March to May numbers).
+- Downloaded the April and May 2026 files (same schema as March) into `data/raw/` with the new code.
+
+**Decisions made (also in `docs/decisions.md`):** the PO's 12 US27 decisions; rule order with "other provider" second; a shared flag other than exactly "N" (including missing) counts as shared; "fare not positive" also needs `base_passenger_fare > 0`; wait and duration in whole seconds.
+
+**Tests:** `zones/tests/test_rideshare_download.py` (5), `test_rideshare_read.py` (11), `test_rideshare_clean.py` (27, including boundaries for every rule and one batch versus five giving identical output and counts), helper `zones/tests/rideshare_helpers.py` (the real 25-column schema). Seven deliberate mutations of the rules were each caught. Full Django suite (755, 4 skipped) and all 145 Node tests pass; coverage 100.00%; black and flake8 pass.
+
+**Next step:** PR 2, US27c #84: `RideshareRouteHourStats` and `RideshareZoneHourStats`, partial totals per batch and month, fare per mile and wait, one-transaction COPY replace. Then PR 3, US27d #85: the `import_rideshare` command, report, README and HLD, and the March to May load (local, then AWS once from the PO's laptop).
+
 ### 2026-11-03 — us23-save-comparison (US23 #70)
 **What changed:**
 - Model `routes.SavedComparison` (user, name, zone A, zone B, created_at; CASCADE links; unique name per user; database check zone A ≠ zone B) and migration `routes/migrations/0004_saved_comparison.py`.
