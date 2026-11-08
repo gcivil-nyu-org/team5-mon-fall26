@@ -9,9 +9,6 @@ from statistics import median
 
 from django.conf import settings
 
-<<<<<<< HEAD
-from .models import RideshareZoneHourStats, RouteHourStats, Zone, ZoneHourStats
-=======
 from .models import (
     RideshareRouteHourStats,
     RideshareZoneHourStats,
@@ -19,7 +16,6 @@ from .models import (
     Zone,
     ZoneHourStats,
 )
->>>>>>> e1c45a9e7cd09c0e089d06bef0823ec23f11f3f8
 
 STAT_FIELDS = ("fare_min", "fare_avg", "fare_max", "avg_duration_min")
 RIDESHARE_STAT_FIELDS = STAT_FIELDS + ("avg_wait_min",)

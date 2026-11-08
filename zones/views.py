@@ -10,16 +10,13 @@ from django.shortcuts import render
 from django.views.decorators.http import require_GET
 
 from .models import Zone, ZoneHourStats
-<<<<<<< HEAD
-from .stats import route_stats, route_windows, surge_grid, unknown_zone_ids
-=======
 from .stats import (
     rideshare_route_stats,
     route_stats,
     route_windows,
+    surge_grid,
     unknown_zone_ids,
 )
->>>>>>> e1c45a9e7cd09c0e089d06bef0823ec23f11f3f8
 
 ZONE_SHAPES_PATH = Path(__file__).resolve().parent / "data" / "taxi_zones.geojson"
 
@@ -232,7 +229,6 @@ def heatmap_api(request, zone_id):
     )
 
 
-<<<<<<< HEAD
 @require_GET
 def surge_api(request, zone_id):
     """GET /api/zones/:id/surge
@@ -258,15 +254,10 @@ def surge_api(request, zone_id):
     )
 
 
-@require_GET
-def routes_api(request):
-    """GET /api/routes?from=&to=&day=&hour=
-=======
 ROUTE_QUERY_ERROR = (
     "from must be a known zone id; to, if given, must be a known zone id; "
     "day must be 0-6 (Monday=0) and hour must be 0-23"
 )
->>>>>>> e1c45a9e7cd09c0e089d06bef0823ec23f11f3f8
 
 
 def _route_query(request):

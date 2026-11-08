@@ -264,17 +264,6 @@ The endpoint returns from, to, enough_data, report_count, median_taxi_fare, ride
 
 The five most recent reports are ordered by ride time, then id. Each gives the ride date and hour in New York time, taxi fare, rideshare service and quote. No username or user id is included. The query uses FareReport.objects.public(), so held reports stay out; deleted reports are absent from the table.
 
-<<<<<<< HEAD
-## 24. Surge-pricing overlay (US29)
-
-The heatmap has a "Show likely surge hours" toggle. When it is on, the selected pickup zone's likely Uber/Lyft surge hours are marked on the 7 x 24 grid, a legend explains the rule, and hovering a marked cell shows its fare per mile and average wait. Real surge multipliers are not public, so the UI calls this an estimate from past trips.
-
-| Endpoint | Returns |
-|---|---|
-| `GET /api/zones/:id/surge` | For each of the 7 x 24 cells of the zone (`rideshare_zone_hour_stats`): `trip_count`, `fare_per_mile`, `avg_wait_min`, `surge_ratio` and `likely_surge`, plus the zone's `median_fare_per_mile`, the rule's ratio and minimum trip count, and `enough_data`. A cell is a likely surge hour when it has at least `MIN_TRIP_COUNT` (5) trips and its fare per mile is at least `SURGE_FARE_PER_MILE_RATIO` (1.25) times the median of the zone's hours with at least 5 trips. Cells with fewer trips are never marked and have null stats. Unknown zone: 404. Public, read-only. |
-
-The rule runs in `zones/stats.py` (`surge_grid`), one query per zone. No table is added; the rideshare tables come from US27.
-=======
 ## 24. Taxi vs. rideshare fares (US28)
 
 When the rider has selected a pickup and a dropoff, the trip summary shows a "Taxi vs. rideshare" section: the average fare before tip, the fare range, the typical trip duration and, for Uber/Lyft only, the typical wait for pickup, side by side for the selected day and hour. It says which was historically cheaper and by how much, only when both sides have at least `MIN_TRIP_COUNT` (5) trips; otherwise each side shows "Not enough data" on its own. It is labeled as past trips (March to May 2026), not live prices.
@@ -284,5 +273,14 @@ When the rider has selected a pickup and a dropoff, the trip summary shows a "Ta
 | `GET /api/routes/rideshare?from=&to=&day=&hour=` | The Uber and Lyft (combined) twin of `/api/routes`: fare before tip (minimum, average, maximum), average duration, trip count and average wait for pickup (`avg_wait_min`) for one day and hour. Same parameters, defaults, validation (400) and `enough_data` rule as `/api/routes`. With `to`, `rideshare_route_hour_stats` for that route; without it, `rideshare_zone_hour_stats` for all trips from the pickup zone. `avg_wait_min` is null when fewer than 5 trips have a valid wait. Public, read-only. |
 
 The browser (`rideshare.js`) calls `/api/routes` and `/api/routes/rideshare` together with the same parameters and compares the two `fare_avg` values in whole cents. No table is added; the rideshare tables come from US27.
->>>>>>> e1c45a9e7cd09c0e089d06bef0823ec23f11f3f8
+
+## 25. Surge-pricing overlay (US29)
+
+The heatmap has a "Show likely surge hours" toggle. When it is on, the selected pickup zone's likely Uber/Lyft surge hours are marked on the 7 x 24 grid, a legend explains the rule, and hovering a marked cell shows its fare per mile and average wait. Real surge multipliers are not public, so the UI calls this an estimate from past trips.
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/zones/:id/surge` | For each of the 7 x 24 cells of the zone (`rideshare_zone_hour_stats`): `trip_count`, `fare_per_mile`, `avg_wait_min`, `surge_ratio` and `likely_surge`, plus the zone's `median_fare_per_mile`, the rule's ratio and minimum trip count, and `enough_data`. A cell is a likely surge hour when it has at least `MIN_TRIP_COUNT` (5) trips and its fare per mile is at least `SURGE_FARE_PER_MILE_RATIO` (1.25) times the median of the zone's hours with at least 5 trips. Cells with fewer trips are never marked and have null stats. Unknown zone: 404. Public, read-only. |
+
+The rule runs in `zones/stats.py` (`surge_grid`), one query per zone. No table is added; the rideshare tables come from US27.
 

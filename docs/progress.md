@@ -15,7 +15,6 @@ Entry format:
 
 ## Log
 
-<<<<<<< HEAD
 ### 2026-11-08 — us29-surge-overlay (US29 #76, stacked on US27c #84 / US27d #85)
 **What changed:**
 - `GET /api/zones/:id/surge` (`zones/views.py`, `zones/urls.py`), backed by `surge_grid` in `zones/stats.py`, reading `RideshareZoneHourStats`. New setting `SURGE_FARE_PER_MILE_RATIO = Decimal("1.25")`.
@@ -30,7 +29,6 @@ Entry format:
 - Confirm the rule with the Product Owner (ratio 1.25, median of hours rather than trip-weighted). A different ratio is a one-line change in `settings.py`.
 - The branch starts from `us27c-aggregate-store` because the rideshare models are not in `develop` yet. Open the PR after US27c/US27d merge into `develop`.
 - Check how many hours get marked on the real March to May data (Integration) before the demo.
-=======
 ### 2026-11-08 — us28-taxi-vs-rideshare (US28 #75, stacked on US27c #84 / US27d #85)
 **What changed:**
 - `GET /api/routes/rideshare?from=&to=&day=&hour=` (`zones/views.py`, `zones/urls.py`), backed by `rideshare_route_stats` in `zones/stats.py`. Reads `RideshareRouteHourStats` (with `to`) or `RideshareZoneHourStats` (without). `/api/routes` and the new endpoint now share one validation helper, `_route_query`; `/api/routes` responses are unchanged.
@@ -44,7 +42,6 @@ Entry format:
 **Next step:**
 - The branch starts from `us27c-aggregate-store` because the rideshare models are not in `develop` yet. Open the PR after US27c/US27d merge into `develop` (or rebase onto `develop` then).
 - Check on Integration once the March to May rideshare data is loaded (US27d runbook).
->>>>>>> e1c45a9e7cd09c0e089d06bef0823ec23f11f3f8
 - Not pushed; the user does all the git.
 
 ### 2026-11-07 — us27d-command-load, PR 3 (US27d #85, part of US27 #74, stacked on PR #87 and #86)
