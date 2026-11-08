@@ -128,6 +128,24 @@
       </dl>
       <p id="windows-status" class="summary-status" role="status" aria-live="polite"></p>
       <p class="summary-disclaimer">Based on historical taxi data; actual fares and travel times may vary.</p>
+      {# US28 #75: taxi next to Uber/Lyft for the same trip, day and hour. #}
+      <section id="rideshare-panel" class="rideshare-panel" hidden aria-labelledby="rideshare-title">
+        <h2 id="rideshare-title">Taxi vs. rideshare</h2>
+        <table class="rideshare-table">
+          <thead>
+            <tr><td></td><th scope="col">Taxi</th><th scope="col">Uber/Lyft</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Average fare before tip</th><td id="rideshare-taxi-fare">—</td><td id="rideshare-ride-fare">—</td></tr>
+            <tr><th scope="row">Fare range (min–max)</th><td id="rideshare-taxi-range">—</td><td id="rideshare-ride-range">—</td></tr>
+            <tr><th scope="row">Typical trip duration</th><td id="rideshare-taxi-duration">—</td><td id="rideshare-ride-duration">—</td></tr>
+            <tr><th scope="row">Typical wait for pickup</th><td class="no-data">Not in taxi data</td><td id="rideshare-ride-wait">—</td></tr>
+          </tbody>
+        </table>
+        <p id="rideshare-verdict" class="rideshare-verdict" hidden></p>
+        <p id="rideshare-status" class="summary-status" role="status" aria-live="polite"></p>
+        <p class="summary-disclaimer">Historical, not live prices: averages of past trips (March to May 2026) at this day and hour. Uber and Lyft are combined. A rideshare app's live price can be higher during a surge.</p>
+      </section>
       {# US24 #71: report what you paid on this route; guests are sent to sign in first. #}
       <p class="report-fare"><a id="report-fare-link" href="{% url 'reports:report_fare' %}" hidden{% if not user.is_authenticated %} data-signin="{% url 'accounts:signin' %}"{% endif %}>{% if user.is_authenticated %}Report a fare{% else %}Sign in to report a fare{% endif %}</a></p>
       {# US19 #48: adjacent pickup zones where this trip is historically cheaper. #}
@@ -258,6 +276,7 @@
   <script src="{% static 'routes/js/save-plan.js' %}"></script>
   <script src="{% static 'zones/js/fare.js' %}"></script>
   <script src="{% static 'zones/js/windows.js' %}"></script>
+  <script src="{% static 'zones/js/rideshare.js' %}"></script>
   <script src="{% static 'routes/js/nearby.js' %}"></script>
   <script src="{% static 'routes/js/day-plan.js' %}"></script>
   <script src="{% static 'zones/js/compare-link.js' %}"></script>

@@ -12,4 +12,9 @@ urlpatterns = [
     path("api/zones/<int:zone_id>/surge", views.surge_api, name="surge_api"),
     path("api/routes", views.routes_api, name="routes_api"),
     path("api/routes/windows", views.route_windows_api, name="route_windows_api"),
+    path(
+        "api/routes/rideshare",
+        views.rideshare_routes_api,
+        name="rideshare_routes_api",
+    ),
 ]

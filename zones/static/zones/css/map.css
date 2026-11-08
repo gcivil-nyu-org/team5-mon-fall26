@@ -820,3 +820,56 @@ header h1 {
 .cheapest-hours td.no-data {
   color: #8a8f99;
 }
+
+/* Taxi vs. rideshare (US28 #75) */
+.rideshare-panel {
+  margin-top: 0.9rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid #ddd;
+}
+
+#rideshare-panel[hidden],
+#rideshare-verdict[hidden] {
+  display: none;
+}
+
+.rideshare-panel h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.rideshare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.rideshare-table th,
+.rideshare-table td {
+  padding: 0.3rem 0.4rem;
+  border-bottom: 1px solid #e3e6eb;
+  text-align: left;
+  vertical-align: top;
+}
+
+.rideshare-table th {
+  color: #4c5565;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.rideshare-table thead th {
+  font-weight: 600;
+}
+
+.rideshare-table td.no-data {
+  color: #8a8f99;
+}
+
+.rideshare-verdict {
+  margin: 0.55rem 0 0;
+  padding: 0.4rem 0.5rem;
+  border-radius: 4px;
+  background: #e8f5ee;
+  font-weight: 600;
+}
