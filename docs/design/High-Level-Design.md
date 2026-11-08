@@ -263,3 +263,14 @@ The public trip summary shows "Rider reports (last 90 days)" next to the histori
 The endpoint returns from, to, enough_data, report_count, median_taxi_fare, rideshare_quote_count, median_rideshare_quote and recent_reports. At least 3 visible reports are required to show medians or report details; with fewer, enough_data is false, both medians are null and recent_reports is empty, so the UI says "Not enough reports yet". Rideshare quote count and median use only reports that include an Uber or Lyft quote; the median is null if there are none. Money medians are rounded to cents.
 
 The five most recent reports are ordered by ride time, then id. Each gives the ride date and hour in New York time, taxi fare, rideshare service and quote. No username or user id is included. The query uses FareReport.objects.public(), so held reports stay out; deleted reports are absent from the table.
+
+## 24. Taxi vs. rideshare fares (US28)
+
+When the rider has selected a pickup and a dropoff, the trip summary shows a "Taxi vs. rideshare" section: the average fare before tip, the fare range, the typical trip duration and, for Uber/Lyft only, the typical wait for pickup, side by side for the selected day and hour. It says which was historically cheaper and by how much, only when both sides have at least `MIN_TRIP_COUNT` (5) trips; otherwise each side shows "Not enough data" on its own. It is labeled as past trips (March to May 2026), not live prices.
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/routes/rideshare?from=&to=&day=&hour=` | The Uber and Lyft (combined) twin of `/api/routes`: fare before tip (minimum, average, maximum), average duration, trip count and average wait for pickup (`avg_wait_min`) for one day and hour. Same parameters, defaults, validation (400) and `enough_data` rule as `/api/routes`. With `to`, `rideshare_route_hour_stats` for that route; without it, `rideshare_zone_hour_stats` for all trips from the pickup zone. `avg_wait_min` is null when fewer than 5 trips have a valid wait. Public, read-only. |
+
+The browser (`rideshare.js`) calls `/api/routes` and `/api/routes/rideshare` together with the same parameters and compares the two `fare_avg` values in whole cents. No table is added; the rideshare tables come from US27.
+
