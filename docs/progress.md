@@ -15,6 +15,103 @@ Entry format:
 
 ## Log
 
+### 2026-11-08 — us29-surge-overlay (US29 #76, stacked on US27c #84 / US27d #85)
+**What changed:**
+- `GET /api/zones/:id/surge` (`zones/views.py`, `zones/urls.py`), backed by `surge_grid` in `zones/stats.py`, reading `RideshareZoneHourStats`. New setting `SURGE_FARE_PER_MILE_RATIO = Decimal("1.25")`.
+- "Show likely surge hours" toggle, legend and cell marks on the heatmap (`zones/templates/zones/map.html`, `zones/static/zones/js/heatmap.js`, `map.css`). The map view passes the ratio and `MIN_TRIP_COUNT` to the legend. The compare page's grids are unchanged.
+- Docs: `decisions.md` (US29 section), High Level Design section 24, `CLAUDE.md` API list, `docs/stories/US29.md`.
+
+**Decisions made (also in `decisions.md`):** the story's proposed rule (fare per mile at least 1.25 x the zone's median counted hour, at least 5 trips), pending PO confirmation; exact median for the rule, rounded only for display; too-few-trip hours never marked and left out of the median; wait needs its own 5 valid waits; overlay off by default and fetched on demand.
+
+**Tests:** new `zones/tests/test_surge_api.py` (rule, median, minimums, settings, endpoint, 404, template) and `zones/tests/surge_overlay.test.js` (on/off, marks, hover text, too-few-trip cells, zone change, late answers, no data, errors). `manage.py test` and `node --test zones/tests/*.test.js`: all OK; black 25.9.0 and flake8 clean.
+
+**Next step:**
+- Confirm the rule with the Product Owner (ratio 1.25, median of hours rather than trip-weighted). A different ratio is a one-line change in `settings.py`.
+- The branch starts from `us27c-aggregate-store` because the rideshare models are not in `develop` yet. Open the PR after US27c/US27d merge into `develop`.
+- Check how many hours get marked on the real March to May data (Integration) before the demo.
+### 2026-11-08 — us28-taxi-vs-rideshare (US28 #75, stacked on US27c #84 / US27d #85)
+**What changed:**
+- `GET /api/routes/rideshare?from=&to=&day=&hour=` (`zones/views.py`, `zones/urls.py`), backed by `rideshare_route_stats` in `zones/stats.py`. Reads `RideshareRouteHourStats` (with `to`) or `RideshareZoneHourStats` (without). `/api/routes` and the new endpoint now share one validation helper, `_route_query`; `/api/routes` responses are unchanged.
+- "Taxi vs. rideshare" section in the trip summary (`zones/templates/zones/map.html`, `zones/static/zones/js/rideshare.js`, styles in `map.css`): average fare before tip, fare range, duration, and the rideshare wait, side by side, plus which was cheaper and by how much.
+- Docs: `decisions.md` (US28 section), High Level Design section 24, `CLAUDE.md` API list, `docs/stories/US28.md`.
+
+**Decisions made (also in `decisions.md`):** same keys as `/api/routes` plus `avg_wait_min`; wait needs its own 5 valid waits; compared on `fare_avg` in whole cents, verdict only when both sides have enough data; section only with both zones; labeled historical, not live prices.
+
+**Tests:** new `zones/tests/test_rideshare_routes_api.py` (stats function, endpoint, validation, template) and `zones/tests/rideshare.test.js` (side by side, verdict both ways and equal, "Not enough data" per side, null wait, reloads on zone/day/hour, stale responses, errors). `manage.py test`: all OK; `node --test zones/tests/*.test.js`: all OK; black 25.9.0 and flake8 clean.
+
+**Next step:**
+- The branch starts from `us27c-aggregate-store` because the rideshare models are not in `develop` yet. Open the PR after US27c/US27d merge into `develop` (or rebase onto `develop` then).
+- Check on Integration once the March to May rideshare data is loaded (US27d runbook).
+- Not pushed; the user does all the git.
+
+### 2026-11-07 — us27d-command-load, PR 3 (US27d #85, part of US27 #74, stacked on PR #87 and #86)
+**What changed:**
+- `python manage.py import_rideshare --month YYYY-MM [--month ...] [--data-dir PATH]` (`zones/management/commands/import_rideshare.py`) and `zones/importer/rideshare/pipeline.py`: download every missing month and check every file first, then read, clean and aggregate all months in batches, then one `load_rideshare`.
+- Report: `zones/importer/report.py` takes the rules, adds "Waits left out of the average" for rideshare, widens the label column to the longest label, and counts small cells with `settings.MIN_TRIP_COUNT`. The taxi report looks the same.
+- `zones/importer/rideshare/load.py`: the replace is now one `TRUNCATE` of both rideshare tables (after `SET CONSTRAINTS ALL IMMEDIATE`) in the same transaction. The taxi import keeps DELETE. `repeated_months` shared by both commands.
+- Docs: README ("Import the rideshare data" and the AWS load runbook), HLD (data import component and §9.4), `decisions.md` (US27d section), PR 3 scope in `docs/stories/US27.md`.
+- Local database: March to May 2026 rideshare statistics loaded (43,185 zone cells, 4,524,149 route cells, route table 733 MB).
+
+**Decisions made (also in `docs/decisions.md`):** TRUNCATE for the rideshare replace (PO); run deferred FK checks before it; download and check all files before reading; report reuse with the waits line; small-cell count from `MIN_TRIP_COUNT`; AWS load as a manual runbook.
+
+**Tests:** `test_import_rideshare_command.py` (15: several months, batches equal one read including the report, report per rule and in total, twice gives the same rows, fewer months, failure while writing, bad file and failed download before any trip is cleaned, download of a missing month, repeated/missing/bad month), `test_rideshare_load.py` (+3: TRUNCATE of the two rideshare tables only, taxi still DELETE, rollback after a real commit in a `TransactionTestCase`), `test_importer_report.py` (+5). Eight deliberate mutations caught. Full suite 813 (4 skipped), 145 Node tests, coverage 100.00%, black and flake8 pass. Real data: two full runs, 132 s and 115 s, peak RSS 2.15 GB, identical rows, no size growth.
+
+**Next step:** merge #86, then #87, then this PR, retargeting each to `develop`. After the Integration deploy has migrated, the PO runs the README runbook to load March to May into the shared RDS database (not done yet). Then US28 #75 and US29 #76.
+
+### 2026-11-07 — us27c-aggregate-store, PR 2 (US27c #84, part of US27 #74, stacked on PR #86)
+**What changed:**
+- Models `RideshareZoneHourStats` and `RideshareRouteHourStats` (shared abstract `RideshareStats`), migration `zones/0004_rideshare_stats` (creates the two tables only).
+- `zones/importer/rideshare/aggregate.py`: partial totals per batch with wait (valid only), wait count and miles in hundredths; `Totals` merges batches and months in large steps; `finalize` gives the averages, with a null wait where no wait is valid.
+- `zones/importer/rideshare/load.py`: `load_rideshare` upserts zones, deletes both rideshare tables and fills them with COPY in one transaction, then ANALYZE. Fare per mile = total fare cents / total mile hundredths, rounded half up.
+- Taxi helpers made reusable without changing taxi results: `partial_totals(**extra)`, `combine_partials(merge=)`, `MERGE`, `ratio_to_cents_decimal`, `stat_fields`, `analyze_stats(models)`.
+- Docs: the two tables in the HLD data model, a new section in `decisions.md`, the PR 2 scope in `docs/stories/US27.md`.
+- Local database: migrated, and March 2026 rideshare statistics loaded (42,931 zone cells, 3,062,385 route cells).
+
+**Decisions made (also in `docs/decisions.md`):** `fare_per_mile` nullable (miles rounding to 0); zone table FK named `zone`; no FK index on `zone`/`pickup_zone` (the unique index covers them); ANALYZE after the commit; merge every 4M partial rows; no VACUUM after the replace.
+
+**Tests:** `test_rideshare_aggregate.py` (16), `test_rideshare_load.py` (12), `test_rideshare_models.py` (7); `make_kept` in `rideshare_helpers.py`. Eight deliberate mutations (no transaction, wait count over all trips, merging only the last batch, rounding to even, and more) were each caught. Full Django suite 790 (4 skipped), 145 Node tests, coverage 100.00%, black and flake8 pass. March real-data numbers are in `decisions.md`.
+
+**Next step:** after #86 merges, retarget this PR to `develop`. Then PR 3, US27d #85: the `import_rideshare` command (months loop: `read_batches` → `clean_trips` → `Totals.add`, then `load_rideshare`), the report, README, and the March to May load (local, then AWS once from the PO's laptop). Plan for the route table at about twice its fresh size on RDS after a replace.
+
+### 2026-11-07 — us27-rideshare-import, PR 1 (US27a #82 + US27b #83, part of US27 #74)
+**What changed:**
+- New package `zones/importer/rideshare/`: `download.py` (`fhvhv_tripdata_YYYY-MM.parquet` into `data/raw/`), `read.py` (`read_batches`: batches of 262,144 trips, only the 16 needed columns, renamed; provider and shared flags as booleans made in Arrow; missing columns are a `TripFileError`), `clean.py` (8 rules, first-failed-rule counting, `wait_valid` separate from removal, fare before tip and miles in integer units, `add_removed` across batches).
+- Shared helpers, taxi behaviour unchanged: `ensure_file(url, path)` in `zones/importer/download.py` (`ensure_trip_file` calls it); `duration_seconds` and `remove_failed` in `zones/importer/clean.py` (the taxi `clean_trips` uses them).
+- `docs/stories/US27.md` (the split into #82 to #85), a row in `docs/stories/README.md`, and two sections in `docs/decisions.md` (the PO's 12 decisions, and the read/clean choices with the March to May numbers).
+- Downloaded the April and May 2026 files (same schema as March) into `data/raw/` with the new code.
+
+**Decisions made (also in `docs/decisions.md`):** the PO's 12 US27 decisions; rule order with "other provider" second; a shared flag other than exactly "N" (including missing) counts as shared; "fare not positive" also needs `base_passenger_fare > 0`; wait and duration in whole seconds.
+
+**Tests:** `zones/tests/test_rideshare_download.py` (5), `test_rideshare_read.py` (11), `test_rideshare_clean.py` (27, including boundaries for every rule and one batch versus five giving identical output and counts), helper `zones/tests/rideshare_helpers.py` (the real 25-column schema). Seven deliberate mutations of the rules were each caught. Full Django suite (755, 4 skipped) and all 145 Node tests pass; coverage 100.00%; black and flake8 pass.
+
+**Next step:** PR 2, US27c #84: `RideshareRouteHourStats` and `RideshareZoneHourStats`, partial totals per batch and month, fare per mile and wait, one-transaction COPY replace. Then PR 3, US27d #85: the `import_rideshare` command, report, README and HLD, and the March to May load (local, then AWS once from the PO's laptop).
+
+### 2026-11-03 — us23-save-comparison (US23 #70)
+**What changed:**
+- Model `routes.SavedComparison` (user, name, zone A, zone B, created_at; CASCADE links; unique name per user; database check zone A ≠ zone B) and migration `routes/migrations/0004_saved_comparison.py`.
+- `routes/forms.py`: `ComparisonNameForm`, `SavedComparisonForm` (zones on the map only, A ≠ B, race on the name handled like saved routes). `routes/views.py` and `routes/urls.py`: `POST /comparisons/save/`, `/comparisons/` (My comparisons), `/comparisons/<id>/open/`, `/rename/`, `/delete/`. New templates `my_comparisons.html`, `rename_comparison.html`, `delete_comparison.html`; "Comparisons" in the routes pages' nav (`routes/base.html`).
+- Compare page: "Saved comparison: <name>", "My comparisons" link, and a "Save this comparison" row at the bottom of the card (new `routes/static/routes/js/save-comparison.js`; guests get "Sign in to save comparisons" that comes back to the same comparison). `zones/views.py` `compare_view` takes the saved comparison's zones. `compare.js` sends `taxiscope:compare-changed` after every change and keeps `/comparisons/<id>/open/?day=&hour=` while A and B are the saved pair, then switches to `/compare/?a=&b=&day=&hour=` and hides the heading.
+- `docs/decisions.md` (US23 section) and High Level Design §20. No new dependency; the map page is unchanged.
+
+**Decisions made (also in `docs/decisions.md`):** `CheckConstraint(condition=…)` for A ≠ B on top of the form check; A/B stored in the order picked; on an opened saved comparison `a=`/`b=` in the address are ignored and day/hour are not stored; once the pair changes the saved address does not come back; "My comparisons" linked from the compare card and the routes pages, not the map header.
+
+**Tests:** `routes/tests/test_saved_comparisons.py` (40: save, name rules, A ≠ B in the form and the database, zones on the map only, 401/405/CSRF, races, deleting the user and the account page, list/open/rename/delete, another user's comparison 404, guest redirects, links), `zones/tests/save_comparison.test.js` (7), `zones/tests/compare.test.js` (+4: change event, saved address). Full Django suite (622, 4 skipped) and all 137 Node tests pass; black, flake8 and `makemigrations --check` pass.
+
+**Next step:** check by hand: save from the compare page signed in and as a guest (sign in and come back), open, rename and delete from My comparisons, and the address switching from the saved one to `/compare/` after changing a zone.
+
+### 2026-11-03 — us22-compare-zones (US22 #69)
+**What changed:**
+- New public page `GET /compare/` (`zones/views.py` `compare_view`, `zones/urls.py` `zones:compare`, `zones/templates/zones/compare.html`, `zones/static/zones/js/compare.js`, `zones/static/zones/css/compare.css`): the map's header, filters, demand colours and legend (`map.js` unchanged), a compare card (A/B rows with ×, "or choose from list", Swap A ↔ B, a table with average fare and range, typical time, trips this hour, busiest hour, the cheaper/faster marks), and a weekly pattern strip with both heatmaps on one colour scale. No new API endpoint, no migration, no new dependency.
+- `zones/static/zones/js/heatmap.js`: the 7×24 drawing is now `TaxiScopeHeatmap.renderGrid` / `valueRange`; the map's heatmap panel is unchanged.
+- Map page: a "Compare" header link and `zones/static/zones/js/compare-link.js`, which carries the map's day, hour and pickup. Rendered map HTML before/after (guest and signed in) differs only by those two lines.
+- `docs/decisions.md` (US22 section) and High Level Design §19.
+
+**Decisions made (also in `docs/decisions.md`):** compare is its own page and the map page stays as it was; columns read `/api/routes` without `to`; a click fills the first empty side and a third zone replaces B; marks compared at the shown precision, in one sentence for one winner or two short sentences otherwise; the real trip count stays visible under 5 trips; `reloadZones` copied from `filters.js`; header markup copied into `compare.html` (shared include later). Added beyond the acceptance criteria: fare-meaning line, address state, carry-over link, choose from list, Swap, busiest hour.
+
+**Tests:** `zones/tests/test_compare_page.py` (29, incl. the map page's Compare link and that it has none of the compare page), `zones/tests/compare.test.js` (28), `zones/tests/compare_link.test.js` (4), `zones/tests/heatmap_grid.test.js` (8; its 4 map-panel tests passed on the old `heatmap.js` before the refactor). Full Django suite (582, 4 skipped) and all 126 Node tests pass; black, flake8 and `makemigrations --check` pass.
+
+**Next step:** check the compare page in the browser (header wrap, strip height and legend, A/B badges, the selected-hour outline and colour key); then US23 #70 (save a comparison) on a branch on top of this one.
+
 ### 2026-10-31 — us21-day-plan-calendar (US21 #50, part 2)
 **What changed:**
 - `routes/planning.py` `day_plan_calendar(plan, stops, now, weekly=False)`: one `CalendarEvent` per leg from `day_plan_legs()`, the button label and the no-data warning.

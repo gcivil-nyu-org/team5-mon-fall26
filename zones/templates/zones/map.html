@@ -13,6 +13,7 @@
     <h1>TaxiScope NYC</h1>
     {# US10 #39, US11 #40: account links; the map never needs an account (US9). #}
     <nav class="account-nav" aria-label="Account">
+      <a id="compare-link" href="{% url 'zones:compare' %}">Compare</a>
       <a href="{% url 'routes:my_routes' %}">Routes</a>
       <a href="{% url 'routes:my_plans' %}">Plans</a>
       <a href="{% url 'routes:my_day_plans' %}">Day plans</a>
@@ -113,6 +114,13 @@
       <p id="summary-route" class="summary-route"></p>
       <p id="summary-time" class="summary-route"></p>
       <dl class="summary-values">
+        <div id="rider-reports-row" hidden>
+          <dt>Rider reports (last 90 days)</dt>
+          <dd>
+            <p id="rider-reports-status" class="summary-status" role="status" aria-live="polite"></p>
+            <ul id="rider-reports-list" class="rider-reports-list"></ul>
+          </dd>
+        </div>
         <div><dt>Fare before tip (min / avg / max)</dt><dd id="fare-range">—</dd></div>
         <div><dt>Typical trip duration</dt><dd id="trip-duration">—</dd></div>
         <div id="best-row" class="window-best" hidden><dt>Best time</dt><dd>Cheapest: <span id="best-fare">—</span>; Fastest: <span id="best-duration">—</span></dd></div>
@@ -120,6 +128,26 @@
       </dl>
       <p id="windows-status" class="summary-status" role="status" aria-live="polite"></p>
       <p class="summary-disclaimer">Based on historical taxi data; actual fares and travel times may vary.</p>
+      {# US28 #75: taxi next to Uber/Lyft for the same trip, day and hour. #}
+      <section id="rideshare-panel" class="rideshare-panel" hidden aria-labelledby="rideshare-title">
+        <h2 id="rideshare-title">Taxi vs. rideshare</h2>
+        <table class="rideshare-table">
+          <thead>
+            <tr><td></td><th scope="col">Taxi</th><th scope="col">Uber/Lyft</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Average fare before tip</th><td id="rideshare-taxi-fare">—</td><td id="rideshare-ride-fare">—</td></tr>
+            <tr><th scope="row">Fare range (min–max)</th><td id="rideshare-taxi-range">—</td><td id="rideshare-ride-range">—</td></tr>
+            <tr><th scope="row">Typical trip duration</th><td id="rideshare-taxi-duration">—</td><td id="rideshare-ride-duration">—</td></tr>
+            <tr><th scope="row">Typical wait for pickup</th><td class="no-data">Not in taxi data</td><td id="rideshare-ride-wait">—</td></tr>
+          </tbody>
+        </table>
+        <p id="rideshare-verdict" class="rideshare-verdict" hidden></p>
+        <p id="rideshare-status" class="summary-status" role="status" aria-live="polite"></p>
+        <p class="summary-disclaimer">Historical, not live prices: averages of past trips (March to May 2026) at this day and hour. Uber and Lyft are combined. A rideshare app's live price can be higher during a surge.</p>
+      </section>
+      {# US24 #71: report what you paid on this route; guests are sent to sign in first. #}
+      <p class="report-fare"><a id="report-fare-link" href="{% url 'reports:report_fare' %}" hidden{% if not user.is_authenticated %} data-signin="{% url 'accounts:signin' %}"{% endif %}>{% if user.is_authenticated %}Report a fare{% else %}Sign in to report a fare{% endif %}</a></p>
       {# US19 #48: adjacent pickup zones where this trip is historically cheaper. #}
       <section id="nearby-panel" class="nearby-panel" hidden aria-labelledby="nearby-title">
         <h2 id="nearby-title">Cheaper pickup nearby</h2>
@@ -220,6 +248,16 @@
         <input type="radio" name="heatmap-metric" value="avg_duration_min">
         Avg Duration
       </label>
+      {# US29 #76: mark the hours when Uber/Lyft is likely surging. #}
+      <label class="surge-toggle">
+        <input type="checkbox" id="surge-toggle">
+        Show likely surge hours
+      </label>
+    </div>
+    <div id="surge-legend" class="surge-legend" hidden>
+      <p><span class="surge-swatch" aria-hidden="true"></span> Likely surge hour: the Uber/Lyft fare per mile is at least {{ surge_ratio }}× this zone's typical hour of the week (hours with at least {{ min_trip_count }} trips). Hover a marked cell for its fare per mile and wait.</p>
+      <p id="surge-status" class="surge-status" role="status" aria-live="polite"></p>
+      <p class="surge-note">An estimate from past trips (March to May 2026): real surge multipliers are not public, so a yellow cab may or may not be cheaper on the day.</p>
     </div>
     <div id="heatmap-container"></div>
   </aside>
@@ -231,12 +269,16 @@
   <script src="{% static 'zones/js/heatmap.js' %}"></script>
   <script src="{% static 'zones/js/trip-summary.js' %}"></script>
   <script src="{% static 'routes/js/save-route.js' %}"></script>
+  <script src="{% static 'reports/js/report-fare-link.js' %}"></script>
+  <script src="{% static 'reports/js/route-reports.js' %}"></script>
   <script src="{% static 'routes/js/leave-by.js' %}"></script>
   <script src="{% static 'routes/js/cheapest.js' %}"></script>
   <script src="{% static 'routes/js/save-plan.js' %}"></script>
   <script src="{% static 'zones/js/fare.js' %}"></script>
   <script src="{% static 'zones/js/windows.js' %}"></script>
+  <script src="{% static 'zones/js/rideshare.js' %}"></script>
   <script src="{% static 'routes/js/nearby.js' %}"></script>
   <script src="{% static 'routes/js/day-plan.js' %}"></script>
+  <script src="{% static 'zones/js/compare-link.js' %}"></script>
 </body>
 </html>

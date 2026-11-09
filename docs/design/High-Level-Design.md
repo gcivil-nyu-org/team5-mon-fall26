@@ -51,7 +51,7 @@ We did not draw detailed class diagrams. The epic is read-heavy: it moves pre-ag
 | **Backend** (Django views) | Serves the pages and the JSON endpoints. Joins zone statistics with the zone shapes file, validates query parameters, and does no heavy computation. |
 | **Database** (PostgreSQL) | Stores zone information and precomputed zone-by-hour and route-by-hour statistics. |
 | **Zone shapes** (GeoJSON file) | Zone boundaries for the map. Loaded by the backend and joined to the statistics by zone id. |
-| **Data import** (Django management command, pandas) | Reads one or more monthly TLC trip files, one at a time, cleans them, aggregates by zone, day of week, and hour, and loads the results into the database. |
+| **Data import** (Django management commands, pandas/pyarrow) | `import_trips` (yellow taxi) and `import_rideshare` (Uber and Lyft, from the High Volume FHV files). Each reads one or more monthly TLC trip files, one at a time, cleans them, aggregates by zone (and route), day of week, and hour, and replaces its own statistics tables in one transaction. |
 | **NYC TLC Trip Record Data** (external) | Public source of historical trips and the taxi zone shapes. |
 
 Riders only talk to the Django app through their browser. The app only reads from the database and the shapes file. The import command is the only thing that writes trip statistics, and an admin runs it offline.
@@ -81,6 +81,10 @@ Fare ranges (minimum, average, maximum) are computed after cleaning outliers (ze
 | `zone` | `zone_id`, `name`, `borough` (the boundary shape lives in the GeoJSON file, keyed by `zone_id`) |
 | `zone_hour_stats` | `zone_id`, `day_of_week`, `hour`, `trip_count`, `avg_duration_min`, `fare_min`, `fare_avg`, `fare_max` |
 | `route_hour_stats` | `pickup_zone_id`, `dropoff_zone_id`, `day_of_week`, `hour`, `trip_count`, `avg_duration_min`, `fare_min`, `fare_avg`, `fare_max` |
+| `rideshare_zone_hour_stats` | `zone_id` (pickup), `day_of_week`, `hour`, `trip_count`, `avg_duration_min`, `fare_min`, `fare_avg`, `fare_max`, `avg_wait_min` (null if no valid wait), `wait_count`, `fare_per_mile` (null if the miles round to 0) |
+| `rideshare_route_hour_stats` | `pickup_zone_id`, `dropoff_zone_id`, `day_of_week`, `hour`, and the same statistics as `rideshare_zone_hour_stats` |
+
+The two rideshare tables (US27 #74, Uber and Lyft combined, from the TLC High Volume FHV files) feed US28 #75 and US29 #76. They use the taxi units: fares before tip in dollars rounded half up to the cent, durations and waits in minutes. `avg_wait_min` averages only the `wait_count` trips whose wait (pickup minus request) is 0 to 60 minutes. `fare_per_mile` is the cell's total fare over its total miles. Each table has one unique constraint on its key columns and no separate index on the same columns. They are written by `python manage.py import_rideshare --month YYYY-MM [--month ...]` through `zones/importer/rideshare/load.py`: one transaction that upserts the zones, empties both rideshare tables with `TRUNCATE` (the taxi import uses `DELETE`) and fills them with PostgreSQL `COPY`, then `ANALYZE`. The taxi tables are never touched. March 2026 alone gives 42,931 zone cells and 3,062,385 route cells (497 MB on disk after a first load).
 
 ## 8. API surface (Epic 1)
 
@@ -120,6 +124,14 @@ When both zones are selected, the summary panel opens automatically. It combines
 ![Data import](images/06-seq-data-import.png)
 
 An admin runs the import command with the months to load. It cleans and aggregates the raw trips month by month and replaces the statistics in one transaction, so no rider request ever touches raw trip data.
+
+The rideshare import (`import_rideshare`, US27 #74) follows the same steps with larger files (about 22 million trips a month, against about 4 million for yellow taxis):
+1. Download any missing month (`fhvhv_tripdata_YYYY-MM.parquet`) into `data/raw/`, then open and check every file, so a missing month or a bad file fails before any trip is read.
+2. For each month, read the file in batches of 262,144 trips with only the needed columns, clean each batch (8 rules, each removed trip counted under the first rule it fails) and add it to running totals per zone cell and per route cell. Raw trips are never kept past their batch.
+3. Turn the totals into averages, then in one transaction upsert the zones, `TRUNCATE` both rideshare tables and fill them with `COPY`. A failure at any point rolls back to the old rows. `ANALYZE` runs after the commit.
+4. Print the report: per month and in total, rows read, removed per rule, kept and waits left out of the wait average, then the zone and route cell counts and how many have fewer than `MIN_TRIP_COUNT` trips.
+
+Integration and Production share one database, so the rideshare data is loaded into AWS once, from a laptop (README, "Load the rideshare data into the shared AWS database").
 
 ## 10. Deployment diagram
 
@@ -202,3 +214,73 @@ A day plan (US20) can be exported the same way (US21 part 2): `GET /day-plans/<i
 ## 18. Epic 2 extension: Multi-stop day plans (US20)
 
 A signed-in rider can plan several trips on one day as a chain of 3 to 10 stops (for example Brooklyn Heights → Midtown Center → Times Sq). The `routes_dayplan` table stores the plan (user, name, day of week) and `routes_dayplanstop` stores its stops in order, each with a leave time except the last. Each pair of consecutive stops is one leg, leaving at the first stop's time. On the map, a Day plan block under the Pickup and Dropoff rows builds the chain. "+ Add stop" first records the selected pickup and dropoff, then arms the map for one click, which adds the next stop. The newest leg then becomes the selection, so the map, trip summary, cheaper-nearby and Leave by describe it. The block's day and the newest leg's leave hour stay in sync with the map's day and hour filters. It is saved with `POST /day-plans/save/` (CSRF-protected; the owner comes from the session). The day plan page (`/day-plans/<id>/`, own plans only) shows every leg's typical fare, duration and best and worst hours, computed with the same `route_stats` and `route_windows` code as `/api/routes` and `/api/routes/windows` (two queries per leg). Legs without enough trips show "Not enough data". The rider can change the day or any leave time, add a stop at the end, remove a stop (its two legs merge; at least 3 stops remain), and reorder stops with up/down buttons (plain forms, no JavaScript needed) or by drag and drop (SortableJS 1.15.6, vendored), which posts the new order to `POST /day-plans/<id>/reorder/`. Reordering moves places, not times, so the schedule stays in time order. Every change locks the plan row for its transaction. Times out of order show a warning. A plan is deleted after a confirmation page. Deleting an account deletes its day plans (US12).
+
+## 19. Epic 3: Compare two zones (US22)
+
+`GET /compare/` is a public page with the map's header, day and hour filters, demand colours and legend (`map.js` unchanged; the map page itself only gains a "Compare" link). The rider picks zone A and zone B on the map or from a list (zones with a shape, borough then name); A is outlined in the pickup blue and B in the dropoff green. Each column calls the existing `/api/routes?from=<zone>&day=&hour=` (no `to`: all trips starting in the zone, `zone_hour_stats`) and `/api/zones/<id>/heatmap`, so there is no new endpoint and no new table. The table shows the average fare with its min–max range, typical time, trips this hour and the busiest hour of the selected day (computed in the browser from the heatmap). Changing the day or hour reloads `/api/zones` and both columns together; the heatmaps already cover the whole week. The cheaper and the faster zone are marked only when both have at least `MIN_TRIP_COUNT` trips, compared at the shown precision; otherwise each column shows "Not enough data" on its own. A weekly pattern strip draws both 7×24 heatmaps with the shared `heatmap.js` grid function, on one colour scale, with the selected cell outlined. The address (`/compare/?a=&b=&day=&hour=`, kept with `history.replaceState`) holds the state, so Refresh and Back keep the comparison; the server drops ids that are not zones on the map and falls back to the current NYC time for a day or hour out of range. The map's "Compare" link carries its day, hour and selected pickup.
+
+## 20. Epic 3: Saved comparisons (US23)
+
+A signed-in rider can save the two zones on the compare page (US22). "Save this comparison" appears at the bottom of the compare card once both zones are picked; guests see "Sign in to save comparisons". The browser posts `name`, `zone_a` and `zone_b` to `POST /comparisons/save/` (CSRF token in the `X-CSRFToken` header); the owner always comes from the session. The `routes_savedcomparison` table (`routes.SavedComparison`) stores user, name, zone A, zone B (in the order picked) and the creation time, with a unique name per user and a database check that zone A ≠ zone B. Every link uses `on_delete=CASCADE`, so deleting an account deletes its comparisons (US12).
+
+| Page | What it does |
+|---|---|
+| `GET /comparisons/` | My comparisons: name, zone A, zone B and date saved, with Open, Rename and Delete |
+| `GET /comparisons/<id>/open/` | The compare page with both zones and "Saved comparison: <name>". The address stays here while A and B are the saved pair, and becomes `/compare/?a=&b=&day=&hour=` once the rider changes them |
+| `GET/POST /comparisons/<id>/rename/` | Rename, with the same name rules as saved routes |
+| `GET/POST /comparisons/<id>/delete/` | Confirm, then delete |
+
+All comparison pages require sign-in, look comparisons up with `user=request.user` (another user's comparison gives 404), and use CSRF tokens on every form. Nothing is computed from the saved row except which zones to show: the statistics come from the same public endpoints as `/compare/`, for the day and hour chosen on the page.
+
+## 21. Fare reports (US24)
+
+A signed-in rider can report what they paid for a taxi ride, and optionally the Uber or Lyft price they were quoted at the same time. "Report a fare" in the trip summary opens `GET /reports/new/?from=&to=` with the pickup and dropoff filled in; guests see "Sign in to report a fare". The form posts to the same address (CSRF token); the owner comes from the session.
+
+The `reports_farereport` table (`reports.FareReport`) stores user, pickup zone, dropoff zone, ride date and time, taxi fare before tip, optional rideshare service and quote, status (`visible` or `held`) and the creation time. No addresses are stored. Every link uses `on_delete=CASCADE`, so deleting an account deletes its reports (US12).
+
+On save, the server sets the status: a fare below a third of, or above 3 times, the route's historical average at the ride's day and hour (`route_stats`) is held for review and does not appear publicly (`FareReport.objects.public()`); a route with too few trips to compare is published. Validation: fare and quote above $0 and up to $500, a quote and a service only together, a ride time in the past and no more than 30 days ago, and at most 10 reports per user per New York day. Held reports are checked in the Django admin (filter by status) until Epic 5.
+
+## 22. My fare reports (US25)
+
+A signed-in rider can see, correct and delete their own fare reports (US24).
+
+| Page | What it does |
+|---|---|
+| `GET /reports/` | My fare reports: route, ride date and time, taxi fare, rideshare quote, status ("Visible" or "Held for review"), newest first |
+| `GET/POST /reports/<id>/edit/` | The US24 form with the same rules; the review check runs again after the edit |
+| `GET/POST /reports/<id>/delete/` | Confirm, then delete; the report is removed everywhere, including the community summary |
+
+All three pages require sign-in, look reports up with `user=request.user` (another user's report gives 404), and use CSRF tokens on every form. When editing, the 30-day limit on the ride time counts from when the report was made, and the daily limit does not apply.
+
+## 23. Recent rider reports (US26)
+
+The public trip summary shows "Rider reports (last 90 days)" next to the historical fare range for a selected pickup and dropoff. It also keeps the "Report a fare" link. The rider report row does not change when the historical day or hour filter changes.
+
+| Endpoint | Returns |
+|---|---|
+| GET /api/routes/reports?from=&to= | Visible fare reports for exactly that route with ride_at in the last 90 days. Both zone ids are required and must exist; bad ids return 400. No account is required. |
+
+The endpoint returns from, to, enough_data, report_count, median_taxi_fare, rideshare_quote_count, median_rideshare_quote and recent_reports. At least 3 visible reports are required to show medians or report details; with fewer, enough_data is false, both medians are null and recent_reports is empty, so the UI says "Not enough reports yet". Rideshare quote count and median use only reports that include an Uber or Lyft quote; the median is null if there are none. Money medians are rounded to cents.
+
+The five most recent reports are ordered by ride time, then id. Each gives the ride date and hour in New York time, taxi fare, rideshare service and quote. No username or user id is included. The query uses FareReport.objects.public(), so held reports stay out; deleted reports are absent from the table.
+
+## 24. Taxi vs. rideshare fares (US28)
+
+When the rider has selected a pickup and a dropoff, the trip summary shows a "Taxi vs. rideshare" section: the average fare before tip, the fare range, the typical trip duration and, for Uber/Lyft only, the typical wait for pickup, side by side for the selected day and hour. It says which was historically cheaper and by how much, only when both sides have at least `MIN_TRIP_COUNT` (5) trips; otherwise each side shows "Not enough data" on its own. It is labeled as past trips (March to May 2026), not live prices.
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/routes/rideshare?from=&to=&day=&hour=` | The Uber and Lyft (combined) twin of `/api/routes`: fare before tip (minimum, average, maximum), average duration, trip count and average wait for pickup (`avg_wait_min`) for one day and hour. Same parameters, defaults, validation (400) and `enough_data` rule as `/api/routes`. With `to`, `rideshare_route_hour_stats` for that route; without it, `rideshare_zone_hour_stats` for all trips from the pickup zone. `avg_wait_min` is null when fewer than 5 trips have a valid wait. Public, read-only. |
+
+The browser (`rideshare.js`) calls `/api/routes` and `/api/routes/rideshare` together with the same parameters and compares the two `fare_avg` values in whole cents. No table is added; the rideshare tables come from US27.
+
+## 25. Surge-pricing overlay (US29)
+
+The heatmap has a "Show likely surge hours" toggle. When it is on, the selected pickup zone's likely Uber/Lyft surge hours are marked on the 7 x 24 grid, a legend explains the rule, and hovering a marked cell shows its fare per mile and average wait. Real surge multipliers are not public, so the UI calls this an estimate from past trips.
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/zones/:id/surge` | For each of the 7 x 24 cells of the zone (`rideshare_zone_hour_stats`): `trip_count`, `fare_per_mile`, `avg_wait_min`, `surge_ratio` and `likely_surge`, plus the zone's `median_fare_per_mile`, the rule's ratio and minimum trip count, and `enough_data`. A cell is a likely surge hour when it has at least `MIN_TRIP_COUNT` (5) trips and its fare per mile is at least `SURGE_FARE_PER_MILE_RATIO` (1.25) times the median of the zone's hours with at least 5 trips. Cells with fewer trips are never marked and have null stats. Unknown zone: 404. Public, read-only. |
+
+The rule runs in `zones/stats.py` (`surge_grid`), one query per zone. No table is added; the rideshare tables come from US27.
+

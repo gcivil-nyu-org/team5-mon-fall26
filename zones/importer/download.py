@@ -28,23 +28,32 @@ def parse_month(value):
     return value
 
 
+def repeated_months(months):
+    """The months given more than once, sorted."""
+    return sorted({month for month in months if months.count(month) > 1})
+
+
 def trip_file_path(month, data_dir):
     return data_dir / f"yellow_tripdata_{month}.parquet"
 
 
 def ensure_trip_file(month, data_dir):
-    """Return (path, downloaded). Downloads the file only if it is missing.
+    return ensure_file(TRIP_URL.format(month=month), trip_file_path(month, data_dir))
+
+
+def ensure_file(url, path):
+    """Return (path, downloaded). Downloads url to path only if path is
+    missing.
 
     The download goes to "<name>.part" and is renamed when complete, so a
     download that was cut off is never mistaken for a full file.
     """
-    path = trip_file_path(month, data_dir)
     if path.exists():
         return path, False
 
-    data_dir.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
     part = path.with_name(path.name + ".part")
-    request = Request(TRIP_URL.format(month=month), headers={"User-Agent": USER_AGENT})
+    request = Request(url, headers={"User-Agent": USER_AGENT})
     try:
         with urlopen(request, timeout=TIMEOUT_S) as response, open(part, "wb") as out:
             shutil.copyfileobj(response, out, CHUNK_BYTES)

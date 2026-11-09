@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.db.models import F, Q
 
 from zones.models import Zone
 
@@ -26,6 +27,39 @@ class SavedRoute(models.Model):
             models.UniqueConstraint(
                 fields=["user", "name"], name="unique_user_route_name"
             )
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class SavedComparison(models.Model):
+    """US23 #70: two zones compared side by side (US22), saved by one
+    account. A and B keep the order the rider picked them in."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="saved_comparisons",
+    )
+    name = models.CharField(max_length=50)
+    zone_a = models.ForeignKey(
+        Zone, on_delete=models.CASCADE, related_name="saved_comparisons_as_a"
+    )
+    zone_b = models.ForeignKey(
+        Zone, on_delete=models.CASCADE, related_name="saved_comparisons_as_b"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "name"], name="unique_user_comparison_name"
+            ),
+            models.CheckConstraint(
+                condition=~Q(zone_a=F("zone_b")), name="comparison_zones_differ"
+            ),
         ]
 
     def __str__(self):

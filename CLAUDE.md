@@ -35,8 +35,10 @@ Web app that shows NYC riders historical taxi demand, fares, and trip duration b
 ## API (Epic 1, all public and read-only)
 - `GET /api/zones?day=&hour=`: zones as GeoJSON with trip volume (defaults to current day and hour)
 - `GET /api/zones/:id/heatmap`: 7 x 24 trip volume and average duration
+- `GET /api/zones/:id/surge`: 7 x 24 likely Uber/Lyft surge hours, with fare per mile and average wait (US29 #76; rule in `docs/decisions.md`)
 - `GET /api/routes?from=&to=&day=&hour=`: fare min/avg/max, typical duration, trip volume (`to` optional)
 - `GET /api/routes/windows?from=&to=&day=`: hours of the day ranked, best and worst windows
+- `GET /api/routes/rideshare?from=&to=&day=&hour=`: the Uber/Lyft twin of `/api/routes` (same validation and `enough_data` rule) plus `avg_wait_min` (US28 #75)
 - Too few trips (fewer than MIN_TRIP_COUNT = 5 in settings.py): the API returns 200 with "enough_data": false and null stats, and the UI shows "Not enough data"
 - `day=` convention: Monday=0 .. Sunday=6, the same as Python's `weekday()` and pandas' `dayofweek`. Same convention in the database's `day_of_week` columns.
 

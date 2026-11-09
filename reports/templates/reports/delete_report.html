@@ -1,0 +1,14 @@
+{% extends "routes/base.html" %}
+{% load tz %}
+
+{% block title %}Delete fare report{% endblock %}
+
+{% block content %}
+  <h1>Delete fare report?</h1>
+  <p class="warning">Delete your report of <strong>${{ report.taxi_fare }}</strong> for {{ report.pickup_zone.name }} → {{ report.dropoff_zone.name }} on {{ report.ride_at|timezone:"America/New_York"|date:"M j, Y, g:i A" }}? It will be removed everywhere, including what other riders see.</p>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="danger-button">Delete fare report</button>
+  </form>
+  <p><a href="{% url 'reports:my_reports' %}">Cancel</a></p>
+{% endblock %}

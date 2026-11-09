@@ -64,6 +64,72 @@ Downloads any missing monthly file into `data/raw/` (about 65 MB each, gitignore
 
 For the three months above it takes about 1.5 minutes and up to about 1.2 GB of memory (measured on a laptop against a local PostgreSQL).
 
+## Import the rideshare data
+
+```bash
+python manage.py import_rideshare --month 2026-03 --month 2026-04 --month 2026-05
+```
+
+Imports the TLC High Volume For-Hire Vehicle files (Uber and Lyft combined, `fhvhv_tripdata_YYYY-MM.parquet`, about 530 MB each, gitignored) into `rideshare_zone_hour_stats` and `rideshare_route_hour_stats`. Options and behaviour match `import_trips`: `--month` is repeatable (giving the same month twice is an error), `--data-dir` defaults to `data/raw/`, missing files are downloaded first, and the two rideshare tables are replaced in one transaction, so re-running is safe, a failed run leaves the old data in place, and running with fewer months replaces the statistics with just those months. The taxi tables are not touched. The report gives, for each month and in total, rows read, removed per cleaning rule, kept, and waits left out of the wait average, then the zone and route cell counts and how many have fewer than `MIN_TRIP_COUNT` trips. The rules and choices are in `docs/decisions.md` ("Rideshare import").
+
+For the three months above it takes about 2.5 minutes and up to about 2 GB of resident memory (measured on a laptop against a local PostgreSQL; see `docs/decisions.md`, US27d). The route table is about 730 MB on disk.
+
+## Load the rideshare data into the shared AWS database
+
+Integration and Production use the same RDS database, so this is done once, from a laptop, not on Elastic Beanstalk. Do it only when all of these are true:
+
+- The `0004_rideshare_stats` migration has reached the shared database: the US27 pull requests are merged into `develop` and the Integration deploy (which runs `migrate`) succeeded. Check with `python manage.py showmigrations zones` against the RDS database (step 2): `[X] 0004_rideshare_stats`.
+- The laptop has about 2.5 GB of free RAM (4 GB to be safe) and the three files are in `data/raw/` (otherwise the command downloads 1.6 GB first).
+- The RDS instance is reachable from outside its VPC (RDS → Databases → the instance → Connectivity & security: "Publicly accessible: Yes"). If it is not, opening the security group is not enough; ask the team before changing it.
+- It is a quiet time: the site reads the same database, and the replace uses its I/O and briefly locks the two rideshare tables (nothing reads them yet).
+
+1. **Allow your IP on port 5432**, in the `taxiscope-db-sg` security group (us-east-2). In the console: EC2 → Security Groups → `taxiscope-db-sg` → Edit inbound rules → add PostgreSQL, TCP 5432, source "My IP". Or with the AWS CLI:
+
+   ```bash
+   SG=$(aws ec2 describe-security-groups --region us-east-2 \
+        --filters Name=group-name,Values=taxiscope-db-sg \
+        --query 'SecurityGroups[0].GroupId' --output text)
+   MYIP=$(curl -s https://checkip.amazonaws.com)
+   aws ec2 authorize-security-group-ingress --region us-east-2 \
+       --group-id "$SG" --protocol tcp --port 5432 --cidr "$MYIP/32"
+   ```
+
+2. **Point Django at RDS in this shell only.** Take the value of the `DATABASE_URL` environment property of `Taxiscope-integration-env` (Elastic Beanstalk → Configuration → Updates, monitoring, and logging → Environment properties). Never write it to `.env` or any other file. A variable set in the shell wins over `.env`, which `settings.py` reads without overwriting:
+
+   ```bash
+   read -rs DATABASE_URL && export DATABASE_URL   # paste, then Enter; not echoed or kept in history
+   python manage.py showmigrations zones          # must show [X] 0004_rideshare_stats
+   ```
+
+3. **Run the import** (about 2.5 minutes locally; longer over the internet, since about 4.6M rows are sent with COPY):
+
+   ```bash
+   python manage.py import_rideshare --month 2026-03 --month 2026-04 --month 2026-05
+   ```
+
+   Keep the report for the pull request or the sprint notes.
+
+4. **Check the row counts** against the report (the trip counts in each table add up to the "Rows kept" total, 61,076,010 for March to May 2026; 43,185 zone cells and 4,524,149 route cells):
+
+   ```bash
+   python manage.py dbshell -- -c "
+     SELECT 'zone' AS t, count(*) AS cells, sum(trip_count) AS trips FROM zones_ridesharezonehourstats
+     UNION ALL
+     SELECT 'route', count(*), sum(trip_count) FROM zones_rideshareroutehourstats;"
+   ```
+
+   (`dbshell` needs `psql` installed; otherwise run the same query in any PostgreSQL client.)
+
+5. **Close the database again**: remove the rule you added, then end the shell session (or `unset DATABASE_URL`).
+
+   ```bash
+   aws ec2 revoke-security-group-ingress --region us-east-2 \
+       --group-id "$SG" --protocol tcp --port 5432 --cidr "$MYIP/32"
+   unset DATABASE_URL
+   ```
+
+If the import fails partway, the old rideshare rows stay in place (one transaction); fix the cause and run it again. Remove the IP rule even if the import failed.
+
 ## Development checks
 
 CI (see `docs/ci.md`) runs these on every push. Install the extra tools once:

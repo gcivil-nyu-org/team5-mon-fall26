@@ -1,0 +1,22 @@
+{% extends "routes/base.html" %}
+
+{% block title %}Edit fare report{% endblock %}
+
+{% block content %}
+  <h1>Edit fare report</h1>
+  <p>The same rules as a new report apply, and the report is checked again against the usual fare for the trip.</p>
+  <form method="post" class="report-form" novalidate>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      <div class="field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<small class="help">{{ field.help_text }}</small>{% endif %}
+        {{ field.errors }}
+      </div>
+    {% endfor %}
+    <button type="submit">Save changes</button>
+  </form>
+  <p><a href="{% url 'reports:my_reports' %}">Cancel</a></p>
+{% endblock %}
