@@ -1,0 +1,25 @@
+{% extends "routes/base.html" %}
+
+{% block title %}Post a shared ride{% endblock %}
+
+{% block content %}
+  <h1>Post a shared ride</h1>
+  <p>Taking a taxi? Post your trip so riders going the same way can share it with you. Other riders see your display name, the zones, the time, the seats and your note, never your email address. Only the zones are stored, never addresses.</p>
+  {% if form %}
+    <form method="post" class="ride-form" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+      {% for field in form %}
+        <div class="field">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<small class="help{% if field.name == 'note' %} warning{% endif %}">{{ field.help_text }}</small>{% endif %}
+          {{ field.errors }}
+        </div>
+      {% endfor %}
+      <button type="submit">Post shared ride</button>
+    </form>
+  {% else %}
+    <p><a id="share-ride-signin" href="{{ signin_url }}">Sign in to share a ride</a></p>
+  {% endif %}
+{% endblock %}

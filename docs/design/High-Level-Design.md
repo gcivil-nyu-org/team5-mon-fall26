@@ -295,3 +295,16 @@ Epic 4 lets riders see each other, so every account gets a display name that oth
 
 Rules: 3 to 30 characters after trimming (runs of spaces become one), letters A to Z, numbers, spaces, dots, dashes and underscores, at least one letter or number, unique ignoring capitals, no `@`, not the start of the rider's own email, not a reserved name (admin, support, taxiscope…). Ride-sharing views use `display_name_required` (`accounts/display_name.py`): a signed-in rider without a name is sent to choose one first and comes back to the same page.
 
+## 27. Post a ride-share offer (US31)
+
+A signed-in rider with a display name (US30) can post that they're taking a taxi from one zone to another at a time, so riders going the same way can share it. "Post a shared ride" in the trip summary opens `GET /rides/new/?from=&to=` with the zones filled in; guests see "Sign in to share a ride". The form posts to the same address (CSRF token); the owner comes from the session.
+
+The `rides_ridepost` table (`rides.RidePost`) stores owner, pickup zone, dropoff zone, departure date and time, seats offered (1 to 3), an optional note (up to 200 characters), status (`open`, `full` or `closed`) and the creation time. No addresses are stored. Every link uses `on_delete=CASCADE`, so deleting an account deletes its posts.
+
+| Page | What it does |
+|---|---|
+| `GET/POST /rides/new/?from=&to=` | Post a shared ride (sign-in prompt for guests; a rider without a display name chooses one first) |
+| `GET /rides/<id>/` | The post as other riders will see it: display name, zones, departure (New York time), seats, note, status. Owner only for now (404 for anyone else) |
+
+Validation: two different zones on the map, a departure on a quarter hour in New York time, after now and no more than 14 days ahead, 1 to 3 seats, a note of at most 200 characters with no email address or phone number, and at most 3 open posts per rider (checked again with the rider's row locked when saving). A post whose departure has passed shows as "Expired" and no longer counts as open; this is worked out when posts are read (`RidePost.objects.open()`), so no scheduled job is needed. Other riders only ever see the owner's display name, never the email.
+

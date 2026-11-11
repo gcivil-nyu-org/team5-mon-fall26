@@ -32,6 +32,7 @@ Web app that shows NYC riders historical taxi demand, fares, and trip duration b
 - `zone_hour_stats(zone_id, day_of_week, hour, trip_count, avg_duration_min, fare_min, fare_avg, fare_max)`
 - `route_hour_stats(pickup_zone_id, dropoff_zone_id, day_of_week, hour, trip_count, avg_duration_min, fare_min, fare_avg, fare_max)`
 - Epic 4: `accounts_profile(user_id, display_name)`, one per user, unique ignoring capitals (US30 #92). Other riders only ever see the display name, never the email.
+- Epic 4: `rides_ridepost(owner_id, pickup_zone_id, dropoff_zone_id, departure_at, seats, note, status, created_at)` (US31 #93). Status `open`/`full`/`closed`; "Expired" is worked out when read (`RidePost.objects.open()`). Pages `/rides/new/` and `/rides/<id>/` (owner only for now).
 
 ## API (Epic 1, all public and read-only)
 - `GET /api/zones?day=&hour=`: zones as GeoJSON with trip volume (defaults to current day and hour)
