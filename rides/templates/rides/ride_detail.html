@@ -1,0 +1,20 @@
+{% extends "routes/base.html" %}
+{% load tz %}
+
+{% block title %}Shared ride{% endblock %}
+
+{% block content %}
+  {# Only the display name is shown, never the email (US30 #92). The note is escaped. #}
+  <h1>Shared ride</h1>
+  <p><span class="status status-{{ status|lower }}">{{ status }}</span></p>
+  <dl class="ride-details">
+    <dt>Posted by</dt><dd>{{ owner_name }}</dd>
+    <dt>Pickup zone</dt><dd>{{ post.pickup_zone.name }} ({{ post.pickup_zone.borough }})</dd>
+    <dt>Dropoff zone</dt><dd>{{ post.dropoff_zone.name }} ({{ post.dropoff_zone.borough }})</dd>
+    <dt>Departure (New York time)</dt><dd>{% timezone "America/New_York" %}{{ post.departure_at|date:"D j M Y, g:i A" }}{% endtimezone %}</dd>
+    <dt>Seats</dt><dd>{{ post.seats }} seat{{ post.seats|pluralize }} offered</dd>
+    <dt>Note</dt><dd>{% if post.note %}{{ post.note }}{% else %}—{% endif %}</dd>
+  </dl>
+  <p class="help">This is what riders going your way will see. Only you can open this page for now.</p>
+  <p><a href="{% url 'rides:post_ride' %}?from={{ post.pickup_zone_id }}&amp;to={{ post.dropoff_zone_id }}">Post another shared ride</a></p>
+{% endblock %}

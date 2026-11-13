@@ -15,6 +15,19 @@ Entry format:
 
 ## Log
 
+### 2026-11-11 — us31-rideshare-offer (US31 #93, stacked on US30 #92)
+**What changed:**
+- New app `rides`: `RidePost` (`rides/models.py`, migration `rides/0001_ride_post`, creates one table) with `objects.open(now)` and `status_label()` ("Expired" worked out when read). Registered in the admin.
+- `RidePostForm` (`rides/forms.py`), `GET/POST /rides/new/` and the owner-only `GET /rides/<id>/` (`rides/views.py`, `rides/templates/rides/`). Uses US30's `display_name_required`.
+- "Post a shared ride" link in the trip summary (`zones/templates/zones/map.html`, `rides/static/rides/js/share-ride-link.js`), styles in `routes/static/routes/css/routes.css`.
+- Docs: `decisions.md` (US31 section), HLD section 27, `CLAUDE.md` data model, `docs/stories/US31.md`.
+
+**Decisions made (also in `decisions.md`):** proposed, to confirm with the PO: 14 days from the moment of submitting, closed posts stay "Closed" after departure, email addresses and phone numbers refused in the note, post page owner-only until US32/US33, no edit or close until US35.
+
+**Tests:** new `rides/tests/test_post_ride.py` (54: model, database checks, every validation and message, the 3-open limit including expired/full/closed/other riders and a race, default departure, the form page, guests, display name first, CSRF, owner-only page, escaped note, no `@` on the pages, map link) and `zones/tests/share_ride_link.test.js` (5). Full suite 945 (4 skipped), 171 Node tests, coverage 100.00%, black and flake8 clean. Checked on `runserver 8001` with two local accounts plus one without a display name.
+
+**Next step:** merge US30 #92 first, then retarget this PR to `develop`. PO to confirm the proposed rules. US32 #94 (search at `/rides/`) should list `RidePost.objects.open()` and show `display_name_of(post.owner)`.
+
 ### 2026-11-11 — us30-display-name (US30 #92)
 **What changed:**
 - `accounts.Profile` (`accounts/models.py`, migration `accounts/0001_profile`, creates one table): one display name per user, `OneToOneField` with CASCADE, unique index on `Lower(display_name)`. Registered in the admin.

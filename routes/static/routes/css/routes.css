@@ -357,3 +357,52 @@ header {
   color: #8a5300;
   font-weight: 600;
 }
+
+/* Post a shared ride (US31) */
+.field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.45rem;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  font: inherit;
+}
+
+.field .help.warning {
+  color: #8a5300;
+  font-weight: 600;
+}
+
+.form-errors {
+  color: #b3261e;
+}
+
+.ride-details dt {
+  margin-top: 0.6rem;
+  color: #4c5565;
+  font-size: 13px;
+}
+
+.ride-details dd {
+  margin: 0.1rem 0 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.status {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #e4e7ec;
+  font-weight: 600;
+}
+
+.status-open {
+  background: #d8f0dd;
+  color: #1d5e2c;
+}
+
+.status-expired,
+.status-closed {
+  color: #555;
+}
