@@ -148,6 +148,8 @@
       </section>
       {# US24 #71: report what you paid on this route; guests are sent to sign in first. #}
       <p class="report-fare"><a id="report-fare-link" href="{% url 'reports:report_fare' %}" hidden{% if not user.is_authenticated %} data-signin="{% url 'accounts:signin' %}"{% endif %}>{% if user.is_authenticated %}Report a fare{% else %}Sign in to report a fare{% endif %}</a></p>
+      {# US32 #94: open ride-share posts on this route and the selected day; guests sign in first. #}
+      <p class="find-ride"><a id="find-ride-link" href="{% url 'rides:find_rides' %}" hidden{% if not user.is_authenticated %} data-signin="{% url 'accounts:signin' %}"{% endif %}>{% if user.is_authenticated %}Find a shared ride{% else %}Sign in to find a shared ride{% endif %}</a></p>
       {# US31 #93: offer to share this taxi ride; guests are sent to sign in first. #}
       <p class="share-ride"><a id="share-ride-link" href="{% url 'rides:post_ride' %}" hidden{% if not user.is_authenticated %} data-signin="{% url 'accounts:signin' %}"{% endif %}>{% if user.is_authenticated %}Post a shared ride{% else %}Sign in to share a ride{% endif %}</a></p>
       {# US19 #48: adjacent pickup zones where this trip is historically cheaper. #}
@@ -272,6 +274,7 @@
   <script src="{% static 'zones/js/trip-summary.js' %}"></script>
   <script src="{% static 'routes/js/save-route.js' %}"></script>
   <script src="{% static 'reports/js/report-fare-link.js' %}"></script>
+  <script src="{% static 'rides/js/find-ride-link.js' %}"></script>
   <script src="{% static 'rides/js/share-ride-link.js' %}"></script>
   <script src="{% static 'reports/js/route-reports.js' %}"></script>
   <script src="{% static 'routes/js/leave-by.js' %}"></script>
