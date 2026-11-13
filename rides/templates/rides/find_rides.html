@@ -1,0 +1,53 @@
+{% extends "routes/base.html" %}
+{% load tz %}
+
+{% block title %}Find a shared ride{% endblock %}
+
+{% block content %}
+  <h1>Find a shared ride</h1>
+  <p>Find riders taking a taxi on your route, or from and to the zones next to it, on the same day. Riders only see each other's display names, never email addresses.</p>
+  {% if form %}
+    <form method="get" class="ride-form ride-search">
+      {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+      {% for field in form %}
+        <div class="field">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<small class="help">{{ field.help_text }}</small>{% endif %}
+          {{ field.errors }}
+        </div>
+      {% endfor %}
+      <button type="submit">Find shared rides</button>
+    </form>
+
+    {% if matches is not None %}
+      <section class="ride-results" aria-labelledby="ride-results-title">
+        {% if matches %}
+          <h2 id="ride-results-title">{{ matches|length }} shared ride{{ matches|pluralize }} found</h2>
+          <ul class="ride-list">
+            {% for match in matches %}
+              {# Only the display name is shown, never the email (US30 #92). The note is escaped. #}
+              <li class="ride-card">
+                <p><span class="match {% if match.exact %}match-exact{% else %}match-nearby{% endif %}">{{ match.label }}</span></p>
+                <dl class="ride-details">
+                  <dt>Posted by</dt><dd>{{ match.owner_name }}</dd>
+                  <dt>Pickup zone</dt><dd>{{ match.post.pickup_zone.name }} ({{ match.post.pickup_zone.borough }})</dd>
+                  <dt>Dropoff zone</dt><dd>{{ match.post.dropoff_zone.name }} ({{ match.post.dropoff_zone.borough }})</dd>
+                  <dt>Departure (New York time)</dt><dd>{% timezone "America/New_York" %}{{ match.post.departure_at|date:"D j M Y, g:i A" }}{% endtimezone %}</dd>
+                  <dt>Seats</dt><dd>{% with left=match.post.seats_left %}{{ left }} seat{{ left|pluralize }} left{% endwith %}</dd>
+                  <dt>Note</dt><dd>{% if match.post.note %}{{ match.post.note }}{% else %}—{% endif %}</dd>
+                </dl>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <h2 id="ride-results-title">No shared rides match this route and date yet.</h2>
+          <p>Post your trip so riders going your way can find you.</p>
+          <p><a id="post-this-ride" href="{{ post_link }}">Post a shared ride</a></p>
+        {% endif %}
+      </section>
+    {% endif %}
+  {% else %}
+    <p><a id="find-ride-signin" href="{{ signin_url }}">Sign in to find a shared ride</a></p>
+  {% endif %}
+{% endblock %}
