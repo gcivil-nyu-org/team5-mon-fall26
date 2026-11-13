@@ -7,6 +7,20 @@
   <h1>Find a shared ride</h1>
   <p>Find riders taking a taxi on your route, or from and to the zones next to it, on the same day. Riders only see each other's display names, never email addresses.</p>
   {% if form %}
+    <section class="my-rides" aria-labelledby="my-rides-title">
+      <h2 id="my-rides-title">Your shared rides</h2>
+      {% if my_posts %}
+        <ul>
+          {% for post in my_posts %}
+            <li><a href="{% url 'rides:ride_detail' post.pk %}">{{ post.pickup_zone.name }} to {{ post.dropoff_zone.name }}, {% timezone "America/New_York" %}{{ post.departure_at|date:"D j M Y, g:i A" }}{% endtimezone %}</a> ({{ post.status_label }})</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>You have no upcoming shared rides.</p>
+      {% endif %}
+      <p><a href="{% url 'rides:post_ride' %}">Post a shared ride</a></p>
+    </section>
+
     <form method="get" class="ride-form ride-search">
       {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
       {% for field in form %}

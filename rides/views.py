@@ -187,4 +187,9 @@ def find_rides_view(request):
         )
     context["form"] = form
     context["next"] = request.get_full_path()
+    context["my_posts"] = (
+        RidePost.objects.filter(owner=request.user, departure_at__gt=now)
+        .exclude(status=RidePost.CLOSED)
+        .select_related("pickup_zone", "dropoff_zone")
+    )
     return render(request, "rides/find_rides.html", context)
