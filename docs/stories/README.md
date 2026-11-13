@@ -26,3 +26,4 @@ One file per user story, mirroring the ZenHub issue (story line, developer tasks
 | US30.md | #92 | Choose a Display Name (written by hand, not by the sync script) |
 | US31.md | #93 | Post a Ride-Share Offer (written by hand, not by the sync script) |
 | US32.md | #94 | Find Shared Rides on My Route (written by hand, not by the sync script) |
+| US33.md | #95 | Show Interest in a Shared Ride (written by hand, not by the sync script) |
