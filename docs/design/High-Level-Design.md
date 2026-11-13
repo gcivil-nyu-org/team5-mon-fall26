@@ -284,3 +284,14 @@ The heatmap has a "Show likely surge hours" toggle. When it is on, the selected 
 
 The rule runs in `zones/stats.py` (`surge_grid`), one query per zone. No table is added; the rideshare tables come from US27.
 
+## 26. Display name (US30)
+
+Epic 4 lets riders see each other, so every account gets a display name that other riders see in place of the email address. The `accounts_profile` table (`accounts.Profile`) stores `user` (one-to-one, `on_delete=CASCADE`, so deleting the account deletes it) and `display_name`. A unique index on the lowercased name keeps "Alex" and "alex" from both existing, even when saved at the same moment.
+
+| Page | What it does |
+|---|---|
+| `GET /accounts/account/` | My account: the current display name (or "You haven't chosen a display name yet.") and a form to set or change it |
+| `GET/POST /accounts/display-name/?next=` | Choose or change the display name (sign-in required, CSRF), then go back to `next` if it is on this site, else to My account |
+
+Rules: 3 to 30 characters after trimming (runs of spaces become one), letters A to Z, numbers, spaces, dots, dashes and underscores, at least one letter or number, unique ignoring capitals, no `@`, not the start of the rider's own email, not a reserved name (admin, support, taxiscope…). Ride-sharing views use `display_name_required` (`accounts/display_name.py`): a signed-in rider without a name is sent to choose one first and comes back to the same page.
+

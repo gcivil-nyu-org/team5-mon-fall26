@@ -15,6 +15,19 @@ Entry format:
 
 ## Log
 
+### 2026-11-11 — us30-display-name (US30 #92)
+**What changed:**
+- `accounts.Profile` (`accounts/models.py`, migration `accounts/0001_profile`, creates one table): one display name per user, `OneToOneField` with CASCADE, unique index on `Lower(display_name)`. Registered in the admin.
+- `DisplayNameForm` (`accounts/forms.py`), page `GET/POST /accounts/display-name/?next=` (`accounts/views.py`, `display_name.html`), "Display name" section on My account (`account.html`, shared `_display_name_form.html`).
+- `accounts/display_name.py`: `display_name_of(user)` and the `display_name_required` decorator for the ride-sharing views (US31, US33, US36).
+- Docs: `decisions.md` (US30 section), HLD section 26, `CLAUDE.md` data model, `docs/accounts.md` section 4, `docs/stories/US30.md`.
+
+**Decisions made (also in `decisions.md`):** proposed, to confirm with the PO: A to Z letters only, spaces trimmed and collapsed, at least one letter or number, not the start of the rider's own email, a reserved-name list, no profanity filter (admins rename in the admin), change any time but no removing.
+
+**Tests:** new `accounts/tests/test_display_name.py` (37: every rule and message, case-insensitive uniqueness in the form and the database, a name taken between checking and saving, set/change on My account, `next` and unsafe `next`, guests, CSRF, the decorator, account deletion). Full suite 891 (4 skipped), 166 Node tests, coverage 100.00%, black and flake8 clean. Checked on `runserver 8001` with two local accounts.
+
+**Next step:** PO to confirm the proposed rules. US31 #93 (stacked on this branch) is the first view to use `display_name_required`.
+
 ### 2026-11-08 — us29-surge-overlay (US29 #76, stacked on US27c #84 / US27d #85)
 **What changed:**
 - `GET /api/zones/:id/surge` (`zones/views.py`, `zones/urls.py`), backed by `surge_grid` in `zones/stats.py`, reading `RideshareZoneHourStats`. New setting `SURGE_FARE_PER_MILE_RATIO = Decimal("1.25")`.
