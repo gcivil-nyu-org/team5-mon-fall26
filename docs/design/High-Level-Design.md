@@ -319,3 +319,15 @@ A signed-in rider with a display name searches open ride-share posts on a route 
 
 Matching (`rides/search.py`): open posts by other riders (`RidePost.objects.open()`, so not full, closed or expired) whose pickup is the same as or adjacent to the searched pickup and whose dropoff is the same as or adjacent to the searched dropoff (`zone_neighbors.json`, US18), departing on the chosen date in New York time and, with a time, within 1 hour of it. "Same route" posts come first, then "Nearby pickup", "Nearby dropoff" or "Nearby pickup and dropoff" ones, each by departure time. Each result shows the owner's display name (never the email), the zones, the departure, the seats left and the note. If nothing matches, the page says so and links to "Post a shared ride" with the same route and date. No new table.
 
+## 29. Show interest in a shared ride (US33)
+
+A signed-in rider with a display name tells a post's owner they'd like to share the ride. The `rides_rideinterest` table (`rides.RideInterest`) stores the post, the rider, the status (`pending`, `accepted` or `declined`) and the creation time, one per rider per post (unique index). Every link uses `on_delete=CASCADE`, so deleting either account, or the post, deletes it.
+
+| Page | What it does |
+|---|---|
+| `GET /rides/<id>/` | The post's page. The owner always; other riders while the post is open, or once they have shown interest. Shows "I'm interested", or "Your interest: Pending/Accepted/Declined" with "Withdraw" (not for declined) |
+| `POST /rides/<id>/interest/` | Show interest (CSRF). Refused for the rider's own post and for full, closed or departed posts, with the post's row locked |
+| `POST /rides/<id>/withdraw/` | Withdraw a pending or accepted interest (deletes it). A declined one stays |
+
+The same buttons and status are on every US32 search result. The owner accepts or declines in US34.
+

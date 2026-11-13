@@ -1,0 +1,17 @@
+{# US33 #95: "I'm interested", or the rider's status and "Withdraw". Needs post, interest, can_show_interest and next. #}
+{% if interest %}
+  <p class="interest">Your interest: <span class="status interest-{{ interest.status }}">{{ interest.get_status_display }}</span></p>
+  {% if interest.status != "declined" %}
+    <form method="post" action="{% url 'rides:withdraw_interest' post.pk %}" class="interest-form">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+      <button type="submit" class="secondary-button">Withdraw</button>
+    </form>
+  {% endif %}
+{% elif can_show_interest %}
+  <form method="post" action="{% url 'rides:show_interest' post.pk %}" class="interest-form">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit">I'm interested</button>
+  </form>
+{% endif %}

@@ -478,3 +478,29 @@ class DateEdgeTests(FindRidesTestData):
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(timezone.now(), NOW)
         self.assertIsInstance(form.cleaned_data["date"], date)
+
+
+class MyRidesListTests(FindRidesTestData):
+    """The rider's own upcoming posts are listed on /rides/, so an owner can
+    get back to them (the search leaves them out)."""
+
+    def test_lists_own_upcoming_posts_only(self):
+        mine = self.post(owner=self.rider, departure=at(TOMORROW, 9))
+        full = self.post(owner=self.rider, status=RidePost.FULL)
+        self.post(owner=self.rider, status=RidePost.CLOSED)
+        self.post(owner=self.rider, departure=at(TODAY, 7))
+        self.post()
+        client = Client()
+        client.force_login(self.rider)
+        response = client.get(reverse("rides:find_rides"))
+        self.assertEqual(list(response.context["my_posts"]), [mine, full])
+        self.assertContains(
+            response, f'href="{reverse("rides:ride_detail", args=[mine.pk])}"'
+        )
+        self.assertContains(response, "(Full)")
+
+    def test_no_posts_message(self):
+        client = Client()
+        client.force_login(self.rider)
+        response = client.get(reverse("rides:find_rides"))
+        self.assertContains(response, "You have no upcoming shared rides.")
