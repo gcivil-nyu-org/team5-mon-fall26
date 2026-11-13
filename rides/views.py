@@ -1,14 +1,20 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.http import urlencode
-from django.views.decorators.http import require_GET, require_http_methods
+from django.utils.http import url_has_allowed_host_and_scheme, urlencode
+from django.views.decorators.http import (
+    require_GET,
+    require_http_methods,
+    require_POST,
+)
 
 from accounts.display_name import display_name_of, display_name_required
 from zones.views import MAX_ZONE_ID, NYC_TZ, _parse_int
 
+from . import interest
 from .forms import RidePostForm, RideSearchForm, requested_departure
 from .models import RidePost
 from .search import date_for_day, find_rides
@@ -50,27 +56,88 @@ def post_ride(request):
     return render(request, "rides/post_ride.html", {"form": form})
 
 
+def _safe_next(request, fallback):
+    """The posted `next` page if it is on this site, else `fallback`."""
+    next_page = request.POST.get("next", "")
+    if next_page and url_has_allowed_host_and_scheme(
+        next_page,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return next_page
+    return fallback
+
+
 @login_required
+@display_name_required
 @require_GET
 def ride_detail(request, post_id):
-    """The post as other riders will see it. Only its owner can open it
-    until ride search (US32) and interest (US33) open it to other riders."""
+    """The post as riders see it. Its owner can always open it; other riders
+    while it is open, or once they have shown interest (US33 #95), where
+    they also see "I'm interested" or their status and "Withdraw"."""
     post = get_object_or_404(
         RidePost.objects.select_related(
             "owner__profile", "pickup_zone", "dropoff_zone"
         ),
         pk=post_id,
-        owner=request.user,
     )
+    now = timezone.now()
+    if not interest.can_view(post, request.user, now):
+        raise Http404
+    is_owner = post.owner_id == request.user.pk
     return render(
         request,
         "rides/ride_detail.html",
         {
             "post": post,
             "owner_name": display_name_of(post.owner),
-            "status": post.status_label(),
+            "status": post.status_label(now),
+            "is_owner": is_owner,
+            "interest": (
+                None
+                if is_owner
+                else interest.interests_of(request.user, [post.pk]).get(post.pk)
+            ),
+            "can_show_interest": not is_owner
+            and interest.blocked_reason(post, request.user, now) is None,
         },
     )
+
+
+# ---- US33 #95: show interest ----
+
+
+@login_required
+@display_name_required
+@require_POST
+def show_interest(request, post_id):
+    post, saved, message = interest.show_interest(request.user, post_id, timezone.now())
+    if message in interest.BLOCKED:
+        messages.error(request, message)
+        return redirect(_safe_next(request, reverse("rides:find_rides")))
+    (messages.success if saved else messages.info)(request, message)
+    return redirect(_safe_next(request, post_detail_url(post)))
+
+
+@login_required
+@display_name_required
+@require_POST
+def withdraw_interest(request, post_id):
+    post, message = interest.withdraw_interest(request.user, post_id)
+    if message == interest.WITHDRAWN:
+        messages.success(request, message)
+    else:
+        messages.info(request, message)
+    fallback = (
+        post_detail_url(post)
+        if interest.can_view(post, request.user, timezone.now())
+        else reverse("rides:find_rides")
+    )
+    return redirect(_safe_next(request, fallback))
+
+
+def post_detail_url(post):
+    return reverse("rides:ride_detail", args=[post.pk])
 
 
 def _signin_prompt(request, template):
@@ -119,4 +186,5 @@ def find_rides_view(request):
             },
         )
     context["form"] = form
+    context["next"] = request.get_full_path()
     return render(request, "rides/find_rides.html", context)

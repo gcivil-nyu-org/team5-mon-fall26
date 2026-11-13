@@ -12,9 +12,14 @@
     <dt>Pickup zone</dt><dd>{{ post.pickup_zone.name }} ({{ post.pickup_zone.borough }})</dd>
     <dt>Dropoff zone</dt><dd>{{ post.dropoff_zone.name }} ({{ post.dropoff_zone.borough }})</dd>
     <dt>Departure (New York time)</dt><dd>{% timezone "America/New_York" %}{{ post.departure_at|date:"D j M Y, g:i A" }}{% endtimezone %}</dd>
-    <dt>Seats</dt><dd>{{ post.seats }} seat{{ post.seats|pluralize }} offered</dd>
+    <dt>Seats</dt><dd>{{ post.seats }} seat{{ post.seats|pluralize }} offered{% if not is_owner %}, {% with left=post.seats_left %}{{ left }} seat{{ left|pluralize }} left{% endwith %}{% endif %}</dd>
     <dt>Note</dt><dd>{% if post.note %}{{ post.note }}{% else %}—{% endif %}</dd>
   </dl>
-  <p class="help">This is what riders going your way will see. Only you can open this page for now.</p>
-  <p><a href="{% url 'rides:post_ride' %}?from={{ post.pickup_zone_id }}&amp;to={{ post.dropoff_zone_id }}">Post another shared ride</a></p>
+  {% if is_owner %}
+    <p class="help">This is what riders going your way see.</p>
+    <p><a href="{% url 'rides:post_ride' %}?from={{ post.pickup_zone_id }}&amp;to={{ post.dropoff_zone_id }}">Post another shared ride</a></p>
+  {% else %}
+    {% include "rides/_interest.html" with next=request.get_full_path %}
+    <p><a href="{% url 'rides:find_rides' %}">Find another shared ride</a></p>
+  {% endif %}
 {% endblock %}

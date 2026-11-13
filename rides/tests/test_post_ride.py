@@ -467,8 +467,9 @@ class RideDetailTests(RideTestData):
         )
         self.assertNotContains(response, ">Open<")
 
-    def test_only_the_owner_can_see_the_post_for_now(self):
-        post = self.make_post(owner=self.other)
+    def test_another_riders_closed_post_is_404(self):
+        # US33 #95 opens open posts to other riders; see test_show_interest.py.
+        post = self.make_post(owner=self.other, status=RidePost.CLOSED)
         self.assertEqual(self.client.get(self.url(post)).status_code, 404)
 
     def test_an_unknown_post_is_404(self):
