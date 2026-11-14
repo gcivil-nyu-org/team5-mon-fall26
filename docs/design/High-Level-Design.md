@@ -308,3 +308,14 @@ The `rides_ridepost` table (`rides.RidePost`) stores owner, pickup zone, dropoff
 
 Validation: two different zones on the map, a departure on a quarter hour in New York time, after now and no more than 14 days ahead, 1 to 3 seats, a note of at most 200 characters with no email address or phone number, and at most 3 open posts per rider (checked again with the rider's row locked when saving). A post whose departure has passed shows as "Expired" and no longer counts as open; this is worked out when posts are read (`RidePost.objects.open()`), so no scheduled job is needed. Other riders only ever see the owner's display name, never the email.
 
+## 28. Find shared rides on my route (US32)
+
+A signed-in rider with a display name searches open ride-share posts on a route like theirs. "Find a shared ride" in the trip summary (and "Shared rides" in the navigation) opens `GET /rides/?from=&to=&day=`; guests see "Sign in to find a shared ride".
+
+| Page | What it does |
+|---|---|
+| `GET /rides/?from=&to=&date=&time=` | Find a shared ride. Pickup, dropoff and date (today to 14 days ahead) are required, the time is optional. `?day=` (Monday=0, from the trip summary) becomes the next date on that weekday. Searches as soon as route and date are there |
+| `GET /rides/new/?from=&to=&date=&time=` | The US31 form, now also filling in the departure from `date` and `time` (the empty search's "Post a shared ride" link) |
+
+Matching (`rides/search.py`): open posts by other riders (`RidePost.objects.open()`, so not full, closed or expired) whose pickup is the same as or adjacent to the searched pickup and whose dropoff is the same as or adjacent to the searched dropoff (`zone_neighbors.json`, US18), departing on the chosen date in New York time and, with a time, within 1 hour of it. "Same route" posts come first, then "Nearby pickup", "Nearby dropoff" or "Nearby pickup and dropoff" ones, each by departure time. Each result shows the owner's display name (never the email), the zones, the departure, the seats left and the note. If nothing matches, the page says so and links to "Post a shared ride" with the same route and date. No new table.
+

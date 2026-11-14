@@ -406,3 +406,29 @@ header {
 .status-closed {
   color: #555;
 }
+
+/* US32 #94: find a shared ride */
+.ride-list {
+  list-style: none;
+  padding: 0;
+}
+
+.ride-card {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+}
+
+.match {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-weight: 600;
+  background: #e4e7ec;
+}
+
+.match-exact {
+  background: #d8f0dd;
+  color: #1d5e2c;
+}

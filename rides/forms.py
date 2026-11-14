@@ -1,5 +1,5 @@
 import re
-from datetime import timedelta
+from datetime import date, datetime, time, timedelta
 
 from django import forms
 from django.contrib.auth import get_user_model
@@ -156,3 +156,88 @@ class RidePostForm(forms.ModelForm):
                 return None
             post.save()
         return post
+
+
+def requested_departure(day, at_time, now):
+    """US32 #94: the departure the "Post a shared ride" link from an empty
+    search asks for (?date=&time=), rounded up to a quarter hour. Without a
+    time it keeps the usual time of day. Anything unreadable, past or too
+    far ahead gives the usual start."""
+    usual = default_departure(now)
+    try:
+        wanted = date.fromisoformat(day)
+        clock = time.fromisoformat(at_time) if at_time else usual.time()
+    except (TypeError, ValueError):
+        return usual
+    moment = datetime.combine(wanted, clock, NYC_TZ)
+    floor = _quarter_floor(moment)
+    moment = floor if floor == moment else floor + timedelta(minutes=STEP_MINUTES)
+    if first_departure(now) <= moment <= last_departure(now):
+        return moment
+    return usual
+
+
+# ---- US32 #94: find shared rides ----
+
+SEARCH_DATE_PAST = "Choose today or a later date."
+SEARCH_DATE_TOO_FAR = f"Choose a date in the next {MAX_DAYS_AHEAD} days."
+
+
+class RideSearchForm(forms.Form):
+    """US32 #94: pickup, dropoff and date are required, the time is optional.
+    Sent with GET, so a search can be bookmarked and linked to."""
+
+    date = forms.DateField(
+        label="Date",
+        error_messages={"required": "Choose a date."},
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+    time = forms.TimeField(
+        label="Time (optional, New York time)",
+        required=False,
+        help_text="Shows rides leaving within 1 hour of it.",
+        widget=forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
+    )
+
+    def __init__(self, *args, now=None, **kwargs):
+        self.now = now or timezone.now()
+        super().__init__(*args, **kwargs)
+        on_map = Zone.objects.filter(zone_id__in=shape_zone_ids()).order_by(
+            "borough", "name"
+        )
+        # "from" and "to" match the other pages' links (?from=&to=).
+        zones = {}
+        for name, label in (("from", "Pickup zone"), ("to", "Dropoff zone")):
+            field = forms.ModelChoiceField(
+                queryset=on_map,
+                label=label,
+                error_messages={"required": f"Choose a {label.lower()}."},
+            )
+            field.label_from_instance = lambda zone: f"{zone.name} ({zone.borough})"
+            zones[name] = field
+        self.fields = {**zones, **self.fields}
+        today = self.today()
+        self.fields["date"].widget.attrs.update(
+            {
+                "min": today.isoformat(),
+                "max": (today + timedelta(days=MAX_DAYS_AHEAD)).isoformat(),
+            }
+        )
+
+    def today(self):
+        return self.now.astimezone(NYC_TZ).date()
+
+    def clean_date(self):
+        day = self.cleaned_data["date"]
+        if day < self.today():
+            raise forms.ValidationError(SEARCH_DATE_PAST)
+        if day > self.today() + timedelta(days=MAX_DAYS_AHEAD):
+            raise forms.ValidationError(SEARCH_DATE_TOO_FAR)
+        return day
+
+    def clean(self):
+        cleaned = super().clean()
+        pickup = cleaned.get("from")
+        if pickup is not None and pickup == cleaned.get("to"):
+            self.add_error("to", SAME_ZONES)
+        return cleaned

@@ -69,6 +69,11 @@ class RidePost(models.Model):
         now = now or timezone.now()
         return self.status != self.CLOSED and self.departure_at <= now
 
+    def seats_left(self):
+        """Seats still free. Accepting riders (US34 #96) will lower it; until
+        then it is the seats offered."""
+        return self.seats
+
     def status_label(self, now=None):
         """ "Open", "Full", "Closed" or "Expired", as riders see it."""
         return self.EXPIRED if self.is_expired(now) else self.get_status_display()
