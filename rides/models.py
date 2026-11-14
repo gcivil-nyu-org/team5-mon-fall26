@@ -21,7 +21,7 @@ class RidePostQuerySet(models.QuerySet):
         """Include the number of accepted riders for list and detail pages."""
         return self.annotate(
             accepted_interest_count=Count(
-                "interests", filter=Q(interests__status="accepted")
+                "interests", filter=Q(interests__status=RideInterest.ACCEPTED)
             )
         )
 
@@ -81,7 +81,7 @@ class RidePost(models.Model):
         """Seats offered minus the riders the owner has accepted."""
         accepted = getattr(self, "accepted_interest_count", None)
         if accepted is None:
-            accepted = self.interests.filter(status="accepted").count()
+            accepted = self.interests.filter(status=RideInterest.ACCEPTED).count()
         return max(0, self.seats - accepted)
 
     def status_label(self, now=None):

@@ -24,7 +24,8 @@ NOTHING_TO_WITHDRAW = "You haven't shown interest in this ride."
 BLOCKED = frozenset({OWN_POST, FULL, CLOSED, EXPIRED})
 OWNER_ACCEPTED = "Rider accepted."
 OWNER_DECLINED = "Rider declined."
-ACCEPTANCE_UNDONE = "Acceptance undone. The ride is open again."
+ACCEPTANCE_UNDONE = "Acceptance undone."
+ACCEPTANCE_REOPENED = "Acceptance undone. The ride is open again."
 ALREADY_ACCEPTED = "This rider is already accepted."
 ALREADY_DECLINED = "This rider was already declined."
 DECLINED_CANNOT_ACCEPT = "A declined rider can't be accepted."
@@ -122,10 +123,18 @@ def manage_owner_interest(owner, post_id, interest_id, action):
         if action == "undo":
             if rider_interest.status != RideInterest.ACCEPTED:
                 return post, False, NOT_ACCEPTED
+            if post.is_expired(timezone.now()):
+                return post, False, EXPIRED
+            was_full = post.status == RidePost.FULL
             rider_interest.status = RideInterest.PENDING
             rider_interest.save(update_fields=["status"])
             _sync_post_capacity(post)
-            return post, True, ACCEPTANCE_UNDONE
+            message = (
+                ACCEPTANCE_REOPENED
+                if was_full and post.status == RidePost.OPEN
+                else ACCEPTANCE_UNDONE
+            )
+            return post, True, message
 
         raise ValueError(f"Unknown interest action: {action}")
 
