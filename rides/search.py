@@ -9,7 +9,8 @@ from accounts.display_name import display_name_of
 from zones.stats import load_zone_neighbors
 from zones.views import NYC_TZ
 
-from .models import RidePost
+from .interest import interests_of
+from .models import RideInterest, RidePost
 
 TIME_WINDOW = timedelta(hours=1)
 SAME_ROUTE = "Same route"
@@ -24,6 +25,7 @@ class Match:
     exact: bool
     label: str
     owner_name: str
+    interest: RideInterest | None = None
 
 
 def _with_neighbors(zone_id):
@@ -63,11 +65,19 @@ def find_rides(user, pickup, dropoff, day, at_time=None, now=None):
     posts = posts.exclude(owner=user).select_related(
         "owner__profile", "pickup_zone", "dropoff_zone"
     )
+    posts = list(posts)
+    interests = interests_of(user, [post.pk for post in posts])
     matches = []
     for post in posts:
         label = _label(post, pickup.pk, dropoff.pk)
         matches.append(
-            Match(post, label == SAME_ROUTE, label, display_name_of(post.owner))
+            Match(
+                post,
+                label == SAME_ROUTE,
+                label,
+                display_name_of(post.owner),
+                interests.get(post.pk),
+            )
         )
     matches.sort(key=lambda m: (not m.exact, m.post.departure_at, m.post.pk))
     return matches

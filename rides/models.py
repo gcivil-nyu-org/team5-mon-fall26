@@ -84,3 +84,48 @@ class RidePost(models.Model):
             f"{self.pickup_zone.name} → {self.dropoff_zone.name} at "
             f"{departure:%Y-%m-%d %H:%M} ({self.status_label()})"
         )
+
+
+class RideInterest(models.Model):
+    """US33 #95: a rider telling a post's owner they'd like to share the
+    ride. One per rider per post. The owner accepts or declines it in US34."""
+
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    DECLINED = "declined"
+    STATUS_CHOICES = [
+        (PENDING, "Pending"),
+        (ACCEPTED, "Accepted"),
+        (DECLINED, "Declined"),
+    ]
+
+    post = models.ForeignKey(
+        RidePost,
+        on_delete=models.CASCADE,  # deleting the post (or its owner) deletes it
+        related_name="interests",
+    )
+    rider = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,  # deleting the rider's account deletes it
+        related_name="ride_interests",
+    )
+    status = models.CharField(max_length=8, choices=STATUS_CHOICES, default=PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["post", "rider"], name="ride_interest_once_per_rider"
+            ),
+            models.CheckConstraint(
+                condition=Q(status__in=["pending", "accepted", "declined"]),
+                name="ride_interest_status_valid",
+            ),
+        ]
+
+    def __str__(self):
+        from accounts.display_name import display_name_of
+
+        name = display_name_of(self.rider) or f"rider {self.rider_id}"
+        return f"{name}: {self.get_status_display()}"

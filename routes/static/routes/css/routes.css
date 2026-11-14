@@ -432,3 +432,24 @@ header {
   background: #d8f0dd;
   color: #1d5e2c;
 }
+
+/* US33 #95: show interest */
+.interest-form {
+  display: inline-block;
+  margin: 0.25rem 0;
+}
+
+.secondary-button {
+  background: #fff;
+  color: #1f2937;
+  border: 1px solid #98a2b3;
+}
+
+.interest-accepted {
+  background: #d8f0dd;
+  color: #1d5e2c;
+}
+
+.interest-declined {
+  color: #555;
+}
