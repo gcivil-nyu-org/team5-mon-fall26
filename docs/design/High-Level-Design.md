@@ -304,7 +304,7 @@ The `rides_ridepost` table (`rides.RidePost`) stores owner, pickup zone, dropoff
 | Page | What it does |
 |---|---|
 | `GET/POST /rides/new/?from=&to=` | Post a shared ride (sign-in prompt for guests; a rider without a display name chooses one first) |
-| `GET /rides/<id>/` | The post as other riders will see it: display name, zones, departure (New York time), seats, note, status. Owner only for now (404 for anyone else) |
+| `GET /rides/<id>/` | The post as other riders will see it: display name, zones, departure (New York time), seats, note, status. The owner always; other riders while open or after showing interest |
 
 Validation: two different zones on the map, a departure on a quarter hour in New York time, after now and no more than 14 days ahead, 1 to 3 seats, a note of at most 200 characters with no email address or phone number, and at most 3 open posts per rider (checked again with the rider's row locked when saving). A post whose departure has passed shows as "Expired" and no longer counts as open; this is worked out when posts are read (`RidePost.objects.open()`), so no scheduled job is needed. Other riders only ever see the owner's display name, never the email.
 
@@ -317,7 +317,7 @@ A signed-in rider with a display name searches open ride-share posts on a route 
 | `GET /rides/?from=&to=&date=&time=` | Find a shared ride. Pickup, dropoff and date (today to 14 days ahead) are required, the time is optional. `?day=` (Monday=0, from the trip summary) becomes the next date on that weekday. Searches as soon as route and date are there |
 | `GET /rides/new/?from=&to=&date=&time=` | The US31 form, now also filling in the departure from `date` and `time` (the empty search's "Post a shared ride" link) |
 
-Matching (`rides/search.py`): open posts by other riders (`RidePost.objects.open()`, so not full, closed or expired) whose pickup is the same as or adjacent to the searched pickup and whose dropoff is the same as or adjacent to the searched dropoff (`zone_neighbors.json`, US18), departing on the chosen date in New York time and, with a time, within 1 hour of it. "Same route" posts come first, then "Nearby pickup", "Nearby dropoff" or "Nearby pickup and dropoff" ones, each by departure time. Each result shows the owner's display name (never the email), the zones, the departure, the seats left and the note. If nothing matches, the page says so and links to "Post a shared ride" with the same route and date. No new table.
+Matching (`rides/search.py`): open posts by other riders (`RidePost.objects.open()`, so not full, closed or expired) whose pickup is the same as or adjacent to the searched pickup and whose dropoff is the same as or adjacent to the searched dropoff (`zone_neighbors.json`, US18), departing on the chosen date in New York time and, with a time, within 1 hour of it. "Same route" posts come first, then "Nearby pickup", "Nearby dropoff" or "Nearby pickup and dropoff" ones, each by departure time. Each result shows the owner's display name (never the email), the zones, the departure, seats left (seats offered minus accepted riders) and the note. If nothing matches, the page says so and links to "Post a shared ride" with the same route and date. No new table.
 
 ## 29. Show interest in a shared ride (US33)
 
@@ -329,5 +329,13 @@ A signed-in rider with a display name tells a post's owner they'd like to share 
 | `POST /rides/<id>/interest/` | Show interest (CSRF). Refused for the rider's own post and for full, closed or departed posts, with the post's row locked |
 | `POST /rides/<id>/withdraw/` | Withdraw a pending or accepted interest (deletes it). A declined one stays |
 
-The same buttons and status are on every US32 search result. The owner accepts or declines in US34.
+The same buttons and status are on every US32 search result. US34 adds owner actions on the post page and the accepted-rider view.
+
+## 30. Accept or decline interested riders (US34)
+
+The owner manages the `RideInterest` rows on `GET /rides/<id>/`. Each interest is shown by display name, never email. A pending interest can be accepted or declined; an accepted one can be undone back to pending; declined interests stay visible. `POST /rides/<id>/interests/<interest-id>/accept/`, `/decline/` and `/undo-acceptance/` require sign-in, CSRF and ownership of the post.
+
+Each accepted interest consumes one offered seat. `RidePost.seats_left()` subtracts the number of accepted interests. Accepting the last seat changes the post status to `full`, which removes it from `RidePost.objects.open()` and search. Undoing an acceptance, or withdrawing an accepted interest, frees a seat and changes a full post back to `open`; a closed post remains closed. Expired posts cannot accept riders. The accepted rider sees "You're in" and the other accepted riders' display names.
+
+Capacity changes run in one database transaction while locking the post and the interest. The post lock serializes concurrent accepts, so accepted interests cannot exceed the number of offered seats. No new table, migration or dependency is required.
 

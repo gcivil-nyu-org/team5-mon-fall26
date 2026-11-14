@@ -50,7 +50,7 @@ def find_rides(user, pickup, dropoff, day, at_time=None, now=None):
     as or adjacent to `dropoff`, departing on `day` (New York time) and, with
     `at_time`, within 1 hour of it. Same route first, then by departure."""
     now = now or timezone.now()
-    posts = RidePost.objects.open(now).filter(
+    posts = RidePost.objects.open(now).with_seat_counts().filter(
         pickup_zone_id__in=_with_neighbors(pickup.pk),
         dropoff_zone_id__in=_with_neighbors(dropoff.pk),
         departure_at__gte=datetime.combine(day, time.min, NYC_TZ),

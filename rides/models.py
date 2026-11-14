@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.db import models
-from django.db.models import F, Q
+from django.db.models import Count, F, Q
 from django.utils import timezone
 
 from zones.models import Zone
@@ -16,6 +16,14 @@ class RidePostQuerySet(models.QuerySet):
         """Open and not yet departed. Expiry is worked out when posts are
         read, so no scheduled job has to change the status."""
         return self.filter(status=RidePost.OPEN, departure_at__gt=now or timezone.now())
+
+    def with_seat_counts(self):
+        """Include the number of accepted riders for list and detail pages."""
+        return self.annotate(
+            accepted_interest_count=Count(
+                "interests", filter=Q(interests__status="accepted")
+            )
+        )
 
 
 class RidePost(models.Model):
@@ -70,9 +78,11 @@ class RidePost(models.Model):
         return self.status != self.CLOSED and self.departure_at <= now
 
     def seats_left(self):
-        """Seats still free. Accepting riders (US34 #96) will lower it; until
-        then it is the seats offered."""
-        return self.seats
+        """Seats offered minus the riders the owner has accepted."""
+        accepted = getattr(self, "accepted_interest_count", None)
+        if accepted is None:
+            accepted = self.interests.filter(status="accepted").count()
+        return max(0, self.seats - accepted)
 
     def status_label(self, now=None):
         """ "Open", "Full", "Closed" or "Expired", as riders see it."""

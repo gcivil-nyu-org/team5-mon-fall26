@@ -16,7 +16,7 @@ from zones.views import MAX_ZONE_ID, NYC_TZ, _parse_int
 
 from . import interest
 from .forms import RidePostForm, RideSearchForm, requested_departure
-from .models import RidePost
+from .models import RideInterest, RidePost
 from .search import date_for_day, find_rides
 
 POSTED = (
@@ -76,7 +76,7 @@ def ride_detail(request, post_id):
     while it is open, or once they have shown interest (US33 #95), where
     they also see "I'm interested" or their status and "Withdraw"."""
     post = get_object_or_404(
-        RidePost.objects.select_related(
+        RidePost.objects.with_seat_counts().select_related(
             "owner__profile", "pickup_zone", "dropoff_zone"
         ),
         pk=post_id,
@@ -85,6 +85,39 @@ def ride_detail(request, post_id):
     if not interest.can_view(post, request.user, now):
         raise Http404
     is_owner = post.owner_id == request.user.pk
+    viewer_interest = (
+        None
+        if is_owner
+        else interest.interests_of(request.user, [post.pk]).get(post.pk)
+    )
+    interested_riders = []
+    accepted_rider_names = []
+    can_accept_interests = False
+    if is_owner:
+        interested_riders = [
+            {
+                "interest": rider_interest,
+                "rider_name": display_name_of(rider_interest.rider)
+                or f"Rider {rider_interest.rider_id}",
+            }
+            for rider_interest in post.interests.select_related(
+                "rider__profile"
+            ).all()
+        ]
+        can_accept_interests = (
+            post.status == RidePost.OPEN
+            and not post.is_expired(now)
+            and post.seats_left() > 0
+        )
+    elif viewer_interest and viewer_interest.status == RideInterest.ACCEPTED:
+        accepted_rider_names = [
+            display_name_of(rider_interest.rider) or f"Rider {rider_interest.rider_id}"
+            for rider_interest in RideInterest.objects.filter(
+                post=post, status=RideInterest.ACCEPTED
+            )
+            .exclude(rider=request.user)
+            .select_related("rider__profile")
+        ]
     return render(
         request,
         "rides/ride_detail.html",
@@ -93,13 +126,12 @@ def ride_detail(request, post_id):
             "owner_name": display_name_of(post.owner),
             "status": post.status_label(now),
             "is_owner": is_owner,
-            "interest": (
-                None
-                if is_owner
-                else interest.interests_of(request.user, [post.pk]).get(post.pk)
-            ),
+            "interest": viewer_interest,
             "can_show_interest": not is_owner
             and interest.blocked_reason(post, request.user, now) is None,
+            "interested_riders": interested_riders,
+            "can_accept_interests": can_accept_interests,
+            "accepted_rider_names": accepted_rider_names,
         },
     )
 
@@ -134,6 +166,35 @@ def withdraw_interest(request, post_id):
         else reverse("rides:find_rides")
     )
     return redirect(_safe_next(request, fallback))
+
+
+def _owner_interest_action(request, post_id, interest_id, action):
+    post, changed, message = interest.manage_owner_interest(
+        request.user, post_id, interest_id, action
+    )
+    (messages.success if changed else messages.info)(request, message)
+    return redirect(post_detail_url(post))
+
+
+@login_required
+@display_name_required
+@require_POST
+def accept_interest(request, post_id, interest_id):
+    return _owner_interest_action(request, post_id, interest_id, "accept")
+
+
+@login_required
+@display_name_required
+@require_POST
+def decline_interest(request, post_id, interest_id):
+    return _owner_interest_action(request, post_id, interest_id, "decline")
+
+
+@login_required
+@display_name_required
+@require_POST
+def undo_acceptance(request, post_id, interest_id):
+    return _owner_interest_action(request, post_id, interest_id, "undo")
 
 
 def post_detail_url(post):
@@ -188,7 +249,8 @@ def find_rides_view(request):
     context["form"] = form
     context["next"] = request.get_full_path()
     context["my_posts"] = (
-        RidePost.objects.filter(owner=request.user, departure_at__gt=now)
+        RidePost.objects.with_seat_counts()
+        .filter(owner=request.user, departure_at__gt=now)
         .exclude(status=RidePost.CLOSED)
         .select_related("pickup_zone", "dropoff_zone")
     )
