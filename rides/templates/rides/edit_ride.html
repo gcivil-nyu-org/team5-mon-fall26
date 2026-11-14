@@ -1,0 +1,21 @@
+{% extends "routes/base.html" %}
+
+{% block title %}Edit shared ride{% endblock %}
+{% block content %}
+  <h1>Edit shared ride</h1>
+  <p>{{ post.pickup_zone.name }} to {{ post.dropoff_zone.name }}</p>
+  <form method="post" class="ride-form" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+    {% for field in form %}
+      <div class="field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<small class="help{% if field.name == 'note' %} warning{% endif %}">{{ field.help_text }}</small>{% endif %}
+        {{ field.errors }}
+      </div>
+    {% endfor %}
+    <button type="submit">Save changes</button>
+    <a href="{% url 'rides:ride_detail' post.pk %}">Cancel</a>
+  </form>
+{% endblock %}

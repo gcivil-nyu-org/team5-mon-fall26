@@ -32,8 +32,9 @@ Web app that shows NYC riders historical taxi demand, fares, and trip duration b
 - `zone_hour_stats(zone_id, day_of_week, hour, trip_count, avg_duration_min, fare_min, fare_avg, fare_max)`
 - `route_hour_stats(pickup_zone_id, dropoff_zone_id, day_of_week, hour, trip_count, avg_duration_min, fare_min, fare_avg, fare_max)`
 - Epic 4: `accounts_profile(user_id, display_name)`, one per user, unique ignoring capitals (US30 #92). Other riders only ever see the display name, never the email.
-- Epic 4: `rides_ridepost(owner_id, pickup_zone_id, dropoff_zone_id, departure_at, seats, note, status, created_at)` (US31 #93). Status `open`/`full`/`closed`; "Expired" is worked out when read (`RidePost.objects.open()`). US32 #94: `/rides/` finds open posts on the same or adjacent zones (`rides/search.py`). The owner manages a post's interested riders on `/rides/<id>/`; other riders can view it while open or after showing interest.
+- Epic 4: `rides_ridepost(owner_id, pickup_zone_id, dropoff_zone_id, departure_at, seats, note, status, created_at)` (US31 #93). Status `open`/`full`/`closed`/`deleted`; "Expired" is worked out when read (`RidePost.objects.open()`). US32 #94: `/rides/` finds open posts on the same or adjacent zones (`rides/search.py`). The owner manages a post's interested riders on `/rides/<id>/`; other riders can view it while open or after showing interest, unless deleted.
 - Epic 4: `rides_rideinterest(post_id, rider_id, status, created_at)` (US33 #95), one per rider per post; status `pending`/`accepted`/`declined`. `POST /rides/<id>/interest/` and `/withdraw/`. US34 #96 adds owner-only accept, decline and undo-acceptance actions; accepted riders consume seats, filling and reopening a post as capacity changes.
+- US35 #97 lets the owner edit an open post, close it, or mark it deleted after confirmation. Deleted posts return 404 on detail pages; their interest rows remain so riders can see a deletion notice in the shared-rides list.
 
 ## API (Epic 1, all public and read-only)
 - `GET /api/zones?day=&hour=`: zones as GeoJSON with trip volume (defaults to current day and hour)

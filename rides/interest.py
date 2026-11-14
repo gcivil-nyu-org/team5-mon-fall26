@@ -16,12 +16,13 @@ OWN_POST = "You can't show interest in your own shared ride."
 FULL = "This shared ride is full."
 CLOSED = "This shared ride is closed."
 EXPIRED = "This shared ride has already left."
+DELETED = "This shared ride was deleted."
 WITHDRAWN = "Your interest was withdrawn."
 DECLINED_STAYS = (
     "The owner declined your interest, so it can't be withdrawn or sent again."
 )
 NOTHING_TO_WITHDRAW = "You haven't shown interest in this ride."
-BLOCKED = frozenset({OWN_POST, FULL, CLOSED, EXPIRED})
+BLOCKED = frozenset({OWN_POST, FULL, CLOSED, EXPIRED, DELETED})
 OWNER_ACCEPTED = "Rider accepted."
 OWNER_DECLINED = "Rider declined."
 ACCEPTANCE_UNDONE = "Acceptance undone. The ride is open again."
@@ -43,7 +44,7 @@ def _accepted_count(post):
 def _sync_post_capacity(post):
     """Keep open/full in step with accepted interests. Call with the post locked."""
     accepted = _accepted_count(post)
-    if post.status == RidePost.CLOSED:
+    if post.status in (RidePost.CLOSED, RidePost.DELETED):
         return accepted
     status = RidePost.FULL if accepted >= post.seats else RidePost.OPEN
     if post.status != status:
@@ -56,6 +57,8 @@ def blocked_reason(post, rider, now):
     """Why the rider can't show interest in the post, or None."""
     if post.owner_id == rider.pk:
         return OWN_POST
+    if post.status == RidePost.DELETED:
+        return DELETED
     if post.status == RidePost.CLOSED:
         return CLOSED
     if post.is_expired(now):
@@ -88,6 +91,8 @@ def manage_owner_interest(owner, post_id, interest_id, action):
     """Accept, decline or undo an interest, serializing seat changes per post."""
     with transaction.atomic():
         post = get_object_or_404(RidePost.objects.select_for_update(), pk=post_id)
+        if post.status == RidePost.DELETED:
+            raise Http404
         if post.owner_id != owner.pk:
             raise Http404
         rider_interest = get_object_or_404(
@@ -136,6 +141,8 @@ def withdraw_interest(rider, post_id):
     riders free their seat, reopening a full post when appropriate."""
     with transaction.atomic():
         post = get_object_or_404(RidePost.objects.select_for_update(), pk=post_id)
+        if post.status == RidePost.DELETED:
+            raise Http404
         rider_interest = _existing(post, rider).select_for_update().first()
         if rider_interest is None:
             return post, NOTHING_TO_WITHDRAW
@@ -159,6 +166,8 @@ def interests_of(rider, post_ids):
 def can_view(post, user, now):
     """The owner always; other riders while the post is open, or once they
     have shown interest in it (so they keep seeing their status)."""
+    if post.status == RidePost.DELETED:
+        return False
     if post.owner_id == user.pk:
         return True
     if post.status == RidePost.OPEN and not post.is_expired(now):

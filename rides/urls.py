@@ -9,6 +9,9 @@ urlpatterns = [
     path("rides/", views.find_rides_view, name="find_rides"),
     path("rides/new/", views.post_ride, name="post_ride"),
     path("rides/<int:post_id>/", views.ride_detail, name="ride_detail"),
+    path("rides/<int:post_id>/edit/", views.edit_ride, name="edit_ride"),
+    path("rides/<int:post_id>/close/", views.close_ride, name="close_ride"),
+    path("rides/<int:post_id>/delete/", views.delete_ride, name="delete_ride"),
     path(
         "rides/<int:post_id>/interest/",
         views.show_interest,

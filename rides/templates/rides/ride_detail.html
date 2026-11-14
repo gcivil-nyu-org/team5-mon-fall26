@@ -17,6 +17,14 @@
   </dl>
   {% if is_owner %}
     <p class="help">This is what riders going your way see.</p>
+    {% if can_edit %}<p><a href="{% url 'rides:edit_ride' post.pk %}">Edit post</a></p>{% endif %}
+    {% if can_close %}
+      <form method="post" action="{% url 'rides:close_ride' post.pk %}" class="interest-form">
+        {% csrf_token %}
+        <button type="submit" class="secondary-button">Close post</button>
+      </form>
+    {% endif %}
+    <p><a href="{% url 'rides:delete_ride' post.pk %}">Delete post</a></p>
     <section class="ride-interests" aria-labelledby="ride-interests-title">
       <h2 id="ride-interests-title">Interested riders</h2>
       {% if interested_riders %}
