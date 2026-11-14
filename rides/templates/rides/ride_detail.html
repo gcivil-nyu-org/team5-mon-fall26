@@ -12,7 +12,7 @@
     <dt>Pickup zone</dt><dd>{{ post.pickup_zone.name }} ({{ post.pickup_zone.borough }})</dd>
     <dt>Dropoff zone</dt><dd>{{ post.dropoff_zone.name }} ({{ post.dropoff_zone.borough }})</dd>
     <dt>Departure (New York time)</dt><dd>{% timezone "America/New_York" %}{{ post.departure_at|date:"D j M Y, g:i A" }}{% endtimezone %}</dd>
-    <dt>Seats</dt><dd>{% with left=post.seats_left %}{{ post.seats }} offered, {{ left }} seat{{ left|pluralize }} left{% endwith %}</dd>
+    <dt>Seats</dt><dd>{% with left=post.seats_left %}{{ post.seats }} seat{{ post.seats|pluralize }} offered, {{ left }} seat{{ left|pluralize }} left{% endwith %}</dd>
     <dt>Note</dt><dd>{% if post.note %}{{ post.note }}{% else %}—{% endif %}</dd>
   </dl>
   {% if is_owner %}
@@ -45,7 +45,7 @@
               {% elif entry.interest.status == "accepted" %}
                 <form method="post" action="{% url 'rides:undo_acceptance' post.pk entry.interest.pk %}" class="interest-form">
                   {% csrf_token %}
-                  <button type="submit" class="secondary-button">Undo acceptance</button>
+                  <button type="submit" class="secondary-button"{% if not can_undo_interests %} disabled{% endif %}>Undo acceptance</button>
                 </form>
               {% endif %}
             </li>

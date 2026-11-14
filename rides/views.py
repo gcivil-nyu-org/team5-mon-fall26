@@ -101,9 +101,7 @@ def ride_detail(request, post_id):
                 "rider_name": display_name_of(rider_interest.rider)
                 or f"Rider {rider_interest.rider_id}",
             }
-            for rider_interest in post.interests.select_related(
-                "rider__profile"
-            ).all()
+            for rider_interest in post.interests.select_related("rider__profile").all()
         ]
         can_accept_interests = (
             post.status == RidePost.OPEN
@@ -132,6 +130,7 @@ def ride_detail(request, post_id):
             and interest.blocked_reason(post, request.user, now) is None,
             "interested_riders": interested_riders,
             "can_accept_interests": can_accept_interests,
+            "can_undo_interests": not post.is_expired(now),
             "accepted_rider_names": accepted_rider_names,
             "can_edit": is_owner and post.status == RidePost.OPEN and post.departure_at > now,
             "can_close": is_owner and post.status != RidePost.CLOSED,
