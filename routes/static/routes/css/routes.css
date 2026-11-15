@@ -402,6 +402,11 @@ header {
   color: #1d5e2c;
 }
 
+.status-full {
+  background: #fff0c2;
+  color: #714b00;
+}
+
 .status-expired,
 .status-closed {
   color: #555;
@@ -437,6 +442,23 @@ header {
 .interest-form {
   display: inline-block;
   margin: 0.25rem 0;
+}
+
+.interest-list {
+  list-style: none;
+  padding: 0;
+}
+
+.interest-card {
+  margin: 0 0 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+}
+
+.interest-form button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .secondary-button {

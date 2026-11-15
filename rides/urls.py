@@ -19,4 +19,19 @@ urlpatterns = [
         views.withdraw_interest,
         name="withdraw_interest",
     ),
+    path(
+        "rides/<int:post_id>/interests/<int:interest_id>/accept/",
+        views.accept_interest,
+        name="accept_interest",
+    ),
+    path(
+        "rides/<int:post_id>/interests/<int:interest_id>/decline/",
+        views.decline_interest,
+        name="decline_interest",
+    ),
+    path(
+        "rides/<int:post_id>/interests/<int:interest_id>/undo-acceptance/",
+        views.undo_acceptance,
+        name="undo_acceptance",
+    ),
 ]
