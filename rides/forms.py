@@ -141,7 +141,10 @@ class RidePostForm(forms.ModelForm):
         pickup = cleaned.get("pickup_zone")
         if pickup is not None and pickup == cleaned.get("dropoff_zone"):
             self.add_error("dropoff_zone", SAME_ZONES)
-        if self.instance._state.adding and open_posts(self.user, self.now) >= MAX_OPEN_POSTS:
+        if (
+            self.instance._state.adding
+            and open_posts(self.user, self.now) >= MAX_OPEN_POSTS
+        ):
             raise forms.ValidationError(TOO_MANY_OPEN)
         return cleaned
 
@@ -169,9 +172,11 @@ class RidePostEditForm(RidePostForm):
 
     def clean_seats(self):
         seats = self.cleaned_data["seats"]
-        if self.instance.pk and seats < self.instance.interests.filter(
-            status=RideInterest.ACCEPTED
-        ).count():
+        if (
+            self.instance.pk
+            and seats
+            < self.instance.interests.filter(status=RideInterest.ACCEPTED).count()
+        ):
             raise forms.ValidationError(TOO_FEW_SEATS)
         return seats
 
@@ -187,7 +192,10 @@ class RidePostEditForm(RidePostForm):
                 return None
             departure = self.cleaned_data["departure_at"]
             if departure <= now or departure > now + timedelta(days=MAX_DAYS_AHEAD):
-                self.add_error("departure_at", DEPARTURE_PAST if departure <= now else DEPARTURE_TOO_FAR)
+                self.add_error(
+                    "departure_at",
+                    DEPARTURE_PAST if departure <= now else DEPARTURE_TOO_FAR,
+                )
                 return None
             seats = self.cleaned_data["seats"]
             accepted = post.interests.filter(status=RideInterest.ACCEPTED).count()

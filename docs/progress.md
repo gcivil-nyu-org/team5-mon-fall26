@@ -23,7 +23,7 @@ Entry format:
 
 **Decisions made (also in `decisions.md`):** Proposed for PO confirmation: undo returns a rider to Pending; declined interests remain final; accepted riders may withdraw; undo is blocked after departure. A closed post remains closed after undo.
 
-**Tests:** `rides/tests/test_accept_decline.py` has 16 tests, including concurrent accepts for the last seat; those tests and the one-seat detail regression test pass. `black --check .` and `flake8` pass. The full local Django run completed 1039 tests with 4 skipped and 2 existing Windows `strftime` errors; the reviewer reports CI passing on commit `54da3c4`.
+**Tests:** `rides/tests/test_accept_decline.py` has 16 tests, including concurrent accepts for the last seat. On the stacked US35 branch, `rides/tests/test_owner_guards.py` adds 6 owner-action guards and a deleted-post guard; 101 focused rides tests pass and `rides/interest.py` reaches 100% coverage. The one-seat detail regression test, `black --check .`, and `flake8` pass. The earlier full local Django run completed 1039 tests with 4 skipped and 2 existing Windows `strftime` errors; the reviewer reports CI passing on commit `54da3c4`.
 
 **Next step:** Review and merge US34 before the stacked US35 PR #107; confirm the proposed rules with the PO.
 

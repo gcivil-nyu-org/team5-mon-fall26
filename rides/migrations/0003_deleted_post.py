@@ -5,7 +5,9 @@ class Migration(migrations.Migration):
     dependencies = [("rides", "0002_ride_interest")]
 
     operations = [
-        migrations.RemoveConstraint(model_name="ridepost", name="ride_post_status_valid"),
+        migrations.RemoveConstraint(
+            model_name="ridepost", name="ride_post_status_valid"
+        ),
         migrations.AlterField(
             model_name="ridepost",
             name="status",

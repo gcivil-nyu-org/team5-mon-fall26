@@ -34,7 +34,12 @@ class RidePost(models.Model):
     FULL = "full"
     CLOSED = "closed"
     DELETED = "deleted"
-    STATUS_CHOICES = [(OPEN, "Open"), (FULL, "Full"), (CLOSED, "Closed"), (DELETED, "Deleted")]
+    STATUS_CHOICES = [
+        (OPEN, "Open"),
+        (FULL, "Full"),
+        (CLOSED, "Closed"),
+        (DELETED, "Deleted"),
+    ]
     EXPIRED = "Expired"
 
     owner = models.ForeignKey(
@@ -76,7 +81,9 @@ class RidePost(models.Model):
     def is_expired(self, now=None):
         """Departed and not closed by its owner."""
         now = now or timezone.now()
-        return self.status not in (self.CLOSED, self.DELETED) and self.departure_at <= now
+        return (
+            self.status not in (self.CLOSED, self.DELETED) and self.departure_at <= now
+        )
 
     def seats_left(self):
         """Seats offered minus the riders the owner has accepted."""

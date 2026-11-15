@@ -132,7 +132,9 @@ def ride_detail(request, post_id):
             "can_accept_interests": can_accept_interests,
             "can_undo_interests": not post.is_expired(now),
             "accepted_rider_names": accepted_rider_names,
-            "can_edit": is_owner and post.status == RidePost.OPEN and post.departure_at > now,
+            "can_edit": is_owner
+            and post.status == RidePost.OPEN
+            and post.departure_at > now,
             "can_close": is_owner and post.status != RidePost.CLOSED,
         },
     )
@@ -143,7 +145,10 @@ def ride_detail(request, post_id):
 @require_http_methods(["GET", "POST"])
 def edit_ride(request, post_id):
     post = get_object_or_404(
-        RidePost, pk=post_id, owner=request.user, status=RidePost.OPEN,
+        RidePost,
+        pk=post_id,
+        owner=request.user,
+        status=RidePost.OPEN,
         departure_at__gt=timezone.now(),
     )
     if request.method == "POST":
