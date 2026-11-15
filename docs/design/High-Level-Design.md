@@ -299,7 +299,7 @@ Rules: 3 to 30 characters after trimming (runs of spaces become one), letters A 
 
 A signed-in rider with a display name (US30) can post that they're taking a taxi from one zone to another at a time, so riders going the same way can share it. "Post a shared ride" in the trip summary opens `GET /rides/new/?from=&to=` with the zones filled in; guests see "Sign in to share a ride". The form posts to the same address (CSRF token); the owner comes from the session.
 
-The `rides_ridepost` table (`rides.RidePost`) stores owner, pickup zone, dropoff zone, departure date and time, seats offered (1 to 3), an optional note (up to 200 characters), status (`open`, `full` or `closed`) and the creation time. No addresses are stored. Every link uses `on_delete=CASCADE`, so deleting an account deletes its posts.
+The `rides_ridepost` table (`rides.RidePost`) stores owner, pickup zone, dropoff zone, departure date and time, seats offered (1 to 3), an optional note (up to 200 characters), status (`open`, `full`, `closed` or `deleted`) and the creation time. No addresses are stored. Every link uses `on_delete=CASCADE`, so deleting an account deletes its posts.
 
 | Page | What it does |
 |---|---|
@@ -338,4 +338,10 @@ The owner manages the `RideInterest` rows on `GET /rides/<id>/`. Each interest i
 Each accepted interest consumes one offered seat. `RidePost.seats_left()` subtracts the number of accepted interests. Accepting the last seat changes the post status to `full`, which removes it from `RidePost.objects.open()` and search. Undoing an acceptance, or withdrawing an accepted interest, frees a seat and changes a full post back to `open`; a closed post remains closed. Expired posts cannot accept riders. The accepted rider sees "You're in" and the other accepted riders' display names.
 
 Capacity changes run in one database transaction while locking the post and the interest. The post lock serializes concurrent accepts, so accepted interests cannot exceed the number of offered seats. No new table, migration or dependency is required.
+
+## 31. Edit, close or delete my post (US35)
+
+Only the owner can use `GET/POST /rides/<id>/edit/`, `POST /rides/<id>/close/` or `GET/POST /rides/<id>/delete/`; other users receive 404. The edit page changes departure time, seats and note on an open, upcoming post, reusing US31 validation. It locks the post and checks accepted-rider count before saving, so seats cannot fall below the accepted count. If all remaining seats are accepted, the post becomes full.
+
+Closing hides a post from search and blocks new riders while preserving detail access for its owner and riders with existing interests. Deletion requires confirmation and records the status `deleted`, clearing the note. Deleted details return 404 for everyone. The interest rows remain to provide a deletion notice in the shared-rides page and later in US37's My rides page. Migration `0003_deleted_post` extends the status field and check constraint.
 

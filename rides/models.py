@@ -33,7 +33,13 @@ class RidePost(models.Model):
     OPEN = "open"
     FULL = "full"
     CLOSED = "closed"
-    STATUS_CHOICES = [(OPEN, "Open"), (FULL, "Full"), (CLOSED, "Closed")]
+    DELETED = "deleted"
+    STATUS_CHOICES = [
+        (OPEN, "Open"),
+        (FULL, "Full"),
+        (CLOSED, "Closed"),
+        (DELETED, "Deleted"),
+    ]
     EXPIRED = "Expired"
 
     owner = models.ForeignKey(
@@ -50,7 +56,7 @@ class RidePost(models.Model):
     departure_at = models.DateTimeField(db_index=True)
     seats = models.PositiveSmallIntegerField()
     note = models.CharField(max_length=NOTE_MAX_LENGTH, blank=True)
-    status = models.CharField(max_length=6, choices=STATUS_CHOICES, default=OPEN)
+    status = models.CharField(max_length=7, choices=STATUS_CHOICES, default=OPEN)
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = RidePostQuerySet.as_manager()
@@ -67,7 +73,7 @@ class RidePost(models.Model):
                 name="ride_post_different_zones",
             ),
             models.CheckConstraint(
-                condition=Q(status__in=["open", "full", "closed"]),
+                condition=Q(status__in=["open", "full", "closed", "deleted"]),
                 name="ride_post_status_valid",
             ),
         ]
@@ -75,7 +81,9 @@ class RidePost(models.Model):
     def is_expired(self, now=None):
         """Departed and not closed by its owner."""
         now = now or timezone.now()
-        return self.status != self.CLOSED and self.departure_at <= now
+        return (
+            self.status not in (self.CLOSED, self.DELETED) and self.departure_at <= now
+        )
 
     def seats_left(self):
         """Seats offered minus the riders the owner has accepted."""

@@ -10,7 +10,7 @@ from reports.forms import NycDateTimeField
 from zones.models import Zone
 from zones.views import NYC_TZ, shape_zone_ids
 
-from .models import MAX_OPEN_POSTS, MAX_SEATS, NOTE_MAX_LENGTH, RidePost
+from .models import MAX_OPEN_POSTS, MAX_SEATS, NOTE_MAX_LENGTH, RideInterest, RidePost
 
 MAX_DAYS_AHEAD = 14
 STEP_MINUTES = 15
@@ -32,6 +32,8 @@ TOO_MANY_OPEN = (
     f"You already have {MAX_OPEN_POSTS} open shared rides, the most you can have "
     "at a time. You can post another once one of them has departed."
 )
+TOO_FEW_SEATS = "Seats cannot be fewer than the riders already accepted."
+EDIT_UNAVAILABLE = "Only an open, upcoming ride can be edited."
 
 # Contact details riders might put in the note by mistake: an email address,
 # or a phone number (10 or more digits, with or without separators).
@@ -100,14 +102,15 @@ class RidePostForm(forms.ModelForm):
         self.user = user
         self.now = now or timezone.now()
         super().__init__(*args, **kwargs)
-        on_map = Zone.objects.filter(zone_id__in=shape_zone_ids()).order_by(
-            "borough", "name"
-        )
-        for name in ("pickup_zone", "dropoff_zone"):
-            self.fields[name].queryset = on_map
-            self.fields[name].label_from_instance = (
-                lambda zone: f"{zone.name} ({zone.borough})"
+        if "pickup_zone" in self.fields:
+            on_map = Zone.objects.filter(zone_id__in=shape_zone_ids()).order_by(
+                "borough", "name"
             )
+            for name in ("pickup_zone", "dropoff_zone"):
+                self.fields[name].queryset = on_map
+                self.fields[name].label_from_instance = (
+                    lambda zone: f"{zone.name} ({zone.borough})"
+                )
         self.fields["departure_at"].widget.attrs.update(
             {
                 "step": str(STEP_MINUTES * 60),
@@ -138,7 +141,10 @@ class RidePostForm(forms.ModelForm):
         pickup = cleaned.get("pickup_zone")
         if pickup is not None and pickup == cleaned.get("dropoff_zone"):
             self.add_error("dropoff_zone", SAME_ZONES)
-        if open_posts(self.user, self.now) >= MAX_OPEN_POSTS:
+        if (
+            self.instance._state.adding
+            and open_posts(self.user, self.now) >= MAX_OPEN_POSTS
+        ):
             raise forms.ValidationError(TOO_MANY_OPEN)
         return cleaned
 
@@ -155,6 +161,52 @@ class RidePostForm(forms.ModelForm):
                 self.add_error(None, TOO_MANY_OPEN)
                 return None
             post.save()
+        return post
+
+
+class RidePostEditForm(RidePostForm):
+    """Use the posting rules for the three fields an owner may edit."""
+
+    class Meta(RidePostForm.Meta):
+        fields = ["departure_at", "seats", "note"]
+
+    def clean_seats(self):
+        seats = self.cleaned_data["seats"]
+        if (
+            self.instance.pk
+            and seats
+            < self.instance.interests.filter(status=RideInterest.ACCEPTED).count()
+        ):
+            raise forms.ValidationError(TOO_FEW_SEATS)
+        return seats
+
+    def save(self):
+        """Recheck capacity and editability under the same post row lock."""
+        with transaction.atomic():
+            post = RidePost.objects.select_for_update().get(
+                pk=self.instance.pk, owner=self.user
+            )
+            now = timezone.now()
+            if post.status != RidePost.OPEN or post.departure_at <= now:
+                self.add_error(None, EDIT_UNAVAILABLE)
+                return None
+            departure = self.cleaned_data["departure_at"]
+            if departure <= now or departure > now + timedelta(days=MAX_DAYS_AHEAD):
+                self.add_error(
+                    "departure_at",
+                    DEPARTURE_PAST if departure <= now else DEPARTURE_TOO_FAR,
+                )
+                return None
+            seats = self.cleaned_data["seats"]
+            accepted = post.interests.filter(status=RideInterest.ACCEPTED).count()
+            if seats < accepted:
+                self.add_error("seats", TOO_FEW_SEATS)
+                return None
+            post.departure_at = departure
+            post.seats = seats
+            post.note = self.cleaned_data["note"]
+            post.status = RidePost.FULL if seats == accepted else RidePost.OPEN
+            post.save(update_fields=["departure_at", "seats", "note", "status"])
         return post
 
 

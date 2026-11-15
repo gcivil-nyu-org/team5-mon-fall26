@@ -28,3 +28,4 @@ One file per user story, mirroring the ZenHub issue (story line, developer tasks
 | US32.md | #94 | Find Shared Rides on My Route (written by hand, not by the sync script) |
 | US33.md | #95 | Show Interest in a Shared Ride (written by hand, not by the sync script) |
 | US34.md | #96 | Accept or Decline Interested Riders (written by hand, not by the sync script) |
+| US35.md | #97 | Edit, Close, or Delete My Post (written by hand, not by the sync script) |

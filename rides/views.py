@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -15,7 +16,7 @@ from accounts.display_name import display_name_of, display_name_required
 from zones.views import MAX_ZONE_ID, NYC_TZ, _parse_int
 
 from . import interest
-from .forms import RidePostForm, RideSearchForm, requested_departure
+from .forms import RidePostEditForm, RidePostForm, RideSearchForm, requested_departure
 from .models import RideInterest, RidePost
 from .search import date_for_day, find_rides
 
@@ -131,8 +132,72 @@ def ride_detail(request, post_id):
             "can_accept_interests": can_accept_interests,
             "can_undo_interests": not post.is_expired(now),
             "accepted_rider_names": accepted_rider_names,
+            "can_edit": is_owner
+            and post.status == RidePost.OPEN
+            and post.departure_at > now,
+            "can_close": is_owner and post.status != RidePost.CLOSED,
         },
     )
+
+
+@login_required
+@display_name_required
+@require_http_methods(["GET", "POST"])
+def edit_ride(request, post_id):
+    post = get_object_or_404(
+        RidePost,
+        pk=post_id,
+        owner=request.user,
+        status=RidePost.OPEN,
+        departure_at__gt=timezone.now(),
+    )
+    if request.method == "POST":
+        form = RidePostEditForm(request.user, request.POST, instance=post)
+        if form.is_valid() and (saved := form.save()) is not None:
+            messages.success(request, "Your shared ride was updated.")
+            return redirect("rides:ride_detail", post_id=saved.pk)
+    else:
+        form = RidePostEditForm(request.user, instance=post)
+    return render(request, "rides/edit_ride.html", {"post": post, "form": form})
+
+
+@login_required
+@display_name_required
+@require_POST
+def close_ride(request, post_id):
+    with transaction.atomic():
+        post = get_object_or_404(
+            RidePost.objects.select_for_update(), pk=post_id, owner=request.user
+        )
+        if post.status == RidePost.DELETED:
+            raise Http404
+        if post.status != RidePost.CLOSED:
+            post.status = RidePost.CLOSED
+            post.save(update_fields=["status"])
+    messages.success(request, "Your shared ride was closed.")
+    return redirect("rides:ride_detail", post_id=post.pk)
+
+
+@login_required
+@display_name_required
+@require_http_methods(["GET", "POST"])
+def delete_ride(request, post_id):
+    post = get_object_or_404(RidePost, pk=post_id, owner=request.user)
+    if post.status == RidePost.DELETED:
+        raise Http404
+    if request.method == "POST":
+        with transaction.atomic():
+            post = get_object_or_404(
+                RidePost.objects.select_for_update(), pk=post_id, owner=request.user
+            )
+            if post.status == RidePost.DELETED:
+                raise Http404
+            post.status = RidePost.DELETED
+            post.note = ""
+            post.save(update_fields=["status", "note"])
+        messages.success(request, "Your shared ride was deleted.")
+        return redirect("rides:find_rides")
+    return render(request, "rides/delete_ride.html", {"post": post})
 
 
 # ---- US33 #95: show interest ----
@@ -250,7 +315,15 @@ def find_rides_view(request):
     context["my_posts"] = (
         RidePost.objects.with_seat_counts()
         .filter(owner=request.user, departure_at__gt=now)
-        .exclude(status=RidePost.CLOSED)
+        .exclude(status__in=[RidePost.CLOSED, RidePost.DELETED])
         .select_related("pickup_zone", "dropoff_zone")
+    )
+    context["ride_updates"] = (
+        RideInterest.objects.filter(
+            rider=request.user,
+            post__status__in=[RidePost.CLOSED, RidePost.DELETED],
+        )
+        .select_related("post__pickup_zone", "post__dropoff_zone")
+        .order_by("-post__created_at")
     )
     return render(request, "rides/find_rides.html", context)

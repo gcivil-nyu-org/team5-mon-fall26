@@ -15,6 +15,20 @@ Entry format:
 
 ## Log
 
+### 2026-11-14 — us35-edit-post (US35 #97, built on US34 #96)
+**What changed:**
+- `GET/POST /rides/<id>/edit/` (departure, seats and note of an open, upcoming post; `RidePostEditForm` in `rides/forms.py`), `POST /rides/<id>/close/` and `GET/POST /rides/<id>/delete/` with a confirmation page (`rides/views.py`, `rides/templates/rides/edit_ride.html`, `delete_ride.html`).
+- New status `deleted` (migration `rides/0003_deleted_post` widens the status field and check constraint). Deleting marks the post deleted and clears its note; its page returns 404 for everyone; interest rows stay so riders see a notice.
+- `rides/interest.py`: deleted posts block interest and owner actions and can't be viewed.
+- "Your ride updates" on `/rides/` lists closed and deleted rides the rider showed interest in.
+- Docs: `decisions.md` (US35 section), HLD section 31, `CLAUDE.md` data model, `docs/stories/US35.md`.
+
+**Decisions made (also in `decisions.md`):** proposed, to confirm with the PO: only an open, upcoming post can be edited (not a full one); zones can't be edited; delete keeps a minimal record so riders see a notice; a closed post stays visible to the owner and to riders who showed interest.
+
+**Tests:** `rides/tests/test_edit_close_delete.py` (13: every acceptance criterion, posting rules on edit, the open-post slot freed by delete, non-owner 404s) and the deleted-post guard in `rides/tests/test_owner_guards.py`. Full suite OK.
+
+**Next step:** US37 should move "Your ride updates" to My rides and hide old ones. US36 can make conversations read-only when the post status is `deleted`.
+
 ### 2026-11-14 — us34-accept-decline (US34 #96)
 **What changed:**
 - Added owner-only Accept, Decline and Undo acceptance actions on the ride post page. `manage_owner_interest` locks the post and interest rows in one transaction before changing capacity.
@@ -23,7 +37,7 @@ Entry format:
 
 **Decisions made (also in `decisions.md`):** Proposed for PO confirmation: undo returns a rider to Pending; declined interests remain final; accepted riders may withdraw; undo is blocked after departure. A closed post remains closed after undo.
 
-**Tests:** `rides/tests/test_accept_decline.py` has 16 tests, including concurrent accepts for the last seat; those tests and the one-seat detail regression test pass. `black --check .` and `flake8` pass. The full local Django run completed 1039 tests with 4 skipped and 2 existing Windows `strftime` errors; the reviewer reports CI passing on commit `54da3c4`.
+**Tests:** `rides/tests/test_accept_decline.py` has 16 tests, including concurrent accepts for the last seat. On the stacked US35 branch, `rides/tests/test_owner_guards.py` adds 6 owner-action guards and a deleted-post guard; 101 focused rides tests pass and `rides/interest.py` reaches 100% coverage. The one-seat detail regression test, `black --check .`, and `flake8` pass. The earlier full local Django run completed 1039 tests with 4 skipped and 2 existing Windows `strftime` errors; the reviewer reports CI passing on commit `54da3c4`.
 
 **Next step:** Review and merge US34 before the stacked US35 PR #107; confirm the proposed rules with the PO.
 

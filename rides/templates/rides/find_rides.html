@@ -21,6 +21,24 @@
       <p><a href="{% url 'rides:post_ride' %}">Post a shared ride</a></p>
     </section>
 
+    {% if ride_updates %}
+      <section class="my-rides" aria-labelledby="ride-updates-title">
+        <h2 id="ride-updates-title">Your ride updates</h2>
+        <ul>
+          {% for item in ride_updates %}
+            <li>
+              {{ item.post.pickup_zone.name }} to {{ item.post.dropoff_zone.name }}:
+              {% if item.post.status == "deleted" %}
+                This shared ride was deleted.
+              {% else %}
+                <a href="{% url 'rides:ride_detail' item.post.pk %}">This shared ride was closed.</a>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
     <form method="get" class="ride-form ride-search">
       {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
       {% for field in form %}

@@ -1,0 +1,12 @@
+{% extends "routes/base.html" %}
+
+{% block title %}Delete shared ride{% endblock %}
+{% block content %}
+  <h1>Delete shared ride?</h1>
+  <p>Delete the ride from {{ post.pickup_zone.name }} to {{ post.dropoff_zone.name }}? Riders who showed interest will see that it was deleted.</p>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="danger-button">Delete post</button>
+    <a href="{% url 'rides:ride_detail' post.pk %}">Cancel</a>
+  </form>
+{% endblock %}
