@@ -15,6 +15,18 @@ Entry format:
 
 ## Log
 
+### 2026-11-14 — us34-accept-decline (US34 #96)
+**What changed:**
+- Added owner-only Accept, Decline and Undo acceptance actions on the ride post page. `manage_owner_interest` locks the post and interest rows in one transaction before changing capacity.
+- Accepted riders use seats; accepting the last seat makes the post Full and hides it from search. Undoing an acceptance or an accepted rider withdrawing frees the seat. Accepted riders see “You're in” and other accepted riders' display names.
+- Updated `rides/interest.py`, `rides/models.py`, `rides/views.py`, `rides/urls.py`, templates, styles, and the story and design documentation. No new table or migration was needed.
+
+**Decisions made (also in `decisions.md`):** Proposed for PO confirmation: undo returns a rider to Pending; declined interests remain final; accepted riders may withdraw; undo is blocked after departure. A closed post remains closed after undo.
+
+**Tests:** `rides/tests/test_accept_decline.py` has 16 tests, including concurrent accepts for the last seat; those tests and the one-seat detail regression test pass. `black --check .` and `flake8` pass. The full local Django run completed 1039 tests with 4 skipped and 2 existing Windows `strftime` errors; the reviewer reports CI passing on commit `54da3c4`.
+
+**Next step:** Review and merge US34 before the stacked US35 PR #107; confirm the proposed rules with the PO.
+
 ### 2026-11-11 — us31-rideshare-offer (US31 #93, stacked on US30 #92)
 **What changed:**
 - New app `rides`: `RidePost` (`rides/models.py`, migration `rides/0001_ride_post`, creates one table) with `objects.open(now)` and `status_label()` ("Expired" worked out when read). Registered in the admin.
