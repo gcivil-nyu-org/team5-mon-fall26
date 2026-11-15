@@ -475,3 +475,146 @@ header {
 .interest-declined {
   color: #555;
 }
+
+/* US36 #98: a chat between a post's owner and one rider. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #d0d5dd;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.chat-header {
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid #e4e7ec;
+  background: #f9fafb;
+}
+
+.chat-header h1 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.chat-header p {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  color: #555;
+}
+
+.chat-log {
+  list-style: none;
+  margin: 0;
+  padding: 0.8rem 0.7rem;
+  height: 22rem;
+  overflow-y: auto;
+  background: #f2f4f7;
+}
+
+.chat-row {
+  display: flex;
+  margin: 0 0 0.45rem;
+}
+
+.chat-row.mine {
+  justify-content: flex-end;
+}
+
+.chat-bubble {
+  max-width: 78%;
+  padding: 0.45rem 0.7rem 0.3rem;
+  border-radius: 16px 16px 16px 4px;
+  background: #fff;
+  color: #1f2937;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+}
+
+.chat-row.mine .chat-bubble {
+  border-radius: 16px 16px 4px 16px;
+  background: #0057b8;
+  color: #fff;
+}
+
+.chat-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
+.chat-time {
+  margin: 0.15rem 0 0;
+  font-size: 0.7rem;
+  text-align: right;
+  opacity: 0.7;
+}
+
+.chat-empty {
+  margin: 0;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.85rem;
+  color: #555;
+  text-align: center;
+  background: #f2f4f7;
+}
+
+.chat-read-only {
+  margin: 0;
+  padding: 0.7rem 0.9rem;
+  border-top: 1px solid #e4e7ec;
+  background: #fbeaea;
+  color: #7a1c15;
+  font-size: 0.9rem;
+}
+
+.chat-compose {
+  padding: 0.6rem 0.7rem 0.5rem;
+  border-top: 1px solid #e4e7ec;
+}
+
+.chat-reminder {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  color: #7a1c15;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.chat-input-row textarea {
+  flex: 1;
+  box-sizing: border-box;
+  min-height: 2.4rem;
+  max-height: 8rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #bbb;
+  border-radius: 18px;
+  font: inherit;
+  font-size: 15px;
+  resize: none;
+}
+
+.chat-compose button.chat-send {
+  width: auto;
+  padding: 0.5rem 1rem;
+  border-radius: 18px;
+}
+
+.chat-hint {
+  margin: 0.3rem 0 0;
+  font-size: 0.72rem;
+  color: #777;
+}

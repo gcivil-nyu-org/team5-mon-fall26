@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.http import Http404
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -15,8 +15,14 @@ from django.views.decorators.http import (
 from accounts.display_name import display_name_of, display_name_required
 from zones.views import MAX_ZONE_ID, NYC_TZ, _parse_int
 
-from . import interest
-from .forms import RidePostEditForm, RidePostForm, RideSearchForm, requested_departure
+from . import interest, messaging
+from .forms import (
+    RideMessageForm,
+    RidePostEditForm,
+    RidePostForm,
+    RideSearchForm,
+    requested_departure,
+)
 from .models import RideInterest, RidePost
 from .search import date_for_day, find_rides
 
@@ -327,3 +333,68 @@ def find_rides_view(request):
         .order_by("-post__created_at")
     )
     return render(request, "rides/find_rides.html", context)
+
+
+# ---- US36 #98: message riders about a shared ride ----
+
+
+def conversation_url(post_id, rider_id):
+    return reverse("rides:conversation", args=[post_id, rider_id])
+
+
+@login_required
+@display_name_required
+@require_http_methods(["GET", "POST"])
+def conversation(request, post_id, rider_id):
+    """The owner and one interested rider: messages oldest first and a send
+    box. Anyone else gets 404. The page checks for new messages every 15
+    seconds while it is visible (rides/js/conversation.js)."""
+    talk = messaging.conversation_for(request.user, post_id, rider_id)
+    now = timezone.now()
+    if request.method == "POST":
+        form = RideMessageForm(request.POST)
+        if form.is_valid():
+            sent, message = messaging.send(
+                request.user, talk, form.cleaned_data["text"], now
+            )
+            if sent:
+                return redirect(f"{conversation_url(post_id, rider_id)}#latest")
+            form.add_error(None, message)
+    else:
+        form = RideMessageForm()
+    thread = list(talk.messages())
+    messaging.mark_read(thread, request.user, now)
+    other = talk.other(request.user)
+    return render(
+        request,
+        "rides/conversation.html",
+        {
+            "post": talk.post,
+            "other_name": display_name_of(other) or f"Rider {other.pk}",
+            "thread": [messaging.as_json(m, request.user) for m in thread],
+            "last_id": thread[-1].pk if thread else 0,
+            "read_only": talk.read_only_reason(now),
+            "form": form,
+            "poll_url": reverse("rides:conversation_updates", args=[post_id, rider_id]),
+            "poll_ms": messaging.POLL_SECONDS * 1000,
+            "can_open_post": interest.can_view(talk.post, request.user, now),
+        },
+    )
+
+
+@login_required
+@require_GET
+def conversation_updates(request, post_id, rider_id):
+    """JSON: messages newer than ?after=<id>, and whether the conversation
+    has become read-only. Polled by the conversation page."""
+    talk = messaging.conversation_for(request.user, post_id, rider_id)
+    now = timezone.now()
+    after = _parse_int(request.GET.get("after"), 0, 2**31 - 1) or 0
+    new = list(talk.messages().filter(pk__gt=after))
+    messaging.mark_read(new, request.user, now)
+    return JsonResponse(
+        {
+            "messages": [messaging.as_json(m, request.user) for m in new],
+            "read_only": talk.read_only_reason(now),
+        }
+    )
