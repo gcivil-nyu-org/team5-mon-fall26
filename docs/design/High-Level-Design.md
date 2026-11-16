@@ -284,3 +284,84 @@ The heatmap has a "Show likely surge hours" toggle. When it is on, the selected 
 
 The rule runs in `zones/stats.py` (`surge_grid`), one query per zone. No table is added; the rideshare tables come from US27.
 
+## 26. Display name (US30)
+
+Epic 4 lets riders see each other, so every account gets a display name that other riders see in place of the email address. The `accounts_profile` table (`accounts.Profile`) stores `user` (one-to-one, `on_delete=CASCADE`, so deleting the account deletes it) and `display_name`. A unique index on the lowercased name keeps "Alex" and "alex" from both existing, even when saved at the same moment.
+
+| Page | What it does |
+|---|---|
+| `GET /accounts/account/` | My account: the current display name (or "You haven't chosen a display name yet.") and a form to set or change it |
+| `GET/POST /accounts/display-name/?next=` | Choose or change the display name (sign-in required, CSRF), then go back to `next` if it is on this site, else to My account |
+
+Rules: 3 to 30 characters after trimming (runs of spaces become one), letters A to Z, numbers, spaces, dots, dashes and underscores, at least one letter or number, unique ignoring capitals, no `@`, not the start of the rider's own email, not a reserved name (admin, support, taxiscope…). Ride-sharing views use `display_name_required` (`accounts/display_name.py`): a signed-in rider without a name is sent to choose one first and comes back to the same page.
+
+## 27. Post a ride-share offer (US31)
+
+A signed-in rider with a display name (US30) can post that they're taking a taxi from one zone to another at a time, so riders going the same way can share it. "Post a shared ride" in the trip summary opens `GET /rides/new/?from=&to=` with the zones filled in; guests see "Sign in to share a ride". The form posts to the same address (CSRF token); the owner comes from the session.
+
+The `rides_ridepost` table (`rides.RidePost`) stores owner, pickup zone, dropoff zone, departure date and time, seats offered (1 to 3), an optional note (up to 200 characters), status (`open`, `full`, `closed` or `deleted`) and the creation time. No addresses are stored. Every link uses `on_delete=CASCADE`, so deleting an account deletes its posts.
+
+| Page | What it does |
+|---|---|
+| `GET/POST /rides/new/?from=&to=` | Post a shared ride (sign-in prompt for guests; a rider without a display name chooses one first) |
+| `GET /rides/<id>/` | The post as other riders will see it: display name, zones, departure (New York time), seats, note, status. The owner always; other riders while open or after showing interest |
+
+Validation: two different zones on the map, a departure on a quarter hour in New York time, after now and no more than 14 days ahead, 1 to 3 seats, a note of at most 200 characters with no email address or phone number, and at most 3 open posts per rider (checked again with the rider's row locked when saving). A post whose departure has passed shows as "Expired" and no longer counts as open; this is worked out when posts are read (`RidePost.objects.open()`), so no scheduled job is needed. Other riders only ever see the owner's display name, never the email.
+
+## 28. Find shared rides on my route (US32)
+
+A signed-in rider with a display name searches open ride-share posts on a route like theirs. "Find a shared ride" in the trip summary (and "Shared rides" in the navigation) opens `GET /rides/?from=&to=&day=`; guests see "Sign in to find a shared ride".
+
+| Page | What it does |
+|---|---|
+| `GET /rides/?from=&to=&date=&time=` | Find a shared ride. Pickup, dropoff and date (today to 14 days ahead) are required, the time is optional. `?day=` (Monday=0, from the trip summary) becomes the next date on that weekday. Searches as soon as route and date are there |
+| `GET /rides/new/?from=&to=&date=&time=` | The US31 form, now also filling in the departure from `date` and `time` (the empty search's "Post a shared ride" link) |
+
+Matching (`rides/search.py`): open posts by other riders (`RidePost.objects.open()`, so not full, closed or expired) whose pickup is the same as or adjacent to the searched pickup and whose dropoff is the same as or adjacent to the searched dropoff (`zone_neighbors.json`, US18), departing on the chosen date in New York time and, with a time, within 1 hour of it. "Same route" posts come first, then "Nearby pickup", "Nearby dropoff" or "Nearby pickup and dropoff" ones, each by departure time. Each result shows the owner's display name (never the email), the zones, the departure, seats left (seats offered minus accepted riders) and the note. If nothing matches, the page says so and links to "Post a shared ride" with the same route and date. No new table.
+
+## 29. Show interest in a shared ride (US33)
+
+A signed-in rider with a display name tells a post's owner they'd like to share the ride. The `rides_rideinterest` table (`rides.RideInterest`) stores the post, the rider, the status (`pending`, `accepted` or `declined`) and the creation time, one per rider per post (unique index). Every link uses `on_delete=CASCADE`, so deleting either account, or the post, deletes it.
+
+| Page | What it does |
+|---|---|
+| `GET /rides/<id>/` | The post's page. The owner always; other riders while the post is open, or once they have shown interest. Shows "I'm interested", or "Your interest: Pending/Accepted/Declined" with "Withdraw" (not for declined) |
+| `POST /rides/<id>/interest/` | Show interest (CSRF). Refused for the rider's own post and for full, closed or departed posts, with the post's row locked |
+| `POST /rides/<id>/withdraw/` | Withdraw a pending or accepted interest (deletes it). A declined one stays |
+
+The same buttons and status are on every US32 search result. US34 adds owner actions on the post page and the accepted-rider view.
+
+## 30. Accept or decline interested riders (US34)
+
+The owner manages the `RideInterest` rows on `GET /rides/<id>/`. Each interest is shown by display name, never email. A pending interest can be accepted or declined; an accepted one can be undone back to pending; declined interests stay visible. `POST /rides/<id>/interests/<interest-id>/accept/`, `/decline/` and `/undo-acceptance/` require sign-in, CSRF and ownership of the post.
+
+Each accepted interest consumes one offered seat. `RidePost.seats_left()` subtracts the number of accepted interests. Accepting the last seat changes the post status to `full`, which removes it from `RidePost.objects.open()` and search. Undoing an acceptance, or withdrawing an accepted interest, frees a seat and changes a full post back to `open`; a closed post remains closed. Expired posts cannot accept riders. The accepted rider sees "You're in" and the other accepted riders' display names.
+
+Capacity changes run in one database transaction while locking the post and the interest. The post lock serializes concurrent accepts, so accepted interests cannot exceed the number of offered seats. No new table, migration or dependency is required.
+
+## 31. Edit, close or delete my post (US35)
+
+Only the owner can use `GET/POST /rides/<id>/edit/`, `POST /rides/<id>/close/` or `GET/POST /rides/<id>/delete/`; other users receive 404. The edit page changes departure time, seats and note on an open, upcoming post, reusing US31 validation. It locks the post and checks accepted-rider count before saving, so seats cannot fall below the accepted count. If all remaining seats are accepted, the post becomes full.
+
+Closing hides a post from search and blocks new riders while preserving detail access for its owner and riders with existing interests. Deletion requires confirmation and records the status `deleted`, clearing the note. Deleted details return 404 for everyone. The interest rows remain to provide a deletion notice in the shared-rides page and later in US37's My rides page. Migration `0003_deleted_post` extends the status field and check constraint.
+
+## 32. Message riders about a shared ride (US36)
+
+The `rides_ridemessage` table (`rides.RideMessage`, migration `0004_ride_message`) stores the post, sender, receiver, text (up to 500 characters), sent time and read time. Every link uses `on_delete=CASCADE`, so deleting an account deletes its messages. The database refuses an empty text and a message to oneself; an index on sender and sent time serves the hourly limit.
+
+A conversation is a post plus its owner and one rider who showed interest. `GET/POST /rides/<id>/messages/<rider-id>/` shows the messages oldest first with a send box and the reminder not to share addresses or phone numbers and to meet in a public place; only those two riders can open it (404 for anyone else). `GET /rides/<id>/messages/<rider-id>/new/?after=<message-id>` returns newer messages as JSON plus whether the conversation is read-only. The page script polls it every 15 seconds only while the page is visible, pauses when the tab is hidden and checks at once when it is shown again. No websockets.
+
+Sending is refused 24 hours after the ride's departure, once the post is deleted, and (proposed) once the rider withdraws or is declined; the messages stay readable. Each sender can send 30 messages per hour across all conversations, counted under a lock on the sender's user row.
+
+## 33. My rides (US37)
+
+`GET /rides/mine/` (sign-in and a display name required) shows two lists built in `rides/my_rides.py`. "My posts": the user's posts except deleted ones, with status, seats left and the interested riders (display names, status, "New" tag, unread count and a link to each conversation). "Rides I've asked to join": every post the user showed interest in, with Pending, Accepted or Declined, or Closed or Deleted once the owner closed or deleted it, the owner's display name and the unread count of that conversation. Rides that left more than 7 days ago are hidden unless `?past=1`, except those with something unread or new.
+
+Unread counts come from `RideMessage.read_at` (US36), which is set when the conversation is opened or polled. "New interested rider" uses `RideInterest.owner_seen_at` (migration `0005_interest_owner_seen`), set when the owner opens the post page. The nav "My rides" link has a badge with unread messages plus new interested riders, provided to every template by the context processor `rides.context_processors.ride_badge` and counted only when a page shows it. No new dependency.
+
+## 34. Report a post or message (US38)
+
+The `rides_contentreport` table (`rides.ContentReport`, migration `0006_content_report`) stores the reporter (`on_delete=CASCADE`), exactly one of the reported post or message (database check), the reason (spam, unsafe, offensive or other), an optional note up to 300 characters, a snapshot of the reported text, the status (open or closed) and the created time. Conditional unique indexes allow one report per user per post and per message.
+
+`GET/POST /rides/<id>/report/` reports a post the user can see and does not own; `GET/POST /rides/messages/<message-id>/report/` reports a message sent to the user. Anything else is 404. The post page and each received message in a conversation have a "Report" link. Reports are listed only in the Django admin (filters for reason and status, status editable) until Epic 5 adds moderation; the reported rider is never shown who reported them. No new dependency.
+

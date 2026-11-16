@@ -20,4 +20,5 @@ urlpatterns = [
     path("signout/", auth_views.LogoutView.as_view(), name="signout"),
     path("account/", views.AccountView.as_view(), name="account"),
     path("account/delete/", views.delete_account, name="delete"),
+    path("display-name/", views.display_name, name="display_name"),
 ]

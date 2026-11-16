@@ -15,6 +15,99 @@ Entry format:
 
 ## Log
 
+### 2026-11-15 — us38-report-content (US38 #101, stacked on US37 #99)
+**What changed:**
+- `ContentReport` (`rides/models.py`, migration `rides/0006_content_report`, creates one table): reporter (CASCADE), post or message (exactly one), reason, note up to 300 characters, `reported_text` snapshot, status, `created_at`; unique per reporter and item.
+- `rides/reporting.py` (who can report what, the snapshot, saving once), `ContentReportForm` in `rides/forms.py`, `GET/POST /rides/<id>/report/` and `/rides/messages/<message-id>/report/` (`rides/views.py`, `rides/urls.py`, `rides/templates/rides/report.html`).
+- "Report this post" on the post page (not for the owner) and "Report" under each received message, also for polled messages (`rides/static/rides/js/conversation.js`). Styles in `routes.css`.
+- `ContentReportAdmin` in `rides/admin.py`: filters for reason and status, the reported content, read-only report fields, close/reopen actions.
+- Docs: `decisions.md` (US38 section), HLD section 34, `CLAUDE.md` data model, `docs/stories/US38.md`.
+
+**Decisions made (also in `decisions.md`):** proposed, to confirm with the PO: own content, deleted posts and others' conversations are 404; reports keep a text snapshot; a reported rider deleting their account deletes the reports on their content; the reporter sees "Reported" on what they reported.
+
+**Tests:** new `rides/tests/test_report_content.py` (every acceptance criterion: reporting posts and messages, once per item in the page and the database, admin list, filters and closing, privacy for the reported rider, own-content 404s, validation) and one new test in `zones/tests/conversation.test.js`. Full Django suite OK (1156 tests, 4 skipped), Node tests OK, `black --check .` and `flake8` pass.
+
+**Next step:** merge US37 first, then this PR (it contains US37's commits until then). PO to confirm the proposed rules.
+
+### 2026-11-15 — us37-my-rides (US37 #99)
+**What changed:**
+- `GET /rides/mine/` (`rides/views.py` `my_rides_view`, `rides/urls.py`, `rides/templates/rides/my_rides.html`), built by the new `rides/my_rides.py`: "My posts" (status, seats left, interested riders with status, "New" tag and unread counts) and "Rides I've asked to join" (Pending, Accepted, Declined, Closed or Deleted, with unread counts). "Show past rides" (`?past=1`) shows rides that left more than 7 days ago.
+- `RideInterest.owner_seen_at` (migration `rides/0005_interest_owner_seen`, existing rows marked seen); the owner's post page marks its riders seen and shows "New" on them.
+- "My rides" link with a badge (unread messages + new interested riders) in the nav of `routes/base.html`, the map and Compare (`rides/templates/rides/_nav_link.html`, context processor `rides.context_processors.ride_badge` in `settings.py`). Styles in `routes.css` and `map.css`.
+- "Your ride updates" moved from `/rides/` to My rides; `/rides/` links to My rides. Two older tests now check My rides instead.
+- Docs: `decisions.md` (US37 section), HLD section 33, `CLAUDE.md` data model, `docs/stories/US37.md`.
+
+**Decisions made (also in `decisions.md`):** proposed, to confirm with the PO: opening the post page clears "new interested riders"; past rides with something unread or new stay visible; withdrawn conversations with messages are listed as "Withdrawn"; deleted posts are left out of "My posts".
+
+**Tests:** new `rides/tests/test_my_rides.py` (every acceptance criterion: both lists and all statuses, unread counts and clearing, the badge on several pages and clearing, the 7-day rule, access and display names). Rides suite OK, `black --check .` and `flake8` pass.
+
+**Next step:** PO to confirm the proposed rules. US38 #101 (report a post or message) is stacked on this branch.
+
+### 2026-11-15 — us36-message-riders (US36 #98)
+**What changed:**
+- `RideMessage` (`rides/models.py`, migration `rides/0004_ride_message`, creates one table): post, sender and receiver (all CASCADE), text up to 500 characters, `sent_at`, `read_at`; database checks for empty text and messages to oneself.
+- `rides/messaging.py`: who can open a conversation, the read-only reasons, the 30-per-hour limit, read marking and the JSON shape. `RideMessageForm` in `rides/forms.py`.
+- `GET/POST /rides/<id>/messages/<rider-id>/` (conversation page and send) and `GET .../new/?after=` (JSON) in `rides/views.py` and `rides/urls.py`; template `rides/templates/rides/conversation.html`; `rides/static/rides/js/conversation.js` polls every 15 seconds only while the page is visible. Links from the post page (both sides) and from "Your ride updates". Styles in `routes/static/routes/css/routes.css`.
+- Docs: `decisions.md` (US36 section), HLD section 32, `CLAUDE.md` data model, `docs/stories/US36.md`.
+
+**Decisions made (also in `decisions.md`):** proposed, to confirm with the PO: declined and withdrawn riders' conversations become read-only; closed posts can still be messaged; the hourly limit counts all of a sender's conversations.
+
+**Tests:** new `rides/tests/test_messages.py` (40: sending both ways, access 404s, validation, polling JSON, read-only after 24 hours and on deletion, the hourly limit, account deletion, links) and `zones/tests/conversation.test.js` (8: 15-second checks, no checks while hidden, check on return, read-only stop, escaping). Full suite OK; `rides/messaging.py` at 100%.
+
+**Next step:** US37 #99 (My rides) can show unread counts from `read_at` and list conversations. PO to confirm the proposed rules.
+
+### 2026-11-14 — us35-edit-post (US35 #97, built on US34 #96)
+**What changed:**
+- `GET/POST /rides/<id>/edit/` (departure, seats and note of an open, upcoming post; `RidePostEditForm` in `rides/forms.py`), `POST /rides/<id>/close/` and `GET/POST /rides/<id>/delete/` with a confirmation page (`rides/views.py`, `rides/templates/rides/edit_ride.html`, `delete_ride.html`).
+- New status `deleted` (migration `rides/0003_deleted_post` widens the status field and check constraint). Deleting marks the post deleted and clears its note; its page returns 404 for everyone; interest rows stay so riders see a notice.
+- `rides/interest.py`: deleted posts block interest and owner actions and can't be viewed.
+- "Your ride updates" on `/rides/` lists closed and deleted rides the rider showed interest in.
+- Docs: `decisions.md` (US35 section), HLD section 31, `CLAUDE.md` data model, `docs/stories/US35.md`.
+
+**Decisions made (also in `decisions.md`):** proposed, to confirm with the PO: only an open, upcoming post can be edited (not a full one); zones can't be edited; delete keeps a minimal record so riders see a notice; a closed post stays visible to the owner and to riders who showed interest.
+
+**Tests:** `rides/tests/test_edit_close_delete.py` (13: every acceptance criterion, posting rules on edit, the open-post slot freed by delete, non-owner 404s) and the deleted-post guard in `rides/tests/test_owner_guards.py`. Full suite OK.
+
+**Next step:** US37 should move "Your ride updates" to My rides and hide old ones. US36 can make conversations read-only when the post status is `deleted`.
+
+### 2026-11-14 — us34-accept-decline (US34 #96)
+**What changed:**
+- Added owner-only Accept, Decline and Undo acceptance actions on the ride post page. `manage_owner_interest` locks the post and interest rows in one transaction before changing capacity.
+- Accepted riders use seats; accepting the last seat makes the post Full and hides it from search. Undoing an acceptance or an accepted rider withdrawing frees the seat. Accepted riders see “You're in” and other accepted riders' display names.
+- Updated `rides/interest.py`, `rides/models.py`, `rides/views.py`, `rides/urls.py`, templates, styles, and the story and design documentation. No new table or migration was needed.
+
+**Decisions made (also in `decisions.md`):** Proposed for PO confirmation: undo returns a rider to Pending; declined interests remain final; accepted riders may withdraw; undo is blocked after departure. A closed post remains closed after undo.
+
+**Tests:** `rides/tests/test_accept_decline.py` has 16 tests, including concurrent accepts for the last seat. On the stacked US35 branch, `rides/tests/test_owner_guards.py` adds 6 owner-action guards and a deleted-post guard; 101 focused rides tests pass and `rides/interest.py` reaches 100% coverage. The one-seat detail regression test, `black --check .`, and `flake8` pass. The earlier full local Django run completed 1039 tests with 4 skipped and 2 existing Windows `strftime` errors; the reviewer reports CI passing on commit `54da3c4`.
+
+**Next step:** Review and merge US34 before the stacked US35 PR #107; confirm the proposed rules with the PO.
+
+### 2026-11-11 — us31-rideshare-offer (US31 #93, stacked on US30 #92)
+**What changed:**
+- New app `rides`: `RidePost` (`rides/models.py`, migration `rides/0001_ride_post`, creates one table) with `objects.open(now)` and `status_label()` ("Expired" worked out when read). Registered in the admin.
+- `RidePostForm` (`rides/forms.py`), `GET/POST /rides/new/` and the owner-only `GET /rides/<id>/` (`rides/views.py`, `rides/templates/rides/`). Uses US30's `display_name_required`.
+- "Post a shared ride" link in the trip summary (`zones/templates/zones/map.html`, `rides/static/rides/js/share-ride-link.js`), styles in `routes/static/routes/css/routes.css`.
+- Docs: `decisions.md` (US31 section), HLD section 27, `CLAUDE.md` data model, `docs/stories/US31.md`.
+
+**Decisions made (also in `decisions.md`):** proposed, to confirm with the PO: 14 days from the moment of submitting, closed posts stay "Closed" after departure, email addresses and phone numbers refused in the note, post page owner-only until US32/US33, no edit or close until US35.
+
+**Tests:** new `rides/tests/test_post_ride.py` (54: model, database checks, every validation and message, the 3-open limit including expired/full/closed/other riders and a race, default departure, the form page, guests, display name first, CSRF, owner-only page, escaped note, no `@` on the pages, map link) and `zones/tests/share_ride_link.test.js` (5). Full suite 945 (4 skipped), 171 Node tests, coverage 100.00%, black and flake8 clean. Checked on `runserver 8001` with two local accounts plus one without a display name.
+
+**Next step:** merge US30 #92 first, then retarget this PR to `develop`. PO to confirm the proposed rules. US32 #94 (search at `/rides/`) should list `RidePost.objects.open()` and show `display_name_of(post.owner)`.
+
+### 2026-11-11 — us30-display-name (US30 #92)
+**What changed:**
+- `accounts.Profile` (`accounts/models.py`, migration `accounts/0001_profile`, creates one table): one display name per user, `OneToOneField` with CASCADE, unique index on `Lower(display_name)`. Registered in the admin.
+- `DisplayNameForm` (`accounts/forms.py`), page `GET/POST /accounts/display-name/?next=` (`accounts/views.py`, `display_name.html`), "Display name" section on My account (`account.html`, shared `_display_name_form.html`).
+- `accounts/display_name.py`: `display_name_of(user)` and the `display_name_required` decorator for the ride-sharing views (US31, US33, US36).
+- Docs: `decisions.md` (US30 section), HLD section 26, `CLAUDE.md` data model, `docs/accounts.md` section 4, `docs/stories/US30.md`.
+
+**Decisions made (also in `decisions.md`):** proposed, to confirm with the PO: A to Z letters only, spaces trimmed and collapsed, at least one letter or number, not the start of the rider's own email, a reserved-name list, no profanity filter (admins rename in the admin), change any time but no removing.
+
+**Tests:** new `accounts/tests/test_display_name.py` (37: every rule and message, case-insensitive uniqueness in the form and the database, a name taken between checking and saving, set/change on My account, `next` and unsafe `next`, guests, CSRF, the decorator, account deletion). Full suite 891 (4 skipped), 166 Node tests, coverage 100.00%, black and flake8 clean. Checked on `runserver 8001` with two local accounts.
+
+**Next step:** PO to confirm the proposed rules. US31 #93 (stacked on this branch) is the first view to use `display_name_required`.
+
 ### 2026-11-08 — us29-surge-overlay (US29 #76, stacked on US27c #84 / US27d #85)
 **What changed:**
 - `GET /api/zones/:id/surge` (`zones/views.py`, `zones/urls.py`), backed by `surge_grid` in `zones/stats.py`, reading `RideshareZoneHourStats`. New setting `SURGE_FARE_PER_MILE_RATIO = Decimal("1.25")`.

@@ -10,6 +10,15 @@
     <button type="submit">Sign out</button>
   </form>
 
+  {# US30 #92: the name other riders see, never the email. #}
+  <h2>Display name</h2>
+  {% if display_name %}
+    <p>Other riders see you as <strong>{{ display_name }}</strong>. They never see your email address.</p>
+  {% else %}
+    <p>You haven't chosen a display name yet. You need one to share rides; other riders see it instead of your email address.</p>
+  {% endif %}
+  {% include "accounts/_display_name_form.html" with form=display_name_form next=request.path %}
+
   <h2>Change password</h2>
   <form method="post" novalidate>
     {% csrf_token %}

@@ -1,0 +1,2 @@
+{# US37 #99: "My rides" with a badge for unread messages and new interested riders. Counted only for signed-in riders. #}
+<a id="my-rides-link" href="{% url 'rides:my_rides' %}">My rides{% if ride_badge %}{% with n=ride_badge.count %}{% if n %} <span class="nav-badge" aria-hidden="true">{{ n }}</span><span class="visually-hidden">({{ n }} new)</span>{% endif %}{% endwith %}{% endif %}</a>

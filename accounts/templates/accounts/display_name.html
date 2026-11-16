@@ -1,0 +1,9 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}Choose a display name{% endblock %}
+
+{% block content %}
+  <h1>Choose a display name</h1>
+  <p class="intro">Other riders see this name on shared rides and messages. They never see your email address.</p>
+  {% include "accounts/_display_name_form.html" with form=form next=next %}
+{% endblock %}

@@ -1,0 +1,14 @@
+{# US30 #92: one form for My account and the "choose a display name" page. #}
+<form method="post" action="{% url 'accounts:display_name' %}" novalidate>
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ next }}">
+  {% with field=form.display_name %}
+    <div class="field">
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.errors %}<div class="field-errors">{{ field.errors }}</div>{% endif %}
+      <div class="help">{{ field.help_text }}</div>
+    </div>
+  {% endwith %}
+  <button type="submit">Save display name</button>
+</form>

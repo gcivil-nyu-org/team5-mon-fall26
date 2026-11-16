@@ -97,7 +97,24 @@ Put `{% csrf_token %}` in every `<form method="post">`. A test
 For JavaScript `fetch()` POSTs (for example a "Save route" button on the
 map), send the token in the `X-CSRFToken` header.
 
-## 4. Still open (see `docs/decisions.md`)
+## 4. Ride-sharing features need a display name (US30)
+
+Other riders see a rider's display name, never their email. A view where a
+rider posts a ride, shows interest or sends a message uses
+`accounts.display_name.display_name_required`: a signed-in rider without a
+name goes to `/accounts/display-name/?next=<the page>` and comes back after
+saving. It lets guests through, so put `@login_required` before it, or show
+guests a sign-in prompt in the view. Show other riders a name with
+`display_name_of(user)` (or `user.profile.display_name`), never `user.email`.
+
+```python
+@login_required
+@display_name_required
+def show_interest(request, post_id):
+    ...
+```
+
+## 5. Still open (see `docs/decisions.md`)
 
 - **HTTPS** on the Integration and Production environments. Both are plain
   `http://` today, so passwords travel unencrypted. Needed before real users

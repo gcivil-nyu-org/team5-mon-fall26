@@ -23,3 +23,12 @@ One file per user story, mirroring the ZenHub issue (story line, developer tasks
 | US27.md | #74 | Import Rideshare Trip Statistics (split into #82 to #85; written by hand, not by the sync script) |
 | US28.md | #75 | Compare Taxi and Rideshare Fares for My Trip (written by hand, not by the sync script) |
 | US29.md | #76 | Surge-Pricing Overlay (written by hand, not by the sync script) |
+| US30.md | #92 | Choose a Display Name (written by hand, not by the sync script) |
+| US31.md | #93 | Post a Ride-Share Offer (written by hand, not by the sync script) |
+| US32.md | #94 | Find Shared Rides on My Route (written by hand, not by the sync script) |
+| US33.md | #95 | Show Interest in a Shared Ride (written by hand, not by the sync script) |
+| US34.md | #96 | Accept or Decline Interested Riders (written by hand, not by the sync script) |
+| US35.md | #97 | Edit, Close, or Delete My Post (written by hand, not by the sync script) |
+| US36.md | #98 | Message Riders About a Shared Ride (written by hand, not by the sync script) |
+| US37.md | #99 | My Rides (written by hand, not by the sync script) |
+| US38.md | #101 | Report a Post or Message (written by hand, not by the sync script) |

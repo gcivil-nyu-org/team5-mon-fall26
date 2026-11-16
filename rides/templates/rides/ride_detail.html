@@ -1,0 +1,80 @@
+{% extends "routes/base.html" %}
+{% load tz %}
+
+{% block title %}Shared ride{% endblock %}
+
+{% block content %}
+  {# Only the display name is shown, never the email (US30 #92). The note is escaped. #}
+  <h1>Shared ride</h1>
+  <p><span class="status status-{{ status|lower }}">{{ status }}</span></p>
+  <dl class="ride-details">
+    <dt>Posted by</dt><dd>{{ owner_name }}</dd>
+    <dt>Pickup zone</dt><dd>{{ post.pickup_zone.name }} ({{ post.pickup_zone.borough }})</dd>
+    <dt>Dropoff zone</dt><dd>{{ post.dropoff_zone.name }} ({{ post.dropoff_zone.borough }})</dd>
+    <dt>Departure (New York time)</dt><dd>{% timezone "America/New_York" %}{{ post.departure_at|date:"D j M Y, g:i A" }}{% endtimezone %}</dd>
+    <dt>Seats</dt><dd>{% with left=post.seats_left %}{{ post.seats }} seat{{ post.seats|pluralize }} offered, {{ left }} seat{{ left|pluralize }} left{% endwith %}</dd>
+    <dt>Note</dt><dd>{% if post.note %}{{ post.note }}{% else %}—{% endif %}</dd>
+  </dl>
+  {% if is_owner %}
+    <p class="help">This is what riders going your way see.</p>
+    {% if can_edit %}<p><a href="{% url 'rides:edit_ride' post.pk %}">Edit post</a></p>{% endif %}
+    {% if can_close %}
+      <form method="post" action="{% url 'rides:close_ride' post.pk %}" class="interest-form">
+        {% csrf_token %}
+        <button type="submit" class="secondary-button">Close post</button>
+      </form>
+    {% endif %}
+    <p><a href="{% url 'rides:delete_ride' post.pk %}">Delete post</a></p>
+    <section class="ride-interests" aria-labelledby="ride-interests-title">
+      <h2 id="ride-interests-title">Interested riders</h2>
+      {% if interested_riders %}
+        <ul class="interest-list">
+          {% for entry in interested_riders %}
+            <li class="interest-card">
+              <p><strong>{{ entry.rider_name }}</strong> <span class="status interest-{{ entry.interest.status }}">{{ entry.interest.get_status_display }}</span>{% if entry.new %} <span class="new-tag">New</span>{% endif %}</p>
+              <p><a href="{% url 'rides:conversation' post.pk entry.interest.rider_id %}">Messages with {{ entry.rider_name }}</a></p>
+              {% if entry.interest.status == "pending" %}
+                {% if not can_accept_interests %}<p class="help">This ride cannot accept another rider right now.</p>{% endif %}
+                <form method="post" action="{% url 'rides:accept_interest' post.pk entry.interest.pk %}" class="interest-form">
+                  {% csrf_token %}
+                  <button type="submit"{% if not can_accept_interests %} disabled{% endif %}>Accept</button>
+                </form>
+                <form method="post" action="{% url 'rides:decline_interest' post.pk entry.interest.pk %}" class="interest-form">
+                  {% csrf_token %}
+                  <button type="submit" class="secondary-button">Decline</button>
+                </form>
+              {% elif entry.interest.status == "accepted" %}
+                <form method="post" action="{% url 'rides:undo_acceptance' post.pk entry.interest.pk %}" class="interest-form">
+                  {% csrf_token %}
+                  <button type="submit" class="secondary-button"{% if not can_undo_interests %} disabled{% endif %}>Undo acceptance</button>
+                </form>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>No riders have shown interest yet.</p>
+      {% endif %}
+    </section>
+    <p><a href="{% url 'rides:post_ride' %}?from={{ post.pickup_zone_id }}&amp;to={{ post.dropoff_zone_id }}">Post another shared ride</a></p>
+  {% else %}
+    {% include "rides/_interest.html" with next=request.get_full_path %}
+    {% if interest %}<p><a href="{% url 'rides:conversation' post.pk request.user.pk %}">Message {{ owner_name }}</a></p>{% endif %}
+    {% if interest and interest.status == "accepted" %}
+      <section class="accepted-riders" aria-labelledby="accepted-riders-title">
+        <h2 id="accepted-riders-title">You're in</h2>
+        {% if accepted_rider_names %}
+          <p>Other accepted riders:</p>
+          <ul>
+            {% for rider_name in accepted_rider_names %}<li>{{ rider_name }}</li>{% endfor %}
+          </ul>
+        {% else %}
+          <p>No other riders have been accepted yet.</p>
+        {% endif %}
+      </section>
+    {% endif %}
+    <p><a href="{% url 'rides:find_rides' %}">Find another shared ride</a></p>
+    {# US38 #101: the owner never sees reports. #}
+    <p class="report-link">{% if reported %}You reported this post.{% else %}<a id="report-post" href="{% url 'rides:report_post' post.pk %}">Report this post</a>{% endif %}</p>
+  {% endif %}
+{% endblock %}

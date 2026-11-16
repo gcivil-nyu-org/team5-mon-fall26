@@ -357,3 +357,328 @@ header {
   color: #8a5300;
   font-weight: 600;
 }
+
+/* Post a shared ride (US31) */
+.field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.45rem;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  font: inherit;
+}
+
+.field .help.warning {
+  color: #8a5300;
+  font-weight: 600;
+}
+
+.form-errors {
+  color: #b3261e;
+}
+
+.ride-details dt {
+  margin-top: 0.6rem;
+  color: #4c5565;
+  font-size: 13px;
+}
+
+.ride-details dd {
+  margin: 0.1rem 0 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.status {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #e4e7ec;
+  font-weight: 600;
+}
+
+.status-open {
+  background: #d8f0dd;
+  color: #1d5e2c;
+}
+
+.status-full {
+  background: #fff0c2;
+  color: #714b00;
+}
+
+.status-expired,
+.status-closed {
+  color: #555;
+}
+
+/* US32 #94: find a shared ride */
+.ride-list {
+  list-style: none;
+  padding: 0;
+}
+
+.ride-card {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+}
+
+.match {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-weight: 600;
+  background: #e4e7ec;
+}
+
+.match-exact {
+  background: #d8f0dd;
+  color: #1d5e2c;
+}
+
+/* US33 #95: show interest */
+.interest-form {
+  display: inline-block;
+  margin: 0.25rem 0;
+}
+
+.interest-list {
+  list-style: none;
+  padding: 0;
+}
+
+.interest-card {
+  margin: 0 0 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+}
+
+.interest-form button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.secondary-button {
+  background: #fff;
+  color: #1f2937;
+  border: 1px solid #98a2b3;
+}
+
+.interest-accepted {
+  background: #d8f0dd;
+  color: #1d5e2c;
+}
+
+.interest-declined {
+  color: #555;
+}
+
+/* US36 #98: a chat between a post's owner and one rider. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #d0d5dd;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.chat-header {
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid #e4e7ec;
+  background: #f9fafb;
+}
+
+.chat-header h1 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.chat-header p {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  color: #555;
+}
+
+.chat-log {
+  list-style: none;
+  margin: 0;
+  padding: 0.8rem 0.7rem;
+  height: 22rem;
+  overflow-y: auto;
+  background: #f2f4f7;
+}
+
+.chat-row {
+  display: flex;
+  margin: 0 0 0.45rem;
+}
+
+.chat-row.mine {
+  justify-content: flex-end;
+}
+
+.chat-bubble {
+  max-width: 78%;
+  padding: 0.45rem 0.7rem 0.3rem;
+  border-radius: 16px 16px 16px 4px;
+  background: #fff;
+  color: #1f2937;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+}
+
+.chat-row.mine .chat-bubble {
+  border-radius: 16px 16px 4px 16px;
+  background: #0057b8;
+  color: #fff;
+}
+
+.chat-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
+.chat-time {
+  margin: 0.15rem 0 0;
+  font-size: 0.7rem;
+  text-align: right;
+  opacity: 0.7;
+}
+
+.chat-empty {
+  margin: 0;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.85rem;
+  color: #555;
+  text-align: center;
+  background: #f2f4f7;
+}
+
+.chat-read-only {
+  margin: 0;
+  padding: 0.7rem 0.9rem;
+  border-top: 1px solid #e4e7ec;
+  background: #fbeaea;
+  color: #7a1c15;
+  font-size: 0.9rem;
+}
+
+.chat-compose {
+  padding: 0.6rem 0.7rem 0.5rem;
+  border-top: 1px solid #e4e7ec;
+}
+
+.chat-reminder {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  color: #7a1c15;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.chat-input-row textarea {
+  flex: 1;
+  box-sizing: border-box;
+  min-height: 2.4rem;
+  max-height: 8rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #bbb;
+  border-radius: 18px;
+  font: inherit;
+  font-size: 15px;
+  resize: none;
+}
+
+.chat-compose button.chat-send {
+  width: auto;
+  padding: 0.5rem 1rem;
+  border-radius: 18px;
+}
+
+.chat-hint {
+  margin: 0.3rem 0 0;
+  font-size: 0.72rem;
+  color: #777;
+}
+
+/* US37 #99: My rides, the nav badge, unread counts and "New" tags. */
+.nav-badge {
+  display: inline-block;
+  min-width: 1.2em;
+  margin-left: 0.25rem;
+  padding: 0 0.35em;
+  border-radius: 999px;
+  background: #d93025;
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.unread-count,
+.new-tag {
+  display: inline-block;
+  padding: 0 0.4em;
+  border-radius: 4px;
+  background: #fde7e5;
+  color: #a50e0e;
+  font-size: 0.85em;
+  font-weight: bold;
+}
+
+.my-post .interest-list,
+.asked-ride p {
+  margin: 0.3rem 0;
+}
+
+.past-toggle {
+  font-size: 0.95em;
+}
+
+/* US38 #101: report a post or message. */
+.chat-report {
+  display: block;
+  margin-top: 0.2rem;
+  color: #5f6368;
+  font-size: 12px;
+}
+
+.report-link {
+  font-size: 0.9em;
+}
+
+.reported-content {
+  margin: 0.6rem 0;
+  padding: 0.4rem 0.8rem;
+  border-left: 3px solid #c4c9d0;
+  background: #f6f7f9;
+}
+
+.report-form fieldset {
+  border: 0;
+  padding: 0;
+}
+
+.report-form ul {
+  list-style: none;
+  padding: 0;
+}

@@ -1,0 +1,54 @@
+{% extends "routes/base.html" %}
+{% load static tz %}
+
+{% block title %}Messages{% endblock %}
+
+{% block content %}
+  {# US36 #98: only the post's owner and this rider can open it. Display names only, never email. Messages are escaped. #}
+  <section class="chat" aria-labelledby="chat-title">
+    <header class="chat-header">
+      <h1 id="chat-title">Messages with {{ other_name }}</h1>
+      <p>
+        {{ post.pickup_zone.name }} to {{ post.dropoff_zone.name }} ·
+        {% timezone "America/New_York" %}{{ post.departure_at|date:"D j M, g:i A" }}{% endtimezone %}
+        {% if can_open_post %}· <a href="{% url 'rides:ride_detail' post.pk %}">View ride</a>{% endif %}
+      </p>
+    </header>
+
+    <ol id="conversation-messages" class="chat-log" aria-live="polite"
+        data-poll-url="{{ poll_url }}" data-poll-ms="{{ poll_ms }}" data-last-id="{{ last_id }}" data-report-url="{{ report_url }}">
+      {% for message in thread %}
+        <li class="chat-row {% if message.mine %}mine{% else %}theirs{% endif %}" data-id="{{ message.id }}"{% if forloop.last %} id="latest"{% endif %}>
+          <div class="chat-bubble">
+            <span class="visually-hidden">{{ message.sender }}:</span>
+            <p class="chat-text">{{ message.text }}</p>
+            <p class="chat-time">{{ message.sent_at }}</p>
+            {% if not message.mine %}{% if message.reported %}<span class="chat-report">Reported</span>{% else %}<a class="chat-report" href="{% url 'rides:report_message' message.id %}">Report</a>{% endif %}{% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ol>
+    <p id="conversation-empty" class="chat-empty"{% if thread %} hidden{% endif %}>No messages yet. Say hello and agree where to meet.</p>
+
+    <p id="conversation-read-only" class="chat-read-only"{% if not read_only %} hidden{% endif %}>{{ read_only|default:"" }}</p>
+
+    {% if not read_only %}
+      <form method="post" id="conversation-form" class="chat-compose" novalidate>
+        {% csrf_token %}
+        <p class="chat-reminder">Don't share addresses or phone numbers. Meet in a public place.</p>
+        {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+        {{ form.text.errors }}
+        <div class="chat-input-row">
+          <label for="{{ form.text.id_for_label }}" class="visually-hidden">{{ form.text.label }}</label>
+          {{ form.text }}
+          <button type="submit" class="chat-send">Send</button>
+        </div>
+        <p class="chat-hint">Enter to send · Shift+Enter for a new line</p>
+      </form>
+    {% endif %}
+  </section>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'rides/js/conversation.js' %}"></script>
+{% endblock %}
