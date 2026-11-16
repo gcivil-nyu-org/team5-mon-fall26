@@ -6,7 +6,8 @@ from datetime import timedelta
 from functools import cached_property
 
 from django.contrib.auth import get_user_model
-from django.db.models import Count, Q
+from django.db.models import Count, OuterRef, Q, Subquery
+from django.db.models.functions import Coalesce
 from django.urls import reverse
 
 from accounts.display_name import display_name_of
@@ -36,19 +37,35 @@ def unread_counts(user):
 
 
 def badge_count(user):
-    """Unread messages plus new interested riders, for the nav badge. The
-    owner's deleted posts are left out, as they are on My rides."""
+    """Unread messages plus new interested riders, for the nav badge, in one
+    query (it runs on every page). The owner's deleted posts are left out, as
+    they are on My rides."""
+    me = OuterRef("pk")
     unread = (
-        RideMessage.objects.filter(receiver=user, read_at__isnull=True)
-        .exclude(post__owner=user, post__status=RidePost.DELETED)
-        .count()
+        RideMessage.objects.filter(receiver=me, read_at__isnull=True)
+        .exclude(post__owner=me, post__status=RidePost.DELETED)
+        .order_by()
+        .values("receiver")
+        .annotate(n=Count("pk"))
+        .values("n")
     )
     new_riders = (
-        RideInterest.objects.filter(post__owner=user, owner_seen_at__isnull=True)
+        RideInterest.objects.filter(post__owner=me, owner_seen_at__isnull=True)
         .exclude(post__status=RidePost.DELETED)
-        .count()
+        .order_by()
+        .values("post__owner")
+        .annotate(n=Count("pk"))
+        .values("n")
     )
-    return unread + new_riders
+    return (
+        get_user_model()
+        .objects.filter(pk=user.pk)
+        .annotate(
+            total=Coalesce(Subquery(unread), 0) + Coalesce(Subquery(new_riders), 0)
+        )
+        .values_list("total", flat=True)
+        .get()
+    )
 
 
 class Badge:

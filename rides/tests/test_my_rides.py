@@ -367,3 +367,12 @@ class MovedRideUpdatesTests(MyRidesTestData):
         response = self.client.get(reverse("rides:find_rides"))
         self.assertContains(response, f'href="{MY_RIDES}"')
         self.assertNotContains(response, "Your ride updates")
+
+
+class BadgeQueryTests(MyRidesTestData):
+    def test_badge_is_one_query(self):
+        post = self.post()
+        self.interest(post)
+        self.message(post, self.rider, self.owner)
+        with self.assertNumQueries(1):
+            self.assertEqual(my_rides.badge_count(self.owner), 2)
