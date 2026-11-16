@@ -29,3 +29,4 @@ One file per user story, mirroring the ZenHub issue (story line, developer tasks
 | US33.md | #95 | Show Interest in a Shared Ride (written by hand, not by the sync script) |
 | US34.md | #96 | Accept or Decline Interested Riders (written by hand, not by the sync script) |
 | US35.md | #97 | Edit, Close, or Delete My Post (written by hand, not by the sync script) |
+| US36.md | #98 | Message Riders About a Shared Ride (written by hand, not by the sync script) |

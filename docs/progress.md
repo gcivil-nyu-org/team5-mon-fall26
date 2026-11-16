@@ -15,6 +15,19 @@ Entry format:
 
 ## Log
 
+### 2026-11-15 — us36-message-riders (US36 #98)
+**What changed:**
+- `RideMessage` (`rides/models.py`, migration `rides/0004_ride_message`, creates one table): post, sender and receiver (all CASCADE), text up to 500 characters, `sent_at`, `read_at`; database checks for empty text and messages to oneself.
+- `rides/messaging.py`: who can open a conversation, the read-only reasons, the 30-per-hour limit, read marking and the JSON shape. `RideMessageForm` in `rides/forms.py`.
+- `GET/POST /rides/<id>/messages/<rider-id>/` (conversation page and send) and `GET .../new/?after=` (JSON) in `rides/views.py` and `rides/urls.py`; template `rides/templates/rides/conversation.html`; `rides/static/rides/js/conversation.js` polls every 15 seconds only while the page is visible. Links from the post page (both sides) and from "Your ride updates". Styles in `routes/static/routes/css/routes.css`.
+- Docs: `decisions.md` (US36 section), HLD section 32, `CLAUDE.md` data model, `docs/stories/US36.md`.
+
+**Decisions made (also in `decisions.md`):** proposed, to confirm with the PO: declined and withdrawn riders' conversations become read-only; closed posts can still be messaged; the hourly limit counts all of a sender's conversations.
+
+**Tests:** new `rides/tests/test_messages.py` (40: sending both ways, access 404s, validation, polling JSON, read-only after 24 hours and on deletion, the hourly limit, account deletion, links) and `zones/tests/conversation.test.js` (8: 15-second checks, no checks while hidden, check on return, read-only stop, escaping). Full suite OK; `rides/messaging.py` at 100%.
+
+**Next step:** US37 #99 (My rides) can show unread counts from `read_at` and list conversations. PO to confirm the proposed rules.
+
 ### 2026-11-14 — us35-edit-post (US35 #97, built on US34 #96)
 **What changed:**
 - `GET/POST /rides/<id>/edit/` (departure, seats and note of an open, upcoming post; `RidePostEditForm` in `rides/forms.py`), `POST /rides/<id>/close/` and `GET/POST /rides/<id>/delete/` with a confirmation page (`rides/views.py`, `rides/templates/rides/edit_ride.html`, `delete_ride.html`).

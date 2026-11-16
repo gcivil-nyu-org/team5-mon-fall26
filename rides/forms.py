@@ -10,7 +10,14 @@ from reports.forms import NycDateTimeField
 from zones.models import Zone
 from zones.views import NYC_TZ, shape_zone_ids
 
-from .models import MAX_OPEN_POSTS, MAX_SEATS, NOTE_MAX_LENGTH, RideInterest, RidePost
+from .models import (
+    MAX_OPEN_POSTS,
+    MAX_SEATS,
+    MESSAGE_MAX_LENGTH,
+    NOTE_MAX_LENGTH,
+    RideInterest,
+    RidePost,
+)
 
 MAX_DAYS_AHEAD = 14
 STEP_MINUTES = 15
@@ -293,3 +300,27 @@ class RideSearchForm(forms.Form):
         if pickup is not None and pickup == cleaned.get("to"):
             self.add_error("to", SAME_ZONES)
         return cleaned
+
+
+MESSAGE_EMPTY = "Write a message before sending."
+MESSAGE_TOO_LONG = f"Keep your message to {MESSAGE_MAX_LENGTH} characters or fewer."
+
+
+class RideMessageForm(forms.Form):
+    """US36 #98: one message, 1 to 500 characters after trimming spaces."""
+
+    text = forms.CharField(
+        label="Message",
+        max_length=MESSAGE_MAX_LENGTH,
+        strip=True,
+        error_messages={"required": MESSAGE_EMPTY, "max_length": MESSAGE_TOO_LONG},
+        widget=forms.Textarea(
+            attrs={
+                "rows": 1,
+                "maxlength": MESSAGE_MAX_LENGTH,
+                "required": True,
+                "placeholder": "Write a message…",
+                "autocomplete": "off",
+            }
+        ),
+    )

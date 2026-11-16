@@ -33,6 +33,7 @@
               {% else %}
                 <a href="{% url 'rides:ride_detail' item.post.pk %}">This shared ride was closed.</a>
               {% endif %}
+              <a href="{% url 'rides:conversation' item.post.pk request.user.pk %}">Messages</a>
             </li>
           {% endfor %}
         </ul>

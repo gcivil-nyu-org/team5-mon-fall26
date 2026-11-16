@@ -345,3 +345,10 @@ Only the owner can use `GET/POST /rides/<id>/edit/`, `POST /rides/<id>/close/` o
 
 Closing hides a post from search and blocks new riders while preserving detail access for its owner and riders with existing interests. Deletion requires confirmation and records the status `deleted`, clearing the note. Deleted details return 404 for everyone. The interest rows remain to provide a deletion notice in the shared-rides page and later in US37's My rides page. Migration `0003_deleted_post` extends the status field and check constraint.
 
+## 32. Message riders about a shared ride (US36)
+
+The `rides_ridemessage` table (`rides.RideMessage`, migration `0004_ride_message`) stores the post, sender, receiver, text (up to 500 characters), sent time and read time. Every link uses `on_delete=CASCADE`, so deleting an account deletes its messages. The database refuses an empty text and a message to oneself; an index on sender and sent time serves the hourly limit.
+
+A conversation is a post plus its owner and one rider who showed interest. `GET/POST /rides/<id>/messages/<rider-id>/` shows the messages oldest first with a send box and the reminder not to share addresses or phone numbers and to meet in a public place; only those two riders can open it (404 for anyone else). `GET /rides/<id>/messages/<rider-id>/new/?after=<message-id>` returns newer messages as JSON plus whether the conversation is read-only. The page script polls it every 15 seconds only while the page is visible, pauses when the tab is hidden and checks at once when it is shown again. No websockets.
+
+Sending is refused 24 hours after the ride's departure, once the post is deleted, and (proposed) once the rider withdraws or is declined; the messages stay readable. Each sender can send 30 messages per hour across all conversations, counted under a lock on the sender's user row.

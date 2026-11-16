@@ -147,3 +147,50 @@ class RideInterest(models.Model):
 
         name = display_name_of(self.rider) or f"rider {self.rider_id}"
         return f"{name}: {self.get_status_display()}"
+
+
+MESSAGE_MAX_LENGTH = 500
+
+
+class RideMessage(models.Model):
+    """US36 #98: a message between a post's owner and one interested rider.
+    The conversation is the post plus that pair of riders."""
+
+    post = models.ForeignKey(
+        RidePost,
+        on_delete=models.CASCADE,  # removing the post row removes its messages
+        related_name="messages",
+    )
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,  # deleting the account deletes what it sent
+        related_name="ride_messages_sent",
+    )
+    receiver = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,  # deleting the account deletes what it received
+        related_name="ride_messages_received",
+    )
+    text = models.CharField(max_length=MESSAGE_MAX_LENGTH)
+    sent_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["sent_at", "pk"]
+        indexes = [
+            # The 30-per-hour limit counts a sender's recent messages.
+            models.Index(fields=["sender", "sent_at"], name="ride_message_sender_sent"),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=~Q(sender=F("receiver")),
+                name="ride_message_not_to_self",
+            ),
+            models.CheckConstraint(
+                condition=~Q(text=""),
+                name="ride_message_not_empty",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Message {self.pk} on post {self.post_id}"
