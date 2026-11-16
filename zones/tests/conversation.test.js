@@ -215,3 +215,22 @@ test("Enter on an empty box or while typing an accent sends nothing", () => {
   assert.equal(ui.press("a"), false);
   assert.equal(ui.submitted(), 0);
 });
+
+test("US38: messages from the other rider get a Report link, mine don't", async () => {
+  const ui = setup({ lastId: "0" });
+  ui.list.dataset.reportUrl = "/rides/messages/0/report/";
+  ui.respond({
+    messages: [
+      { id: 12, mine: false, sender: "Early Bird", text: "hi", sent_at: "" },
+      { id: 13, mine: true, sender: "You", text: "hello", sent_at: "" },
+    ],
+    read_only: null,
+  });
+  await ui.tick();
+  const [theirs, mine] = ui.list.children;
+  const report = theirs.children[0].children[3];
+  assert.equal(report.className, "chat-report");
+  assert.equal(report.href, "/rides/messages/12/report/");
+  assert.equal(report.textContent, "Report");
+  assert.equal(mine.children[0].children.length, 3);
+});

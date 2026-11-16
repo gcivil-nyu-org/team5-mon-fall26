@@ -3,7 +3,8 @@
 // hidden, and it checks at once when the tab is shown again. The chat stays
 // scrolled to the newest message. Enter sends, Shift+Enter adds a new line.
 // Sending is a plain form POST, so the page also works without JavaScript
-// (new messages then show on reload).
+// (new messages then show on reload). Each message from the other rider has
+// a "Report" link (US38 #101).
 (function () {
   "use strict";
 
@@ -39,6 +40,14 @@
     time.className = "chat-time";
     time.textContent = message.sent_at;
     bubble.append(who, text, time);
+    // US38 #101: messages from the other rider can be reported.
+    if (!message.mine && list.dataset.reportUrl) {
+      const report = document.createElement("a");
+      report.className = "chat-report";
+      report.href = list.dataset.reportUrl.replace(/\/0\/report\/$/, `/${message.id}/report/`);
+      report.textContent = "Report";
+      bubble.append(report);
+    }
     row.append(bubble);
     list.append(row);
     if (empty) empty.hidden = true;

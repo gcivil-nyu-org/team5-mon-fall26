@@ -1,0 +1,40 @@
+{% extends "routes/base.html" %}
+{% load tz %}
+
+{% block title %}Report this {{ kind }}{% endblock %}
+
+{% block content %}
+  {# US38 #101: reports go to the admins only. The reported rider never sees who reported them. #}
+  <h1>Report this {{ kind }}</h1>
+  <blockquote class="reported-content">
+    {% if kind == "message" %}
+      <p><strong>{{ sender_name }}</strong> wrote:</p>
+      <p>{{ message.text }}</p>
+    {% else %}
+      <p>{{ post.pickup_zone.name }} to {{ post.dropoff_zone.name }}, {% timezone "America/New_York" %}{{ post.departure_at|date:"D j M Y, g:i A" }}{% endtimezone %}, posted by {{ owner_name }}</p>
+      {% if post.note %}<p>{{ post.note }}</p>{% endif %}
+    {% endif %}
+  </blockquote>
+  {% if already %}
+    <p class="help">{{ already }}</p>
+  {% else %}
+    <p>Tell us what's wrong. An admin will look at it. The rider you report is never told who reported them.</p>
+    <form method="post" class="ride-form report-form" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+      <fieldset class="field">
+        <legend>{{ form.reason.label }}</legend>
+        {{ form.reason }}
+        {{ form.reason.errors }}
+      </fieldset>
+      <div class="field">
+        <label for="{{ form.note.id_for_label }}">{{ form.note.label }}</label>
+        {{ form.note }}
+        <small class="help">{{ form.note.help_text }}</small>
+        {{ form.note.errors }}
+      </div>
+      <button type="submit">Send report</button>
+    </form>
+  {% endif %}
+  <p><a href="{{ back }}">Back</a></p>
+{% endblock %}

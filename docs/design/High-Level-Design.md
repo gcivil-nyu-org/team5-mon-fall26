@@ -359,3 +359,9 @@ Sending is refused 24 hours after the ride's departure, once the post is deleted
 
 Unread counts come from `RideMessage.read_at` (US36), which is set when the conversation is opened or polled. "New interested rider" uses `RideInterest.owner_seen_at` (migration `0005_interest_owner_seen`), set when the owner opens the post page. The nav "My rides" link has a badge with unread messages plus new interested riders, provided to every template by the context processor `rides.context_processors.ride_badge` and counted only when a page shows it. No new dependency.
 
+## 34. Report a post or message (US38)
+
+The `rides_contentreport` table (`rides.ContentReport`, migration `0006_content_report`) stores the reporter (`on_delete=CASCADE`), exactly one of the reported post or message (database check), the reason (spam, unsafe, offensive or other), an optional note up to 300 characters, a snapshot of the reported text, the status (open or closed) and the created time. Conditional unique indexes allow one report per user per post and per message.
+
+`GET/POST /rides/<id>/report/` reports a post the user can see and does not own; `GET/POST /rides/messages/<message-id>/report/` reports a message sent to the user. Anything else is 404. The post page and each received message in a conversation have a "Report" link. Reports are listed only in the Django admin (filters for reason and status, status editable) until Epic 5 adds moderation; the reported rider is never shown who reported them. No new dependency.
+

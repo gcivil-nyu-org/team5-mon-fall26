@@ -15,6 +15,8 @@ from .models import (
     MAX_SEATS,
     MESSAGE_MAX_LENGTH,
     NOTE_MAX_LENGTH,
+    REPORT_NOTE_MAX_LENGTH,
+    ContentReport,
     RideInterest,
     RidePost,
 )
@@ -324,3 +326,33 @@ class RideMessageForm(forms.Form):
             }
         ),
     )
+
+
+class ContentReportForm(forms.ModelForm):
+    """US38 #101: why a post or message is being reported."""
+
+    class Meta:
+        model = ContentReport
+        fields = ["reason", "note"]
+        labels = {"reason": "Why are you reporting this?", "note": "Note (optional)"}
+        help_texts = {
+            "note": f"Up to {REPORT_NOTE_MAX_LENGTH} characters. Only admins see it."
+        }
+        widgets = {
+            "reason": forms.RadioSelect,
+            "note": forms.Textarea(
+                attrs={"rows": 3, "maxlength": REPORT_NOTE_MAX_LENGTH}
+            ),
+        }
+        error_messages = {
+            "reason": {"required": "Choose a reason."},
+            "note": {
+                "max_length": f"Keep the note to {REPORT_NOTE_MAX_LENGTH} characters "
+                "or fewer."
+            },
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # No empty "---------" choice in the radio list.
+        self.fields["reason"].choices = ContentReport.REASON_CHOICES
