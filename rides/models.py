@@ -129,6 +129,9 @@ class RideInterest(models.Model):
     )
     status = models.CharField(max_length=8, choices=STATUS_CHOICES, default=PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
+    # US37 #99: when the owner first opened the post page after this interest
+    # arrived. Empty means "new" for the My rides badge.
+    owner_seen_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["created_at", "pk"]

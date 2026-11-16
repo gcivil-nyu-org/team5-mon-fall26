@@ -873,3 +873,27 @@ header h1 {
   background: #e8f5ee;
   font-weight: 600;
 }
+
+/* US37 #99: unread messages and new interested riders on "My rides". */
+.nav-badge {
+  display: inline-block;
+  min-width: 1.2em;
+  margin-left: 0.25rem;
+  padding: 0 0.35em;
+  border-radius: 999px;
+  background: #d93025;
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.account-nav .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

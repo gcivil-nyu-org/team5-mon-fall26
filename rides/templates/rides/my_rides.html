@@ -1,0 +1,72 @@
+{% extends "routes/base.html" %}
+{% load tz %}
+
+{% block title %}My rides{% endblock %}
+
+{% block content %}
+  {# US37 #99: display names only, never email. #}
+  <h1>My rides</h1>
+  <p>Your shared ride posts and the rides you've asked to join, with new messages. Rides that left more than 7 days ago are hidden{% if show_past %}, but shown now{% endif %}.</p>
+  <p class="past-toggle">
+    {% if show_past %}
+      <a id="hide-past" href="{% url 'rides:my_rides' %}">Hide past rides</a>
+    {% else %}
+      <a id="show-past" href="{% url 'rides:my_rides' %}?past=1">Show past rides</a>{% if hidden_count %} ({{ hidden_count }} hidden){% endif %}
+    {% endif %}
+  </p>
+
+  <section class="my-rides" aria-labelledby="my-posts-title">
+    <h2 id="my-posts-title">My posts</h2>
+    {% if my_posts %}
+      <ul class="ride-list">
+        {% for row in my_posts %}
+          <li class="ride-card my-post">
+            <p>
+              <a href="{% url 'rides:ride_detail' row.post.pk %}">{{ row.post.pickup_zone.name }} to {{ row.post.dropoff_zone.name }}</a>,
+              {% timezone "America/New_York" %}{{ row.post.departure_at|date:"D j M Y, g:i A" }}{% endtimezone %}
+              <span class="status status-{{ row.status|lower }}">{{ row.status }}</span>
+            </p>
+            <p>{{ row.seats_left }} seat{{ row.seats_left|pluralize }} left of {{ row.post.seats }}{% if row.new_riders %} · <span class="new-tag">{{ row.new_riders }} new interested rider{{ row.new_riders|pluralize }}</span>{% endif %}</p>
+            {% if row.riders %}
+              <ul class="interest-list">
+                {% for rider in row.riders %}
+                  <li>
+                    <strong>{{ rider.name }}</strong> <span class="status">{{ rider.status }}</span>{% if rider.new %} <span class="new-tag">New</span>{% endif %}
+                    · <a href="{{ rider.url }}">Messages</a>{% if rider.unread %} <span class="unread-count">{{ rider.unread }} unread</span>{% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p class="help">No riders have shown interest yet.</p>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>You have no shared ride posts{% if hidden_count and not show_past %} in the last 7 days{% endif %}.</p>
+    {% endif %}
+    <p><a href="{% url 'rides:post_ride' %}">Post a shared ride</a></p>
+  </section>
+
+  <section class="my-rides" aria-labelledby="asked-title">
+    <h2 id="asked-title">Rides I've asked to join</h2>
+    {% if asked_rides %}
+      <ul class="ride-list">
+        {% for row in asked_rides %}
+          <li class="ride-card asked-ride">
+            <p>
+              {% if row.detail_url %}<a href="{{ row.detail_url }}">{{ row.post.pickup_zone.name }} to {{ row.post.dropoff_zone.name }}</a>{% else %}{{ row.post.pickup_zone.name }} to {{ row.post.dropoff_zone.name }}{% endif %},
+              {% timezone "America/New_York" %}{{ row.post.departure_at|date:"D j M Y, g:i A" }}{% endtimezone %}
+              <span class="status status-{{ row.status|lower }}">{{ row.status }}</span>
+            </p>
+            {% if row.status == "Deleted" %}<p>This shared ride was deleted.</p>{% elif row.status == "Closed" %}<p>This shared ride was closed.</p>{% endif %}
+            <p>Posted by {{ row.owner_name }} · <a href="{{ row.url }}">Messages</a>{% if row.unread %} <span class="unread-count">{{ row.unread }} unread</span>{% endif %}</p>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>You haven't asked to join any rides{% if hidden_count and not show_past %} in the last 7 days{% endif %}.</p>
+    {% endif %}
+    <p><a href="{% url 'rides:find_rides' %}">Find a shared ride</a></p>
+  </section>
+{% endblock %}

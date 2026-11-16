@@ -618,3 +618,38 @@ header {
   font-size: 0.72rem;
   color: #777;
 }
+
+/* US37 #99: My rides, the nav badge, unread counts and "New" tags. */
+.nav-badge {
+  display: inline-block;
+  min-width: 1.2em;
+  margin-left: 0.25rem;
+  padding: 0 0.35em;
+  border-radius: 999px;
+  background: #d93025;
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.unread-count,
+.new-tag {
+  display: inline-block;
+  padding: 0 0.4em;
+  border-radius: 4px;
+  background: #fde7e5;
+  color: #a50e0e;
+  font-size: 0.85em;
+  font-weight: bold;
+}
+
+.my-post .interest-list,
+.asked-ride p {
+  margin: 0.3rem 0;
+}
+
+.past-toggle {
+  font-size: 0.95em;
+}

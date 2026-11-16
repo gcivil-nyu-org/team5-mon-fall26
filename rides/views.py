@@ -15,7 +15,7 @@ from django.views.decorators.http import (
 from accounts.display_name import display_name_of, display_name_required
 from zones.views import MAX_ZONE_ID, NYC_TZ, _parse_int
 
-from . import interest, messaging
+from . import interest, messaging, my_rides
 from .forms import (
     RideMessageForm,
     RidePostEditForm,
@@ -106,9 +106,12 @@ def ride_detail(request, post_id):
                 "interest": rider_interest,
                 "rider_name": display_name_of(rider_interest.rider)
                 or f"Rider {rider_interest.rider_id}",
+                "new": rider_interest.owner_seen_at is None,
             }
             for rider_interest in post.interests.select_related("rider__profile").all()
         ]
+        # US37 #99: the owner has now seen these riders (clears the nav badge).
+        my_rides.mark_interests_seen(post, now)
         can_accept_interests = (
             post.status == RidePost.OPEN
             and not post.is_expired(now)
@@ -324,15 +327,23 @@ def find_rides_view(request):
         .exclude(status__in=[RidePost.CLOSED, RidePost.DELETED])
         .select_related("pickup_zone", "dropoff_zone")
     )
-    context["ride_updates"] = (
-        RideInterest.objects.filter(
-            rider=request.user,
-            post__status__in=[RidePost.CLOSED, RidePost.DELETED],
-        )
-        .select_related("post__pickup_zone", "post__dropoff_zone")
-        .order_by("-post__created_at")
-    )
     return render(request, "rides/find_rides.html", context)
+
+
+# ---- US37 #99: My rides ----
+
+
+@login_required
+@display_name_required
+@require_GET
+def my_rides_view(request):
+    """The rider's own posts and the rides they've asked to join, each with
+    its status and unread messages. Rides that left more than 7 days ago are
+    hidden unless ?past=1 ("Show past rides")."""
+    context = my_rides.build(
+        request.user, timezone.now(), show_past=request.GET.get("past") == "1"
+    )
+    return render(request, "rides/my_rides.html", context)
 
 
 # ---- US36 #98: message riders about a shared ride ----
