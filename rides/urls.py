@@ -37,6 +37,12 @@ urlpatterns = [
         views.undo_acceptance,
         name="undo_acceptance",
     ),
+    path("rides/<int:post_id>/report/", views.report_post, name="report_post"),
+    path(
+        "rides/messages/<int:message_id>/report/",
+        views.report_message,
+        name="report_message",
+    ),
     path(
         "rides/<int:post_id>/messages/<int:rider_id>/",
         views.conversation,

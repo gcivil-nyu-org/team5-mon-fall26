@@ -16,13 +16,14 @@
     </header>
 
     <ol id="conversation-messages" class="chat-log" aria-live="polite"
-        data-poll-url="{{ poll_url }}" data-poll-ms="{{ poll_ms }}" data-last-id="{{ last_id }}">
+        data-poll-url="{{ poll_url }}" data-poll-ms="{{ poll_ms }}" data-last-id="{{ last_id }}" data-report-url="{{ report_url }}">
       {% for message in thread %}
         <li class="chat-row {% if message.mine %}mine{% else %}theirs{% endif %}" data-id="{{ message.id }}"{% if forloop.last %} id="latest"{% endif %}>
           <div class="chat-bubble">
             <span class="visually-hidden">{{ message.sender }}:</span>
             <p class="chat-text">{{ message.text }}</p>
             <p class="chat-time">{{ message.sent_at }}</p>
+            {% if not message.mine %}{% if message.reported %}<span class="chat-report">Reported</span>{% else %}<a class="chat-report" href="{% url 'rides:report_message' message.id %}">Report</a>{% endif %}{% endif %}
           </div>
         </li>
       {% endfor %}

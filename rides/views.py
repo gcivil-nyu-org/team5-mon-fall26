@@ -15,8 +15,9 @@ from django.views.decorators.http import (
 from accounts.display_name import display_name_of, display_name_required
 from zones.views import MAX_ZONE_ID, NYC_TZ, _parse_int
 
-from . import interest, messaging, my_rides
+from . import interest, messaging, my_rides, reporting
 from .forms import (
+    ContentReportForm,
     RideMessageForm,
     RidePostEditForm,
     RidePostForm,
@@ -145,6 +146,9 @@ def ride_detail(request, post_id):
             and post.status == RidePost.OPEN
             and post.departure_at > now,
             "can_close": is_owner and post.status != RidePost.CLOSED,
+            # US38 #101: only shown to the reporter, never to the owner.
+            "reported": not is_owner
+            and reporting.already_reported(request.user, post=post),
         },
     )
 
@@ -376,13 +380,19 @@ def conversation(request, post_id, rider_id):
     thread = list(talk.messages())
     messaging.mark_read(thread, request.user, now)
     other = talk.other(request.user)
+    reported = reporting.reported_message_ids(request.user, [m.pk for m in thread])
     return render(
         request,
         "rides/conversation.html",
         {
             "post": talk.post,
             "other_name": display_name_of(other) or f"Rider {other.pk}",
-            "thread": [messaging.as_json(m, request.user) for m in thread],
+            "thread": [
+                {**messaging.as_json(m, request.user), "reported": m.pk in reported}
+                for m in thread
+            ],
+            # The page script swaps the 0 for each new message's id.
+            "report_url": reverse("rides:report_message", args=[0]),
             "last_id": thread[-1].pk if thread else 0,
             "read_only": talk.read_only_reason(now),
             "form": form,
@@ -408,4 +418,71 @@ def conversation_updates(request, post_id, rider_id):
             "messages": [messaging.as_json(m, request.user) for m in new],
             "read_only": talk.read_only_reason(now),
         }
+    )
+
+
+# ---- US38 #101: report a post or message ----
+
+
+def _report(request, template_context, back, post=None, message=None):
+    if reporting.already_reported(request.user, post=post, message=message):
+        if request.method == "POST":
+            messages.info(request, reporting.ALREADY)
+            return redirect(back)
+        return render(
+            request,
+            "rides/report.html",
+            {**template_context, "already": reporting.ALREADY, "back": back},
+        )
+    form = ContentReportForm(request.POST if request.method == "POST" else None)
+    if request.method == "POST" and form.is_valid():
+        data = form.cleaned_data
+        saved = reporting.report(
+            request.user, data["reason"], data["note"], post=post, message=message
+        )
+        messages.success(request, reporting.THANKS if saved else reporting.ALREADY)
+        return redirect(back)
+    return render(
+        request,
+        "rides/report.html",
+        {**template_context, "form": form, "back": back},
+    )
+
+
+@login_required
+@display_name_required
+@require_http_methods(["GET", "POST"])
+def report_post(request, post_id):
+    """A rider who can see a post (not its owner) reports it to the admins."""
+    post = reporting.post_to_report(request.user, post_id, timezone.now())
+    return _report(
+        request,
+        {"kind": "post", "post": post, "owner_name": display_name_of(post.owner)},
+        post_detail_url(post),
+        post=post,
+    )
+
+
+@login_required
+@display_name_required
+@require_http_methods(["GET", "POST"])
+def report_message(request, message_id):
+    """The receiver of a message reports it to the admins."""
+    message = reporting.message_to_report(request.user, message_id)
+    rider_id = (
+        message.receiver_id
+        if message.sender_id == message.post.owner_id
+        else message.sender_id
+    )
+    return _report(
+        request,
+        {
+            "kind": "message",
+            "message": message,
+            "post": message.post,
+            "sender_name": display_name_of(message.sender)
+            or f"Rider {message.sender_id}",
+        },
+        conversation_url(message.post_id, rider_id),
+        message=message,
     )

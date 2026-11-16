@@ -15,6 +15,20 @@ Entry format:
 
 ## Log
 
+### 2026-11-15 — us38-report-content (US38 #101, stacked on US37 #99)
+**What changed:**
+- `ContentReport` (`rides/models.py`, migration `rides/0006_content_report`, creates one table): reporter (CASCADE), post or message (exactly one), reason, note up to 300 characters, `reported_text` snapshot, status, `created_at`; unique per reporter and item.
+- `rides/reporting.py` (who can report what, the snapshot, saving once), `ContentReportForm` in `rides/forms.py`, `GET/POST /rides/<id>/report/` and `/rides/messages/<message-id>/report/` (`rides/views.py`, `rides/urls.py`, `rides/templates/rides/report.html`).
+- "Report this post" on the post page (not for the owner) and "Report" under each received message, also for polled messages (`rides/static/rides/js/conversation.js`). Styles in `routes.css`.
+- `ContentReportAdmin` in `rides/admin.py`: filters for reason and status, the reported content, read-only report fields, close/reopen actions.
+- Docs: `decisions.md` (US38 section), HLD section 34, `CLAUDE.md` data model, `docs/stories/US38.md`.
+
+**Decisions made (also in `decisions.md`):** proposed, to confirm with the PO: own content, deleted posts and others' conversations are 404; reports keep a text snapshot; a reported rider deleting their account deletes the reports on their content; the reporter sees "Reported" on what they reported.
+
+**Tests:** new `rides/tests/test_report_content.py` (every acceptance criterion: reporting posts and messages, once per item in the page and the database, admin list, filters and closing, privacy for the reported rider, own-content 404s, validation) and one new test in `zones/tests/conversation.test.js`. Full Django suite OK (1156 tests, 4 skipped), Node tests OK, `black --check .` and `flake8` pass.
+
+**Next step:** merge US37 first, then this PR (it contains US37's commits until then). PO to confirm the proposed rules.
+
 ### 2026-11-15 — us37-my-rides (US37 #99)
 **What changed:**
 - `GET /rides/mine/` (`rides/views.py` `my_rides_view`, `rides/urls.py`, `rides/templates/rides/my_rides.html`), built by the new `rides/my_rides.py`: "My posts" (status, seats left, interested riders with status, "New" tag and unread counts) and "Rides I've asked to join" (Pending, Accepted, Declined, Closed or Deleted, with unread counts). "Show past rides" (`?past=1`) shows rides that left more than 7 days ago.

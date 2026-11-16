@@ -197,3 +197,95 @@ class RideMessage(models.Model):
 
     def __str__(self):
         return f"Message {self.pk} on post {self.post_id}"
+
+
+REPORT_NOTE_MAX_LENGTH = 300
+
+
+class ContentReport(models.Model):
+    """US38 #101: a rider reporting a post or a message to the admins. Only
+    admins see reports; the reported rider is never told who reported them."""
+
+    SPAM = "spam"
+    UNSAFE = "unsafe"
+    OFFENSIVE = "offensive"
+    OTHER = "other"
+    REASON_CHOICES = [
+        (SPAM, "Spam"),
+        (UNSAFE, "Unsafe"),
+        (OFFENSIVE, "Offensive"),
+        (OTHER, "Other"),
+    ]
+    OPEN = "open"
+    CLOSED = "closed"
+    STATUS_CHOICES = [(OPEN, "Open"), (CLOSED, "Closed")]
+
+    reporter = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,  # deleting the account deletes its reports
+        related_name="content_reports",
+    )
+    # Exactly one of post and message is set.
+    post = models.ForeignKey(
+        RidePost,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="reports",
+    )
+    message = models.ForeignKey(
+        RideMessage,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="reports",
+    )
+    reason = models.CharField(max_length=9, choices=REASON_CHOICES)
+    note = models.CharField(max_length=REPORT_NOTE_MAX_LENGTH, blank=True)
+    # What the reported post or message said when it was reported, so admins
+    # still see it if the owner edits the note or deletes the post.
+    reported_text = models.TextField(blank=True)
+    status = models.CharField(max_length=6, choices=STATUS_CHOICES, default=OPEN)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(post__isnull=False, message__isnull=True)
+                | Q(post__isnull=True, message__isnull=False),
+                name="content_report_post_or_message",
+            ),
+            models.UniqueConstraint(
+                fields=["reporter", "post"],
+                condition=Q(post__isnull=False),
+                name="content_report_once_per_post",
+            ),
+            models.UniqueConstraint(
+                fields=["reporter", "message"],
+                condition=Q(message__isnull=False),
+                name="content_report_once_per_message",
+            ),
+            models.CheckConstraint(
+                condition=Q(reason__in=["spam", "unsafe", "offensive", "other"]),
+                name="content_report_reason_valid",
+            ),
+            models.CheckConstraint(
+                condition=Q(status__in=["open", "closed"]),
+                name="content_report_status_valid",
+            ),
+        ]
+
+    @property
+    def kind(self):
+        return "Post" if self.post_id else "Message"
+
+    @property
+    def reported_user(self):
+        return self.post.owner if self.post_id else self.message.sender
+
+    def __str__(self):
+        target = (
+            f"post {self.post_id}" if self.post_id else f"message {self.message_id}"
+        )
+        return f"Report {self.pk}: {target} ({self.get_reason_display()})"

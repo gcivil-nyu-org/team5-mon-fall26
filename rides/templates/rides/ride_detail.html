@@ -74,5 +74,7 @@
       </section>
     {% endif %}
     <p><a href="{% url 'rides:find_rides' %}">Find another shared ride</a></p>
+    {# US38 #101: the owner never sees reports. #}
+    <p class="report-link">{% if reported %}You reported this post.{% else %}<a id="report-post" href="{% url 'rides:report_post' post.pk %}">Report this post</a>{% endif %}</p>
   {% endif %}
 {% endblock %}
