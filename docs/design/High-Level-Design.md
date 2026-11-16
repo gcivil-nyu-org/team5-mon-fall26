@@ -352,3 +352,10 @@ The `rides_ridemessage` table (`rides.RideMessage`, migration `0004_ride_message
 A conversation is a post plus its owner and one rider who showed interest. `GET/POST /rides/<id>/messages/<rider-id>/` shows the messages oldest first with a send box and the reminder not to share addresses or phone numbers and to meet in a public place; only those two riders can open it (404 for anyone else). `GET /rides/<id>/messages/<rider-id>/new/?after=<message-id>` returns newer messages as JSON plus whether the conversation is read-only. The page script polls it every 15 seconds only while the page is visible, pauses when the tab is hidden and checks at once when it is shown again. No websockets.
 
 Sending is refused 24 hours after the ride's departure, once the post is deleted, and (proposed) once the rider withdraws or is declined; the messages stay readable. Each sender can send 30 messages per hour across all conversations, counted under a lock on the sender's user row.
+
+## 33. My rides (US37)
+
+`GET /rides/mine/` (sign-in and a display name required) shows two lists built in `rides/my_rides.py`. "My posts": the user's posts except deleted ones, with status, seats left and the interested riders (display names, status, "New" tag, unread count and a link to each conversation). "Rides I've asked to join": every post the user showed interest in, with Pending, Accepted or Declined, or Closed or Deleted once the owner closed or deleted it, the owner's display name and the unread count of that conversation. Rides that left more than 7 days ago are hidden unless `?past=1`, except those with something unread or new.
+
+Unread counts come from `RideMessage.read_at` (US36), which is set when the conversation is opened or polled. "New interested rider" uses `RideInterest.owner_seen_at` (migration `0005_interest_owner_seen`), set when the owner opens the post page. The nav "My rides" link has a badge with unread messages plus new interested riders, provided to every template by the context processor `rides.context_processors.ride_badge` and counted only when a page shows it. No new dependency.
+

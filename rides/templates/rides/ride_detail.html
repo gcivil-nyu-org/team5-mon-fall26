@@ -31,7 +31,7 @@
         <ul class="interest-list">
           {% for entry in interested_riders %}
             <li class="interest-card">
-              <p><strong>{{ entry.rider_name }}</strong> <span class="status interest-{{ entry.interest.status }}">{{ entry.interest.get_status_display }}</span></p>
+              <p><strong>{{ entry.rider_name }}</strong> <span class="status interest-{{ entry.interest.status }}">{{ entry.interest.get_status_display }}</span>{% if entry.new %} <span class="new-tag">New</span>{% endif %}</p>
               <p><a href="{% url 'rides:conversation' post.pk entry.interest.rider_id %}">Messages with {{ entry.rider_name }}</a></p>
               {% if entry.interest.status == "pending" %}
                 {% if not can_accept_interests %}<p class="help">This ride cannot accept another rider right now.</p>{% endif %}

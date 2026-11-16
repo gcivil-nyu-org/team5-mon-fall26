@@ -383,8 +383,8 @@ class DayPlanPagesTests(DayPlanTestCase):
 
     def test_page_query_count(self):
         # Session and user, the plan, its stops, 2 per leg, then the
-        # add-stop zone list (Pass B).
-        with self.assertNumQueries(2 + 2 + 2 * 2 + 1):
+        # add-stop zone list (Pass B), then the "My rides" nav badge (US37).
+        with self.assertNumQueries(2 + 2 + 2 * 2 + 1 + 1):
             self.page()
 
     def test_list_shows_name_day_and_stop_chain(self):

@@ -328,7 +328,7 @@ class ReadOnlyTests(MessageTestData):
 
     def test_deleted_ride_update_links_to_the_conversation(self):
         RidePost.objects.filter(pk=self.ride.pk).update(status=RidePost.DELETED)
-        response = self.client.get(reverse("rides:find_rides"))
+        response = self.client.get(reverse("rides:my_rides"))  # moved in US37
         self.assertContains(response, f'href="{self.url()}"')
 
 

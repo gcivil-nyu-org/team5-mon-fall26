@@ -149,7 +149,7 @@ class EditCloseDeleteTests(InterestTestData):
         self.as_owner()
         self.delete(post)
         self.client.force_login(self.rider)
-        r = self.client.get(reverse("rides:find_rides"))
+        r = self.client.get(reverse("rides:my_rides"))  # moved there in US37
         self.assertContains(r, "This shared ride was deleted.")
 
     def test_deleted_post_frees_an_open_post_slot(self):

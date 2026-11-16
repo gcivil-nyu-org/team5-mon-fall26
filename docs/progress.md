@@ -15,6 +15,20 @@ Entry format:
 
 ## Log
 
+### 2026-11-15 — us37-my-rides (US37 #99)
+**What changed:**
+- `GET /rides/mine/` (`rides/views.py` `my_rides_view`, `rides/urls.py`, `rides/templates/rides/my_rides.html`), built by the new `rides/my_rides.py`: "My posts" (status, seats left, interested riders with status, "New" tag and unread counts) and "Rides I've asked to join" (Pending, Accepted, Declined, Closed or Deleted, with unread counts). "Show past rides" (`?past=1`) shows rides that left more than 7 days ago.
+- `RideInterest.owner_seen_at` (migration `rides/0005_interest_owner_seen`, existing rows marked seen); the owner's post page marks its riders seen and shows "New" on them.
+- "My rides" link with a badge (unread messages + new interested riders) in the nav of `routes/base.html`, the map and Compare (`rides/templates/rides/_nav_link.html`, context processor `rides.context_processors.ride_badge` in `settings.py`). Styles in `routes.css` and `map.css`.
+- "Your ride updates" moved from `/rides/` to My rides; `/rides/` links to My rides. Two older tests now check My rides instead.
+- Docs: `decisions.md` (US37 section), HLD section 33, `CLAUDE.md` data model, `docs/stories/US37.md`.
+
+**Decisions made (also in `decisions.md`):** proposed, to confirm with the PO: opening the post page clears "new interested riders"; past rides with something unread or new stay visible; withdrawn conversations with messages are listed as "Withdrawn"; deleted posts are left out of "My posts".
+
+**Tests:** new `rides/tests/test_my_rides.py` (every acceptance criterion: both lists and all statuses, unread counts and clearing, the badge on several pages and clearing, the 7-day rule, access and display names). Rides suite OK, `black --check .` and `flake8` pass.
+
+**Next step:** PO to confirm the proposed rules. US38 #101 (report a post or message) is stacked on this branch.
+
 ### 2026-11-15 — us36-message-riders (US36 #98)
 **What changed:**
 - `RideMessage` (`rides/models.py`, migration `rides/0004_ride_message`, creates one table): post, sender and receiver (all CASCADE), text up to 500 characters, `sent_at`, `read_at`; database checks for empty text and messages to oneself.
