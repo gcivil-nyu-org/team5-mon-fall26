@@ -15,6 +15,19 @@ Entry format:
 
 ## Log
 
+### 2026-11-18 — us42-zone-names (US42 #116, stacked on US41 #115)
+**What changed:**
+- `Zone.edited_by_admin`, `edited_by`, `edited_at` (`zones/models.py`, migration `zones/0008_zone_admin_edits`, three columns with database defaults).
+- `ZoneAdmin` (`zones/admin.py`) is no longer read-only: name and borough (from the TLC boroughs) are editable, zone id read-only, no add or delete; the list shows the flag, who and when, with filters for borough and "edited in the admin"; `save_model` sets the flag and who/when.
+- `upsert_zones` (`zones/importer/load.py`) skips zones edited in the admin; both imports use it.
+- Docs: `decisions.md` (US42 section, note on the US0a re-import decision), README (Zones in the admin), HLD table and section 38, `CLAUDE.md`, `docs/stories/US42.md`.
+
+**Decisions made (also in `decisions.md`):** proposed, to confirm with the PO: the borough is picked from the TLC list; unticking the flag hands the zone back to the import. Also: only the last edit is kept (who and when); names needn't be unique.
+
+**Tests:** `zones/tests/test_zone_admin.py` rewritten (edit, trim, borough list, no change records nothing, untick, list shows who/when, no add or delete, id can't change) and new `zones/tests/test_zone_names.py` (the new name on the map API, compare page, plans, ride detail and My rides; `import_trips` and `import_rideshare` keep the edit; other zones still follow the lookup; an unticked zone gets the TLC name back). 1322 Django tests OK (4 skipped), coverage 100%, 190 Node tests OK, black and flake8 pass.
+
+**Next step:** merge US41 (#115's PR) first, then open the US42 PR and retarget it to `develop`. PO to confirm the proposed choices. Not tried yet: the admin in a browser, and a real import after an edit.
+
 ### 2026-11-18 — us41-cleaning-rules (US41 #115)
 **What changed:**
 - `CleaningRules` and `CleaningRulesChange` (`zones/models.py`, migration `zones/0006_cleaning_rules`, which creates both tables and the taxi and rideshare records with today's limits). Field validators and `clean()` give a message per field; check constraints refuse the same bad values in the database.

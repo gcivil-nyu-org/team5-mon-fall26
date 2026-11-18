@@ -198,7 +198,7 @@ This takes away the staff rights at once (Django checks them on every admin page
 ### What staff can do in the admin
 
 - **Accounts:** list and search by email or display name, deactivate (untick "Active") or delete an account. The password and its hash are not shown and can't be reset there, the staff flags are read-only (they change only with the commands above), and accounts can't be added there (they come from sign-up or `create_staff`).
-- **Zones:** read-only for now (US42 makes the names editable).
+- **Zones:** correct a zone's name or borough (US42), search by name, filter by borough or by "edited in the admin". The zone id can't change, and zones can't be added or deleted. An edited zone keeps its name and borough when the import runs again; untick "Edited in the admin" to let the next import put back the TLC values. The list shows who last edited each zone and when.
 - **Import history:** read-only list of every `import_trips` and `import_rideshare` run (US40), filterable by import and status.
 - **Cleaning rules:** the fare, distance and duration limits of each import, and the wait limits of the rideshare import (US41). See "Cleaning rules" below.
 - Display names, fare reports, ride posts, interest in rides and content reports, as set up by their stories (US24, US30, US31, US33, US38).

@@ -78,7 +78,7 @@ Fare ranges (minimum, average, maximum) are computed after cleaning outliers (ze
 
 | Table | Key columns |
 |---|---|
-| `zone` | `zone_id`, `name`, `borough` (the boundary shape lives in the GeoJSON file, keyed by `zone_id`) |
+| `zone` | `zone_id`, `name`, `borough`, `edited_by_admin`, `edited_by`, `edited_at` (the boundary shape lives in the GeoJSON file, keyed by `zone_id`; the last three record US42's admin edits) |
 | `zone_hour_stats` | `zone_id`, `day_of_week`, `hour`, `trip_count`, `avg_duration_min`, `fare_min`, `fare_avg`, `fare_max` |
 | `route_hour_stats` | `pickup_zone_id`, `dropoff_zone_id`, `day_of_week`, `hour`, `trip_count`, `avg_duration_min`, `fare_min`, `fare_avg`, `fare_max` |
 | `rideshare_zone_hour_stats` | `zone_id` (pickup), `day_of_week`, `hour`, `trip_count`, `avg_duration_min`, `fare_min`, `fare_avg`, `fare_max`, `avg_wait_min` (null if no valid wait), `wait_count`, `fare_per_mile` (null if the miles round to 0) |
@@ -381,3 +381,7 @@ Every run of `import_trips` or `import_rideshare` saves one row in the `zones_im
 ## 37. Edit the cleaning rules (US41)
 
 The cleaning limits are no longer constants in the code. `zones.CleaningRules` (migration `0006_cleaning_rules`) holds one record per import, taxi and rideshare, created with the limits from before US41; staff change them in the admin ("Cleaning rules"), which refuses negative values, a minimum not below its maximum, and a maximum fare above $500 (the fare reports' limit), and the database checks the same. Every change is saved in `zones.CleaningRulesChange` (who, when, old and new values) and shown on the page. `import_trips` and `import_rideshare` read the current limits once when they start (`zones/importer/rules.py`), pass them to the cleaning code as a `Limits` dataclass, print them in the report's rule labels and save them in the run's import history (US40). A change applies from the next import. No new dependency, no API change.
+
+## 38. Manage zone names and boroughs (US42)
+
+Staff correct a zone's name and borough in the admin (Zones → Zones): the zone id is read-only, the borough is picked from the TLC boroughs, and zones can't be added or deleted. Saving a changed name or borough sets `edited_by_admin`, `edited_by` and `edited_at` on `zones_zone` (migration `0008_zone_admin_edits`), shown in the list with a filter. `upsert_zones` in `zones/importer/load.py`, used by both imports, skips edited zones, so a re-import never undoes an edit; unticking the flag lets the next import restore the TLC values. Every page reads names from the table when it is shown, so a change appears after a reload. No new dependency, no API change.

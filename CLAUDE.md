@@ -28,7 +28,7 @@ Web app that shows NYC riders historical taxi demand, fares, and trip duration b
 - Open: the minimum trip count (proposed 5), the best/worst rule (see `docs/decisions.md`)
 
 ## Data model
-- `zone(zone_id, name, borough)` (boundary shapes are in the GeoJSON file, keyed by `zone_id`)
+- `zone(zone_id, name, borough, edited_by_admin, edited_by, edited_at)` (boundary shapes are in the GeoJSON file, keyed by `zone_id`; the last three are US42's admin edits)
 - `zone_hour_stats(zone_id, day_of_week, hour, trip_count, avg_duration_min, fare_min, fare_avg, fare_max)`
 - `route_hour_stats(pickup_zone_id, dropoff_zone_id, day_of_week, hour, trip_count, avg_duration_min, fare_min, fare_avg, fare_max)`
 - Epic 4: `accounts_profile(user_id, display_name)`, one per user, unique ignoring capitals (US30 #92). Other riders only ever see the display name, never the email.
@@ -41,7 +41,7 @@ Web app that shows NYC riders historical taxi demand, fares, and trip duration b
 
 ## Admin (US39 #113)
 - Django admin at `/admin/`, staff only (active + `is_staff`). Staff accounts: `manage.py create_staff` (password asked in the terminal, never an option) and `manage.py remove_staff --email`. Never put a real staff email, username or password in the repo.
-- The "Admin" header link is `accounts/templates/accounts/_admin_link.html`. The Accounts admin (`accounts/admin.py`) never shows passwords and keeps staff rights read-only. Read-only tables use `zones.admin.ReadOnlyModelAdmin` (Zone now, ImportRun in US40).
+- The "Admin" header link is `accounts/templates/accounts/_admin_link.html`. The Accounts admin (`accounts/admin.py`) never shows passwords and keeps staff rights read-only. Read-only tables use `zones.admin.ReadOnlyModelAdmin` (ImportRun). US42 #116: `ZoneAdmin` edits a zone's name and borough only (borough from the TLC list), never adds or deletes; an edit sets `Zone.edited_by_admin`, `edited_by` (email) and `edited_at`, and `upsert_zones` skips edited zones so the imports never undo it.
 - US40 #114: `zones_importrun` (`zones.ImportRun`) records every `import_trips` / `import_rideshare` run (who: `--by` or the OS user; status running/succeeded/failed; the report's totals and text; the error). Saved by `zones/importer/history.py` outside the import's transaction, so a failed run is still recorded. Read-only "Import history" in the admin.
 - US41 #115: the cleaning limits are editable in the admin, one `zones.CleaningRules` record per import (taxi, rideshare), with every change in `zones.CleaningRulesChange` (who, when, old and new). The imports read them once at the start (`zones/importer/rules.py`) and pass them to `clean_trips` as `Limits` / `RideshareLimits`; the defaults in `clean.py` are the starting values. Don't add new hard-coded limits: add a field to `CleaningRules`.
 - `accounts/tests/test_admin_access.py` checks every admin URL refuses guests and riders; a new registered model is covered automatically.
