@@ -33,3 +33,4 @@ One file per user story, mirroring the ZenHub issue (story line, developer tasks
 | US37.md | #99 | My Rides (written by hand, not by the sync script) |
 | US38.md | #101 | Report a Post or Message (written by hand, not by the sync script) |
 | US39.md | #113 | Admin Access and Staff Accounts (copied with `gh issue view`, not by the sync script) |
+| US40.md | #114 | Record and View Import History (copied with `gh issue view`, not by the sync script) |

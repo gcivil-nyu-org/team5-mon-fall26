@@ -11,7 +11,7 @@ from django.test import TestCase
 from django.urls import URLPattern, reverse
 
 from accounts.models import Profile
-from zones.models import Zone
+from zones.models import ImportRun, Zone
 
 User = get_user_model()
 
@@ -160,7 +160,7 @@ class NonStaffRefusedTests(AdminData, TestCase):
     def test_every_registered_model_has_pages_to_check(self):
         names = {name for name, _ in model_urls()}
 
-        for model in (User, Profile, Zone):
+        for model in (User, Profile, Zone, ImportRun):
             label = f"{model._meta.app_label}_{model._meta.model_name}"
             self.assertIn(f"{label}_changelist", names)
             self.assertIn(f"{label}_change", names)

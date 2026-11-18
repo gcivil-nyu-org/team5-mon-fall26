@@ -15,6 +15,19 @@ Entry format:
 
 ## Log
 
+### 2026-11-17 — us40-import-history (US40 #114, stacked on US39 #113)
+**What changed:**
+- `ImportRun` (`zones/models.py`, migration `zones/0005_import_run`, creates one table `zones_importrun`): import, months, who, status, start/finish, the report's totals, removed per rule (JSON), cells and small cells, `MIN_TRIP_COUNT` used, zones loaded, cleaning limits (JSON), the report text, the error.
+- `zones/importer/history.py`: `start_run` (saves `running` before the import, closes earlier unfinished runs of the same import), `record_success`, `failure_recorded` (marks `failed` on any exception including Ctrl-C, re-raises unchanged), `--by` argument and the OS-user default. `import_trips` and `import_rideshare` call it; `report.small_cells` is shared by the report and the record. Pipelines, cleaning and loading unchanged.
+- `ImportRunAdmin` (`zones/admin.py`), a `ReadOnlyModelAdmin`: "Import history", newest first, filters for import and status, run page with removed rows per rule, limits and the report.
+- Docs: `decisions.md` (US40 section), README ("Import history", `--by` in the import and AWS-load sections, staff list), HLD table and section 36, `CLAUDE.md`, `docs/stories/US40.md`.
+
+**Decisions made (also in `decisions.md`):** proposed, to confirm with the PO: `--by` or the OS user; argument errors save no record; a failed run keeps its counts empty; an unfinished run is closed as failed by the next run of the same import; the history is kept forever.
+
+**Tests:** new `zones/tests/test_import_history.py` (both commands: success numbers equal the printed report, failures for a bad file, a failed download, a write error, an error without a message, Ctrl-C, saving the failure failing; argument errors; `--by`; stuck runs; real-commit rollback tests for both imports) and `zones/tests/test_import_run_admin.py`; `ImportRun` added to the admin URL check. Existing import tests unchanged. 1258 Django tests OK (4 skipped), coverage 100%, 190 Node tests OK, black and flake8 pass. By hand on scratch databases: March 2026 taxi and rideshare with old and new code (identical reports and row md5s, same time and memory within run-to-run noise), a `kill -9` run, a corrupt-file run, and the admin as staff, rider and guest over HTTP on `runserver 8001`.
+
+**Next step:** merge US39 (#128) first, then open the US40 PR and retarget it to `develop`. PO to confirm the proposed rules. The migration reaches the shared AWS database through the Integration deploy; not tried against AWS.
+
 ### 2026-11-17 — us39-admin-staff (US39 #113)
 **What changed:**
 - `accounts/management/commands/create_staff.py` (asks for the email unless `--email`, and the password twice with no echo; validators; refuses without a terminal; `--existing` promotes an existing account) and `remove_staff.py` (`--email`; clears the staff flags, keeps the account).
