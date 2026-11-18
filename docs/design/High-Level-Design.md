@@ -250,7 +250,7 @@ A signed-in rider can see, correct and delete their own fare reports (US24).
 
 | Page | What it does |
 |---|---|
-| `GET /reports/` | My fare reports: route, ride date and time, taxi fare, rideshare quote, status ("Visible" or "Held for review"), newest first |
+| `GET /reports/` | My fare reports: route, ride date and time, taxi fare, rideshare quote, status ("Visible", "Held for review" or, since US44, "Removed by a moderator"), newest first |
 | `GET/POST /reports/<id>/edit/` | The US24 form with the same rules; the review check runs again after the edit |
 | `GET/POST /reports/<id>/delete/` | Confirm, then delete; the report is removed everywhere, including the community summary |
 
@@ -390,3 +390,7 @@ Staff correct a zone's name and borough in the admin (Zones → Zones): the zone
 ## 39. Manage zone adjacency (US43)
 
 Staff add a pair of neighbouring zones that `zone_neighbors.json` (US18) misses, or remove a wrong one, with a reason, in the admin (Zones → Neighbour overrides). Each pair is one `zones.ZoneAdjacencyOverride` row (migration `0009_zone_adjacency_override`), stored lower zone id first, so it always applies both ways. A zone can't be paired with itself, "add" must be a pair the file doesn't have, and "remove" one it does. `load_zone_neighbors()` in `zones/stats.py` combines the cached file with the overrides, read on every call (one small query), so cheaper-pickup suggestions (US19, `routes/planning.py`) and ride matching (US32, `rides/search.py`) use a change on the next request, in every server process, with no restart. Deleting an override puts the pair back to what the file says. The overrides live in the database, so rebuilding the file with `scripts/build_zone_neighbors.py` keeps them. Each zone's admin page lists its neighbours, marked "from the file", "added in the admin" or "removed in the admin". No new dependency, no API change.
+
+## 40. Review fare reports held for review (US44)
+
+Staff review fare reports in the admin (Reports → Fare reports). Held reports are listed first, each with the route's usual fare: the historical average at the ride's day of week and hour in New York time (`route_stats`, the same number the hold rule uses), or "Not enough data". Staff select reports and choose "Approve: show to other riders" or "Remove: hide from every public view", with an optional reason in the box next to the action menu (`reports/review.py`). Each change records `reviewed_by` (email), `reviewed_at` and `review_reason` on `reports_farereport` (migration `reports/0002_fare_report_review`, which also adds the `removed` status). The status changes only through these actions, and reports can't be added in the admin. `FareReport.objects.public()` keeps only visible reports, so an approved report counts in the rider reports summary (US26) on the next request and a removed one disappears from it. On My fare reports (`/reports/`) the owner sees "Removed by a moderator", with no Edit link (editing is refused with a message), and can still delete it. No new dependency, no API change.
