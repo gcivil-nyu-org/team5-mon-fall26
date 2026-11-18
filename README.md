@@ -152,14 +152,18 @@ The password must pass the same rules as sign-up (at least 8 characters, not com
 
 Django's own `python manage.py createsuperuser` also works, but enter the email in lowercase as the **Username** (accounts use the lowercased email as the username), or the account can't sign in. Prefer `create_staff`.
 
-**Integration and Production** share one RDS database, so a staff account created once works on both sites. Create it from a laptop, the same way the rideshare data is loaded (see "Load the rideshare data into the shared AWS database" above):
+**Integration and Production.** Recommended path: enable HTTPS on the AWS sites first, then create staff accounts there. Until HTTPS is on, staff can't safely sign in to the admin on AWS anyway (see the warning above).
+
+**Not yet tested:** the two ways below have not been run against the AWS database. Check each step as you go and update this section once one has worked.
+
+Both sites share one RDS database, so a staff account created once works on both. Create it from a laptop, the same way the rideshare data is loaded (see "Load the rideshare data into the shared AWS database" above):
 
 1. Allow your IP on port 5432 in the `taxiscope-db-sg` security group (step 1 there).
 2. Point Django at RDS in this shell only (step 2 there): `read -rs DATABASE_URL && export DATABASE_URL`.
 3. Run `python manage.py create_staff`.
 4. Remove your IP rule and `unset DATABASE_URL` (step 5 there).
 
-Alternative, not yet tried by the team: run the command on an Elastic Beanstalk instance. It needs the EB CLI and an EC2 key pair on the environment.
+Alternative (**not yet tested**): run the command on an Elastic Beanstalk instance. It needs the EB CLI and an EC2 key pair on the environment.
 
 ```bash
 eb ssh Taxiscope-integration-env
@@ -177,7 +181,7 @@ exit    # leave the root shell, then exit again to close the SSH session
 python manage.py remove_staff --email <email>
 ```
 
-This takes away the staff rights at once (Django checks them on every admin page, so a staff member who is signed in loses access on their next click). The account itself is kept as a normal rider account. To delete it completely, a staff member deletes it in the admin (Accounts → the account → Delete), or its owner deletes it from My account. Deleting it deletes everything saved in it (US12). On Integration and Production, run `remove_staff` from a laptop with the same four steps as above (step 3 becomes `remove_staff`).
+This takes away the staff rights at once (Django checks them on every admin page, so a staff member who is signed in loses access on their next click). The account itself is kept as a normal rider account. To delete it completely, a staff member deletes it in the admin (Accounts → the account → Delete), or its owner deletes it from My account. Deleting it deletes everything saved in it (US12). On Integration and Production (**not yet tested**), run `remove_staff` from a laptop with the same four steps as above (step 3 becomes `remove_staff`).
 
 ### What staff can do in the admin
 
