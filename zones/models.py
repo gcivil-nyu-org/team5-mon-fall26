@@ -497,3 +497,107 @@ class CleaningRulesChange(models.Model):
 
     def __str__(self):
         return f"{self.rules} changed by {self.changed_by} at {self.changed_at}"
+
+
+class ZoneAdjacencyOverride(models.Model):
+    """US43 #117: staff add a pair of neighbouring zones that
+    zone_neighbors.json (US18) misses, or remove a wrong one, with a reason.
+
+    The pair is stored once, lower zone id first, and always applies both
+    ways. zones.stats.load_zone_neighbors() combines the file with these
+    rows, so cheaper-pickup suggestions (US19) and ride matching (US32) use
+    the result straight away. Deleting a row puts the pair back to what the
+    file says. The rows live in the database, so rebuilding the file with
+    scripts/build_zone_neighbors.py keeps them."""
+
+    ADD = "add"
+    REMOVE = "remove"
+    ACTION_CHOICES = [
+        (ADD, "Add: make them neighbours"),
+        (REMOVE, "Remove: they are not neighbours"),
+    ]
+
+    zone_a = models.ForeignKey(
+        Zone, on_delete=models.CASCADE, related_name="+", verbose_name="zone"
+    )
+    zone_b = models.ForeignKey(
+        Zone,
+        on_delete=models.CASCADE,
+        related_name="+",
+        verbose_name="other zone",
+    )
+    action = models.CharField(max_length=6, choices=ACTION_CHOICES)
+    reason = models.CharField(
+        max_length=200,
+        help_text="Why the file is wrong for this pair, for example "
+        '"Joined by a bridge" or "Separated by the river".',
+    )
+    changed_by = models.CharField(
+        "last changed by",
+        max_length=150,
+        blank=True,
+        default="",
+        help_text="The staff member's email, kept even if the account is "
+        "deleted later.",
+    )
+    changed_at = models.DateTimeField("last changed at", default=timezone.now)
+
+    class Meta:
+        ordering = ["zone_a", "zone_b"]
+        verbose_name = "neighbour override"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["zone_a", "zone_b"],
+                name="unique_adjacency_override_pair",
+                violation_error_message="This pair already has an override. "
+                "Change or delete that one instead.",
+            ),
+            models.CheckConstraint(
+                condition=Q(zone_a__lt=F("zone_b")),
+                name="adjacency_override_lower_zone_first",
+            ),
+        ]
+
+    def __str__(self):
+        verb = "add" if self.action == self.ADD else "remove"
+        return f"{verb} {self.zone_a_id} ↔ {self.zone_b_id}"
+
+    def _put_lower_zone_first(self):
+        if (
+            self.zone_a_id is not None
+            and self.zone_b_id is not None
+            and self.zone_a_id > self.zone_b_id
+        ):
+            self.zone_a_id, self.zone_b_id = self.zone_b_id, self.zone_a_id
+
+    def clean(self):
+        """A zone can't be paired with itself; "add" must be a pair the file
+        doesn't already have, and "remove" one it does."""
+        if self.zone_a_id is None or self.zone_b_id is None:
+            return
+        if self.zone_a_id == self.zone_b_id:
+            raise ValidationError(
+                {"zone_b": "A zone can't be its own neighbour. Pick two zones."}
+            )
+        self._put_lower_zone_first()
+        from .stats import file_zone_neighbors
+
+        in_file = self.zone_b_id in file_zone_neighbors().get(self.zone_a_id, [])
+        if self.action == self.ADD and in_file:
+            raise ValidationError(
+                {
+                    "action": "These zones are already neighbours in "
+                    "zone_neighbors.json, so there is nothing to add."
+                }
+            )
+        if self.action == self.REMOVE and not in_file:
+            raise ValidationError(
+                {
+                    "action": "These zones aren't neighbours in "
+                    "zone_neighbors.json, so there is nothing to remove."
+                }
+            )
+
+    def save(self, *args, **kwargs):
+        self._put_lower_zone_first()
+        super().save(*args, **kwargs)

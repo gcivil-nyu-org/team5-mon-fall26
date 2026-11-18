@@ -8,12 +8,14 @@ from pathlib import Path
 from statistics import median
 
 from django.conf import settings
+from django.db.models import Q
 
 from .models import (
     RideshareRouteHourStats,
     RideshareZoneHourStats,
     RouteHourStats,
     Zone,
+    ZoneAdjacencyOverride,
     ZoneHourStats,
 )
 
@@ -24,10 +26,57 @@ NEIGHBORS_PATH = Path(__file__).resolve().parent / "data" / "zone_neighbors.json
 
 
 @lru_cache(maxsize=1)
-def load_zone_neighbors():
+def file_zone_neighbors():
     """zone_neighbors.json (US18) as {zone_id: [adjacent zone ids]}, read once."""
     with NEIGHBORS_PATH.open(encoding="utf-8") as f:
         return {int(zone_id): ids for zone_id, ids in json.load(f).items()}
+
+
+def load_zone_neighbors():
+    """{zone_id: [adjacent zone ids]}: zone_neighbors.json with the staff's
+    neighbour overrides (US43 #117) applied both ways.
+
+    The overrides are read on every call (one small query), so a change in
+    the admin applies straight away in every server process, with no cache
+    to clear. With no overrides this is the cached file itself."""
+    overrides = list(
+        ZoneAdjacencyOverride.objects.order_by().values_list(
+            "zone_a_id", "zone_b_id", "action"
+        )
+    )
+    if not overrides:
+        return file_zone_neighbors()
+    neighbors = {zone_id: set(ids) for zone_id, ids in file_zone_neighbors().items()}
+    for zone_a, zone_b, action in overrides:
+        for one, other in ((zone_a, zone_b), (zone_b, zone_a)):
+            ids = neighbors.setdefault(one, set())
+            if action == ZoneAdjacencyOverride.ADD:
+                ids.add(other)
+            else:
+                ids.discard(other)
+    return {zone_id: sorted(ids) for zone_id, ids in neighbors.items()}
+
+
+def neighbor_sources(zone_id):
+    """[(neighbour id, source)] for one zone, by id, for the admin. source is
+    "file", "added" (by an override) or "removed" (a file neighbour that an
+    override takes away, so no longer used)."""
+    from_file = set(file_zone_neighbors().get(zone_id, []))
+    sources = {other: "file" for other in from_file}
+    rows = (
+        ZoneAdjacencyOverride.objects.filter(
+            Q(zone_a_id=zone_id) | Q(zone_b_id=zone_id)
+        )
+        .order_by()
+        .values_list("zone_a_id", "zone_b_id", "action")
+    )
+    for zone_a, zone_b, action in rows:
+        other = zone_b if zone_a == zone_id else zone_a
+        if action == ZoneAdjacencyOverride.ADD:
+            sources[other] = "added"
+        elif other in from_file:
+            sources[other] = "removed"
+    return sorted(sources.items())
 
 
 def unknown_zone_ids(*zone_ids):
