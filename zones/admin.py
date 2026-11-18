@@ -1,6 +1,8 @@
 from decimal import Decimal
 
+from django import forms
 from django.contrib import admin
+from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 
 from zones.importer import rules
@@ -12,8 +14,8 @@ ERROR_START = 80
 
 class ReadOnlyModelAdmin(admin.ModelAdmin):
     """US39 #113: staff can list and view the rows but not add, change or
-    delete them (also no "Delete selected" action). Used for zones and,
-    in US40, the import history."""
+    delete them (also no "Delete selected" action). Used for the import
+    history (US40); zones were read-only until US42."""
 
     def has_add_permission(self, request):
         return False
@@ -25,13 +27,79 @@ class ReadOnlyModelAdmin(admin.ModelAdmin):
         return False
 
 
-@admin.register(Zone)
-class ZoneAdmin(ReadOnlyModelAdmin):
-    """US39 #113: read-only for now; US42 makes the names editable."""
+# The boroughs in the TLC zone lookup (zones/data/taxi_zone_lookup.csv). A
+# zone's borough is picked from these, so a typo can't make a new borough.
+BOROUGHS = (
+    "Bronx",
+    "Brooklyn",
+    "EWR",
+    "Manhattan",
+    "Queens",
+    "Staten Island",
+    "Unknown",
+    "N/A",
+)
 
-    list_display = ("zone_id", "name", "borough")
-    list_filter = ("borough",)
+
+class ZoneForm(forms.ModelForm):
+    borough = forms.ChoiceField(choices=[(name, name) for name in BOROUGHS])
+
+    class Meta:
+        model = Zone
+        fields = ("name", "borough", "edited_by_admin")
+
+    def clean_name(self):
+        """Inner runs of spaces become one. Django has already trimmed the
+        name and refused a blank one ("This field is required.")."""
+        return " ".join(self.cleaned_data["name"].split())
+
+
+@admin.register(Zone)
+class ZoneAdmin(admin.ModelAdmin):
+    """US42 #116: staff correct a zone's name and borough; the zone id stays
+    as it is, and zones can't be added or deleted (deleting would delete
+    their statistics, plans and posts). A zone whose name or borough is
+    changed here is marked edited_by_admin, with who and when, and the
+    imports then leave it alone (zones/importer/load.py)."""
+
+    form = ZoneForm
+    list_display = (
+        "zone_id",
+        "name",
+        "borough",
+        "edited_by_admin",
+        "edited_by",
+        "edited_at",
+    )
+    list_filter = ("borough", "edited_by_admin")
     search_fields = ("name",)
+    fields = (
+        "zone_id",
+        "name",
+        "borough",
+        "edited_by_admin",
+        "edited_by",
+        "edited_at",
+    )
+    readonly_fields = ("zone_id", "edited_by", "edited_at")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def save_model(self, request, obj, form, change):
+        """A changed name or borough marks the zone as edited. Any change
+        (including unticking "edited in the admin") records who and when."""
+        before = Zone.objects.get(pk=obj.pk)
+        renamed = (obj.name, obj.borough) != (before.name, before.borough)
+        if renamed:
+            obj.edited_by_admin = True
+        if renamed or obj.edited_by_admin != before.edited_by_admin:
+            obj.edited_by = request.user.get_username()
+            obj.edited_at = timezone.now()
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(ImportRun)

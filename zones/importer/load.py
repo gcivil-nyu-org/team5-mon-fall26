@@ -17,10 +17,19 @@ BATCH_SIZE = 5000
 
 def upsert_zones(lookup):
     """Insert or update every zone from the lookup. Never deletes, because
-    deleting a zone would cascade to its statistics."""
+    deleting a zone would cascade to its statistics.
+
+    A zone edited in the admin (US42 #116, edited_by_admin) is left out, so
+    the import never undoes a staff member's correction. Returns the number
+    of zones in the lookup, edited ones included."""
+    edited = set(
+        Zone.objects.filter(edited_by_admin=True).values_list("zone_id", flat=True)
+    )
+    rows = list(lookup.itertuples(index=False))
     zones = [
         Zone(zone_id=int(row.zone_id), name=row.name, borough=row.borough)
-        for row in lookup.itertuples(index=False)
+        for row in rows
+        if int(row.zone_id) not in edited
     ]
     Zone.objects.bulk_create(
         zones,
@@ -28,7 +37,7 @@ def upsert_zones(lookup):
         unique_fields=["zone_id"],
         update_fields=["name", "borough"],
     )
-    return len(zones)
+    return len(rows)
 
 
 def stat_fields(row):

@@ -9,11 +9,36 @@ from django.utils import timezone
 
 class Zone(models.Model):
     """A NYC TLC taxi zone. Boundary shapes live in a GeoJSON file in
-    zones/data/, keyed by zone_id, not in this table."""
+    zones/data/, keyed by zone_id, not in this table.
+
+    US42 #116: staff can correct the name and borough in the admin. Such a
+    zone is marked edited_by_admin, and the imports leave its name and
+    borough alone (zones/importer/load.py, upsert_zones)."""
 
     zone_id = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=100)
     borough = models.CharField(max_length=50)
+    # db_default as well as default, so code that does not know these
+    # columns yet (an older checkout importing into the shared database)
+    # can still insert zones.
+    edited_by_admin = models.BooleanField(
+        "edited in the admin",
+        default=False,
+        db_default=False,
+        help_text="Ticked when staff change the name or borough here: the "
+        "import then keeps this zone's name and borough. Untick it to let "
+        "the next import put back the TLC name and borough.",
+    )
+    edited_by = models.CharField(
+        "last edited by",
+        max_length=150,
+        blank=True,
+        default="",
+        db_default="",
+        help_text="The staff member's email, kept even if the account is "
+        "deleted later.",
+    )
+    edited_at = models.DateTimeField("last edited at", null=True, blank=True)
 
     class Meta:
         ordering = ["zone_id"]
