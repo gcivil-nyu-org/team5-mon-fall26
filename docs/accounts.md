@@ -114,11 +114,21 @@ def show_interest(request, post_id):
     ...
 ```
 
-## 5. Still open (see `docs/decisions.md`)
+## 5. Staff accounts and the admin (US39)
+
+Staff are normal accounts with `is_staff` and `is_superuser`, made with
+`python manage.py create_staff` and demoted with `remove_staff --email`
+(see the README). A new model registered in the admin is automatically
+checked by `accounts/tests/test_admin_access.py` (guests and riders are
+refused on every admin URL). In its `ModelAdmin`, show staff only what they
+need: never a password or anything derived from it. For a table staff may
+only look at, subclass `zones.admin.ReadOnlyModelAdmin`.
+
+## 6. Still open (see `docs/decisions.md`)
 
 - **HTTPS** on the Integration and Production environments. Both are plain
   `http://` today, so passwords travel unencrypted. Needed before real users
-  sign up.
+  sign up, and before staff sign in to the admin on AWS (US39).
 - **Password reset by email** ("Forgot password?"). Needs an email service
   on AWS (for example Amazon SES). Until then, a user who forgets their
   password cannot get back in.

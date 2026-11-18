@@ -39,6 +39,12 @@ Web app that shows NYC riders historical taxi demand, fares, and trip duration b
 - Epic 4: US37 #99 `/rides/mine/` ("My rides", `rides/my_rides.py`): the user's posts and the rides they asked to join, unread counts per conversation, rides more than 7 days old hidden unless `?past=1`. `rides_rideinterest.owner_seen_at` (empty = new interested rider) is set when the owner opens the post page. The nav badge (unread + new riders) comes from the `rides.context_processors.ride_badge` context processor.
 - Epic 4: `rides_contentreport(reporter_id, post_id, message_id, reason, note, reported_text, status, created_at)` (US38 #101), exactly one of post or message, one per reporter per item. `/rides/<id>/report/` and `/rides/messages/<message-id>/report/` (`rides/reporting.py`); 404 for own content. Admins check reports in the Django admin; the reported rider never sees who reported them.
 
+## Admin (US39 #113)
+- Django admin at `/admin/`, staff only (active + `is_staff`). Staff accounts: `manage.py create_staff` (password asked in the terminal, never an option) and `manage.py remove_staff --email`. Never put a real staff email, username or password in the repo.
+- The "Admin" header link is `accounts/templates/accounts/_admin_link.html`. The Accounts admin (`accounts/admin.py`) never shows passwords and keeps staff rights read-only. Read-only tables use `zones.admin.ReadOnlyModelAdmin` (Zone now, ImportRun in US40).
+- `accounts/tests/test_admin_access.py` checks every admin URL refuses guests and riders; a new registered model is covered automatically.
+- The AWS sites are HTTP only: staff must not sign in to the admin on Production (or Integration) until HTTPS is enabled.
+
 ## API (Epic 1, all public and read-only)
 - `GET /api/zones?day=&hour=`: zones as GeoJSON with trip volume (defaults to current day and hour)
 - `GET /api/zones/:id/heatmap`: 7 x 24 trip volume and average duration
