@@ -64,6 +64,8 @@ Downloads any missing monthly file into `data/raw/` (about 65 MB each, gitignore
 
 For the three months above it takes about 1.5 minutes and up to about 1.2 GB of memory (measured on a laptop against a local PostgreSQL).
 
+Every run is saved in the import history (US40), in the database the command runs against, even when it fails: see "Import history" below. Add `--by NAME` to say who ran it; otherwise your operating-system user name is saved.
+
 ## Import the rideshare data
 
 ```bash
@@ -73,6 +75,16 @@ python manage.py import_rideshare --month 2026-03 --month 2026-04 --month 2026-0
 Imports the TLC High Volume For-Hire Vehicle files (Uber and Lyft combined, `fhvhv_tripdata_YYYY-MM.parquet`, about 530 MB each, gitignored) into `rideshare_zone_hour_stats` and `rideshare_route_hour_stats`. Options and behaviour match `import_trips`: `--month` is repeatable (giving the same month twice is an error), `--data-dir` defaults to `data/raw/`, missing files are downloaded first, and the two rideshare tables are replaced in one transaction, so re-running is safe, a failed run leaves the old data in place, and running with fewer months replaces the statistics with just those months. The taxi tables are not touched. The report gives, for each month and in total, rows read, removed per cleaning rule, kept, and waits left out of the wait average, then the zone and route cell counts and how many have fewer than `MIN_TRIP_COUNT` trips. The rules and choices are in `docs/decisions.md` ("Rideshare import").
 
 For the three months above it takes about 2.5 minutes and up to about 2 GB of resident memory (measured on a laptop against a local PostgreSQL; see `docs/decisions.md`, US27d). The route table is about 730 MB on disk.
+
+Like `import_trips`, every run is saved in the import history and takes `--by NAME`.
+
+## Import history
+
+Each run of `import_trips` or `import_rideshare` (US40 #114) saves one record: which import, the months, who ran it (`--by NAME`, or the operating-system user), start and finish time, status, the report's totals (rows read, removed per rule, kept, waits left out for rideshare, zone and route cells and how many have fewer than `MIN_TRIP_COUNT` trips), the cleaning limits, the report exactly as printed, and the error if it failed. The record is saved outside the import's own transaction, so a failed import keeps the old statistics and still leaves a "Failed" record. A run rejected for its arguments (missing, badly formed or repeated `--month`) is not an import and saves no record.
+
+Staff see it in the admin under **Zones → Import history** (`/admin/zones/importrun/`), newest first, filterable by import and status, read-only: nobody can add, change or delete a run there.
+
+A run that was killed before it finished (Ctrl-C is recorded as failed, but `kill -9`, running out of memory or losing the laptop's connection is not) stays "Running". The next run of the same import marks it "Failed" with "Did not finish". The history of a load into the shared AWS database is saved in that database. Details in `docs/decisions.md` (US40).
 
 ## Load the rideshare data into the shared AWS database
 
@@ -101,10 +113,10 @@ Integration and Production use the same RDS database, so this is done once, from
    python manage.py showmigrations zones          # must show [X] 0004_rideshare_stats
    ```
 
-3. **Run the import** (about 2.5 minutes locally; longer over the internet, since about 4.6M rows are sent with COPY):
+3. **Run the import** (about 2.5 minutes locally; longer over the internet, since about 4.6M rows are sent with COPY). The run is saved in the import history of the AWS database; `--by` names who ran it:
 
    ```bash
-   python manage.py import_rideshare --month 2026-03 --month 2026-04 --month 2026-05
+   python manage.py import_rideshare --month 2026-03 --month 2026-04 --month 2026-05 --by <your-name>
    ```
 
    Keep the report for the pull request or the sprint notes.
@@ -187,6 +199,7 @@ This takes away the staff rights at once (Django checks them on every admin page
 
 - **Accounts:** list and search by email or display name, deactivate (untick "Active") or delete an account. The password and its hash are not shown and can't be reset there, the staff flags are read-only (they change only with the commands above), and accounts can't be added there (they come from sign-up or `create_staff`).
 - **Zones:** read-only for now (US42 makes the names editable).
+- **Import history:** read-only list of every `import_trips` and `import_rideshare` run (US40), filterable by import and status.
 - Display names, fare reports, ride posts, interest in rides and content reports, as set up by their stories (US24, US30, US31, US33, US38).
 
 ## Development checks

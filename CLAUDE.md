@@ -42,6 +42,7 @@ Web app that shows NYC riders historical taxi demand, fares, and trip duration b
 ## Admin (US39 #113)
 - Django admin at `/admin/`, staff only (active + `is_staff`). Staff accounts: `manage.py create_staff` (password asked in the terminal, never an option) and `manage.py remove_staff --email`. Never put a real staff email, username or password in the repo.
 - The "Admin" header link is `accounts/templates/accounts/_admin_link.html`. The Accounts admin (`accounts/admin.py`) never shows passwords and keeps staff rights read-only. Read-only tables use `zones.admin.ReadOnlyModelAdmin` (Zone now, ImportRun in US40).
+- US40 #114: `zones_importrun` (`zones.ImportRun`) records every `import_trips` / `import_rideshare` run (who: `--by` or the OS user; status running/succeeded/failed; the report's totals and text; the error). Saved by `zones/importer/history.py` outside the import's transaction, so a failed run is still recorded. Read-only "Import history" in the admin.
 - `accounts/tests/test_admin_access.py` checks every admin URL refuses guests and riders; a new registered model is covered automatically.
 - The AWS sites are HTTP only: staff must not sign in to the admin on Production (or Integration) until HTTPS is enabled.
 

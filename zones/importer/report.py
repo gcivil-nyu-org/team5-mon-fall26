@@ -69,8 +69,14 @@ def _block(title, report, rules, width):
     return "\n".join(lines)
 
 
+def small_cells(stats):
+    """Cells with fewer than REPORT_MIN_TRIPS trips (also saved in the
+    import history, US40)."""
+    return int((stats["trip_count"] < REPORT_MIN_TRIPS).sum())
+
+
 def _cells_line(label, stats, width):
-    small = int((stats["trip_count"] < REPORT_MIN_TRIPS).sum())
+    small = small_cells(stats)
     count = f"{len(stats):>{NUMBER_WIDTH},}"
     note = f"({small:,} with fewer than {REPORT_MIN_TRIPS} trips)"
     return f"{label:<{width + 2}}{count}  {note}"
