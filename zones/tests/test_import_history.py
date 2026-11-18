@@ -146,6 +146,7 @@ class TaxiImportHistoryTests(ImportFiles, TestCase):
             ImportRun.objects.get().cleaning_limits,
             {
                 "MAX_FARE_CENTS": 50_000,
+                "MIN_DISTANCE_MI": 0,  # US41
                 "MAX_DISTANCE_MI": 100,
                 "MIN_DURATION_S": 60,
                 "MAX_DURATION_S": 10_800,

@@ -19,8 +19,8 @@ from django.db import connection
 from django.utils import timezone
 
 from zones.importer import clean as taxi_clean
+from zones.importer import rules
 from zones.importer.report import small_cells, total_report
-from zones.importer.rideshare import clean as rideshare_clean
 from zones.importer.rideshare.read import LYFT, UBER
 from zones.models import ImportRun
 
@@ -33,25 +33,18 @@ STALE_ERROR = (
     "connection). Closed by run {run_id}, started {started:%Y-%m-%d %H:%M} UTC."
 )
 
-_SHARED_LIMITS = (
-    "MAX_FARE_CENTS",
-    "MAX_DISTANCE_MI",
-    "MIN_DURATION_S",
-    "MAX_DURATION_S",
-)
 
-
-def cleaning_limits(dataset):
-    """The cleaning limits in the code, by constant name."""
-    limits = {name: getattr(taxi_clean, name) for name in _SHARED_LIMITS}
-    limits["UNKNOWN_ZONE_IDS"] = sorted(taxi_clean.UNKNOWN_ZONE_IDS)
+def cleaning_limits(dataset, limits):
+    """The cleaning limits the run uses, by name: the editable ones it read
+    from the admin (US41, zones/importer/rules.py) and the fixed ones in
+    the code."""
+    saved = rules.saved_limits(limits)
+    saved["UNKNOWN_ZONE_IDS"] = sorted(taxi_clean.UNKNOWN_ZONE_IDS)
     if dataset == ImportRun.Dataset.TAXI:
-        limits["VOIDED_PAYMENT_TYPE"] = taxi_clean.VOIDED_PAYMENT_TYPE
+        saved["VOIDED_PAYMENT_TYPE"] = taxi_clean.VOIDED_PAYMENT_TYPE
     else:
-        limits["PROVIDERS"] = [UBER, LYFT]
-        limits["MIN_WAIT_S"] = rideshare_clean.MIN_WAIT_S
-        limits["MAX_WAIT_S"] = rideshare_clean.MAX_WAIT_S
-    return limits
+        saved["PROVIDERS"] = [UBER, LYFT]
+    return saved
 
 
 def run_by_argument(value):
@@ -100,16 +93,16 @@ def error_message(exc):
     return f"{name}: {message}" if message else name
 
 
-def start_run(dataset, months, run_by):
-    """Save a "running" record and close any earlier run of the same import
-    that never finished."""
+def start_run(dataset, months, run_by, limits):
+    """Save a "running" record with the limits the run uses, and close any
+    earlier run of the same import that never finished."""
     run = ImportRun.objects.create(
         dataset=dataset,
         months=list(months),
         run_by=run_by,
         started_at=timezone.now(),
         min_trip_count=settings.MIN_TRIP_COUNT,
-        cleaning_limits=cleaning_limits(dataset),
+        cleaning_limits=cleaning_limits(dataset, limits),
     )
     ImportRun.objects.filter(dataset=dataset, status=ImportRun.Status.RUNNING).exclude(
         pk=run.pk

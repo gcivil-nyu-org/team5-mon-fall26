@@ -4,8 +4,8 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from zones.importer import history
-from zones.importer.clean import RULES
+from zones.importer import history, rules
+from zones.importer.clean import rules as taxi_rules
 from zones.importer.download import parse_month, repeated_months
 from zones.importer.pipeline import run_import
 from zones.importer.read import TripFileError
@@ -45,17 +45,25 @@ class Command(BaseCommand):
             )
 
         started = time.monotonic()
+        # US41: the limits in the admin now; a change during the run
+        # applies from the next import.
+        limits = rules.current_limits(ImportRun.Dataset.TAXI)
+        cleaning_rules = taxi_rules(limits)
         run = history.start_run(
-            ImportRun.Dataset.TAXI, months, by or history.default_run_by()
+            ImportRun.Dataset.TAXI, months, by or history.default_run_by(), limits
         )
         with history.failure_recorded(run, self.stderr):
             try:
-                result = run_import(months, data_dir, progress=self.stdout.write)
+                result = run_import(
+                    months, data_dir, progress=self.stdout.write, limits=limits
+                )
             except TripFileError as exc:
                 raise CommandError(str(exc)) from exc
 
-        report = format_report(result.months, result.zone_stats, result.route_stats)
-        history.record_success(run, result, RULES, report)
+        report = format_report(
+            result.months, result.zone_stats, result.route_stats, cleaning_rules
+        )
+        history.record_success(run, result, cleaning_rules, report)
         self.stdout.write("")
         self.stdout.write(report)
         self.stdout.write("")

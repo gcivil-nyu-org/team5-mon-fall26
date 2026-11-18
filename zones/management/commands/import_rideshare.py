@@ -4,11 +4,11 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from zones.importer import history
+from zones.importer import history, rules
 from zones.importer.download import parse_month, repeated_months
 from zones.importer.read import TripFileError
 from zones.importer.report import format_report
-from zones.importer.rideshare.clean import RULES
+from zones.importer.rideshare.clean import rules as rideshare_rules
 from zones.importer.rideshare.pipeline import run_rideshare_import
 from zones.models import ImportRun
 
@@ -46,21 +46,25 @@ class Command(BaseCommand):
             )
 
         started = time.monotonic()
+        # US41: the limits in the admin now; a change during the run
+        # applies from the next import.
+        limits = rules.current_limits(ImportRun.Dataset.RIDESHARE)
+        cleaning_rules = rideshare_rules(limits)
         run = history.start_run(
-            ImportRun.Dataset.RIDESHARE, months, by or history.default_run_by()
+            ImportRun.Dataset.RIDESHARE, months, by or history.default_run_by(), limits
         )
         with history.failure_recorded(run, self.stderr):
             try:
                 result = run_rideshare_import(
-                    months, data_dir, progress=self.stdout.write
+                    months, data_dir, progress=self.stdout.write, limits=limits
                 )
             except TripFileError as exc:
                 raise CommandError(str(exc)) from exc
 
         report = format_report(
-            result.months, result.zone_stats, result.route_stats, RULES
+            result.months, result.zone_stats, result.route_stats, cleaning_rules
         )
-        history.record_success(run, result, RULES, report)
+        history.record_success(run, result, cleaning_rules, report)
         self.stdout.write("")
         self.stdout.write(report)
         self.stdout.write("")

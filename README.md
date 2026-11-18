@@ -200,7 +200,14 @@ This takes away the staff rights at once (Django checks them on every admin page
 - **Accounts:** list and search by email or display name, deactivate (untick "Active") or delete an account. The password and its hash are not shown and can't be reset there, the staff flags are read-only (they change only with the commands above), and accounts can't be added there (they come from sign-up or `create_staff`).
 - **Zones:** read-only for now (US42 makes the names editable).
 - **Import history:** read-only list of every `import_trips` and `import_rideshare` run (US40), filterable by import and status.
+- **Cleaning rules:** the fare, distance and duration limits of each import, and the wait limits of the rideshare import (US41). See "Cleaning rules" below.
 - Display names, fare reports, ride posts, interest in rides and content reports, as set up by their stories (US24, US30, US31, US33, US38).
+
+### Cleaning rules
+
+Staff change the import's cleaning limits in the admin under Zones → Cleaning rules (US41): one page for the taxi import and one for rideshare. They start with the values from before US41 (fare before tip at most $500, distance more than 0 and at most 100 miles, duration 1 to 180 minutes, and for rideshare a wait of 0 to 60 minutes in the wait average). The admin refuses a negative limit, a minimum that is not below its maximum, and a maximum fare above $500 (the fare reports' limit).
+
+A change applies from the **next** import; nothing is re-imported by saving. Each import prints the limits in its report and saves them in its import history. Each change is listed on the page with who made it and when. Integration and Production share one database, so the limits there are shared too (and staff don't sign in to the admin on AWS until HTTPS is on, see above).
 
 ## Development checks
 

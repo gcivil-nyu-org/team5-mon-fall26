@@ -1,4 +1,10 @@
+from decimal import Decimal
+
+from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models import F, Q
+from django.utils import timezone
 
 
 class Zone(models.Model):
@@ -225,7 +231,7 @@ class ImportRun(models.Model):
     zones_loaded = models.PositiveIntegerField(null=True, blank=True)
 
     cleaning_limits = models.JSONField(
-        help_text="The cleaning limits in the code when the import ran."
+        help_text="The cleaning limits the import used, from the admin (US41)."
     )
     report = models.TextField(blank=True, help_text="The report as printed.")
     error = models.TextField(blank=True)
@@ -250,3 +256,219 @@ class ImportRun(models.Model):
         if self.finished_at is None:
             return None
         return self.finished_at - self.started_at
+
+
+# US41 #115: the maximum fare can't be raised above the fare reports' limit
+# (reports.models.MAX_FARE, US24), so a reported fare is always a fare the
+# import could keep. reports imports zones, so the value is repeated here
+# and a test checks that both are the same.
+FARE_CAP = Decimal("500.00")
+
+NEGATIVE = "Enter 0 or more: a limit cannot be negative."
+FARE_NOT_POSITIVE = "The maximum fare must be more than $0."
+FARE_OVER_CAP = (
+    "The maximum fare can be at most $500, the highest fare a rider can "
+    "report, so fare reports keep matching the statistics."
+)
+WAIT_REQUIRED = "Enter both wait limits for rideshare data."
+
+# The limits before US41, which both records start with (migration
+# zones/0006_cleaning_rules, and CleaningRules.current if a record is
+# missing). Waits are rideshare only.
+STARTING_VALUES = {
+    "taxi": {
+        "max_fare": Decimal("500.00"),
+        "min_distance_mi": Decimal("0.00"),
+        "max_distance_mi": Decimal("100.00"),
+        "min_duration_min": 1,
+        "max_duration_min": 180,
+        "min_wait_min": None,
+        "max_wait_min": None,
+    },
+    "rideshare": {
+        "max_fare": Decimal("500.00"),
+        "min_distance_mi": Decimal("0.00"),
+        "max_distance_mi": Decimal("100.00"),
+        "min_duration_min": 1,
+        "max_duration_min": 180,
+        "min_wait_min": 0,
+        "max_wait_min": 60,
+    },
+}
+
+# (minimum field, maximum field, message when the minimum is not below it)
+MIN_MAX_PAIRS = (
+    (
+        "min_distance_mi",
+        "max_distance_mi",
+        "The maximum distance must be more than the minimum distance.",
+    ),
+    (
+        "min_duration_min",
+        "max_duration_min",
+        "The maximum duration must be more than the minimum duration.",
+    ),
+    (
+        "min_wait_min",
+        "max_wait_min",
+        "The maximum wait must be more than the minimum wait.",
+    ),
+)
+
+
+class CleaningRules(models.Model):
+    """US41 #115: the editable cleaning limits, one record per import
+    (taxi, rideshare). Staff change them in the admin; the next import
+    reads them when it starts (zones/importer/rules.py). Every change is
+    kept in CleaningRulesChange. See docs/decisions.md (US41)."""
+
+    dataset = models.CharField(
+        max_length=20, choices=ImportRun.Dataset.choices, unique=True
+    )
+    max_fare = models.DecimalField(
+        "maximum fare ($)",
+        max_digits=6,
+        decimal_places=2,
+        validators=[
+            MinValueValidator(Decimal("0.01"), FARE_NOT_POSITIVE),
+            MaxValueValidator(FARE_CAP, FARE_OVER_CAP),
+        ],
+        help_text="A trip whose fare before tip is above this is removed. "
+        "At most $500.",
+    )
+    min_distance_mi = models.DecimalField(
+        "minimum distance (miles)",
+        max_digits=6,
+        decimal_places=2,
+        validators=[MinValueValidator(0, NEGATIVE)],
+        help_text="A trip of this distance or less is removed (0 removes "
+        "only zero-mile trips).",
+    )
+    max_distance_mi = models.DecimalField(
+        "maximum distance (miles)",
+        max_digits=6,
+        decimal_places=2,
+        validators=[MinValueValidator(0, NEGATIVE)],
+        help_text="A trip longer than this is removed.",
+    )
+    min_duration_min = models.IntegerField(
+        "minimum duration (minutes)",
+        validators=[MinValueValidator(0, NEGATIVE)],
+        help_text="A trip shorter than this is removed.",
+    )
+    max_duration_min = models.IntegerField(
+        "maximum duration (minutes)",
+        validators=[MinValueValidator(0, NEGATIVE)],
+        help_text="A trip longer than this is removed.",
+    )
+    min_wait_min = models.IntegerField(
+        "minimum wait (minutes)",
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0, NEGATIVE)],
+        help_text="Rideshare only. A wait below this is left out of the wait "
+        "average; the trip is kept.",
+    )
+    max_wait_min = models.IntegerField(
+        "maximum wait (minutes)",
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0, NEGATIVE)],
+        help_text="Rideshare only. A wait above this is left out of the wait "
+        "average; the trip is kept.",
+    )
+
+    class Meta:
+        ordering = ["dataset"]
+        verbose_name = "cleaning rules"
+        verbose_name_plural = "cleaning rules"
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(max_fare__gt=0, max_fare__lte=FARE_CAP),
+                name="cleaningrules_fare_in_range",
+            ),
+            models.CheckConstraint(
+                condition=Q(
+                    min_distance_mi__gte=0,
+                    max_distance_mi__gt=F("min_distance_mi"),
+                ),
+                name="cleaningrules_distance_in_order",
+            ),
+            models.CheckConstraint(
+                condition=Q(
+                    min_duration_min__gte=0,
+                    max_duration_min__gt=F("min_duration_min"),
+                ),
+                name="cleaningrules_duration_in_order",
+            ),
+            models.CheckConstraint(
+                condition=Q(
+                    dataset="taxi", min_wait_min__isnull=True, max_wait_min__isnull=True
+                )
+                | Q(
+                    dataset="rideshare",
+                    min_wait_min__isnull=False,
+                    max_wait_min__isnull=False,
+                    min_wait_min__gte=0,
+                    max_wait_min__gt=F("min_wait_min"),
+                ),
+                name="cleaningrules_wait_rideshare_only",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.get_dataset_display()} cleaning rules"
+
+    @property
+    def is_rideshare(self):
+        return self.dataset == ImportRun.Dataset.RIDESHARE
+
+    def clean(self):
+        if not self.is_rideshare:
+            self.min_wait_min = self.max_wait_min = None
+        elif self.min_wait_min is None or self.max_wait_min is None:
+            missing = [
+                name
+                for name in ("min_wait_min", "max_wait_min")
+                if getattr(self, name) is None
+            ]
+            raise ValidationError({name: WAIT_REQUIRED for name in missing})
+
+        errors = {}
+        for low_name, high_name, message in MIN_MAX_PAIRS:
+            low, high = getattr(self, low_name), getattr(self, high_name)
+            if low is not None and high is not None and not low < high:
+                errors[high_name] = message
+        if errors:
+            raise ValidationError(errors)
+
+    @classmethod
+    def current(cls, dataset):
+        """The record for an import, made with the starting values if it
+        is missing (the migration makes both)."""
+        rules, _ = cls.objects.get_or_create(
+            dataset=dataset, defaults=STARTING_VALUES[dataset]
+        )
+        return rules
+
+
+class CleaningRulesChange(models.Model):
+    """US41 #115: one change to a CleaningRules record, made in the admin:
+    who (their email, kept even if the account is deleted later), when,
+    and each changed limit's old and new value."""
+
+    rules = models.ForeignKey(
+        CleaningRules, on_delete=models.CASCADE, related_name="changes"
+    )
+    changed_by = models.CharField(max_length=150)
+    changed_at = models.DateTimeField(default=timezone.now)
+    changes = models.JSONField(
+        help_text='Field name to [old, new], as text, e.g. {"max_fare": '
+        '["500.00", "450.00"]}.'
+    )
+
+    class Meta:
+        ordering = ["-changed_at", "-id"]
+
+    def __str__(self):
+        return f"{self.rules} changed by {self.changed_by} at {self.changed_at}"

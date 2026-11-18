@@ -15,6 +15,20 @@ Entry format:
 
 ## Log
 
+### 2026-11-18 — us41-cleaning-rules (US41 #115)
+**What changed:**
+- `CleaningRules` and `CleaningRulesChange` (`zones/models.py`, migration `zones/0006_cleaning_rules`, which creates both tables and the taxi and rideshare records with today's limits). Field validators and `clean()` give a message per field; check constraints refuse the same bad values in the database.
+- `zones/importer/clean.py` and `rideshare/clean.py`: the limits are a `Limits` / `RideshareLimits` dataclass passed into `clean_trips` (defaults = the starting values); `rules(limits)` builds the labels with the limits in them. The pipelines pass the limits through.
+- `zones/importer/rules.py`: a record to `Limits` and back from the names saved in the import history. `import_trips` and `import_rideshare` read the current limits once at the start, clean with them, print them in the report labels and save them in `ImportRun` (`history.start_run` takes the limits).
+- `CleaningRulesAdmin` (`zones/admin.py`): "Cleaning rules", change only (no add or delete), wait limits on the rideshare page only, the change log on the page and the last change on the list. The import history's run page labels rules with that run's limits.
+- Docs: `decisions.md` (US41 section, notes in the US0a and US27 cleaning decisions), README ("Cleaning rules"), HLD table and section 37, `CLAUDE.md`, `docs/stories/US41.md`.
+
+**Decisions made (also in `decisions.md`):** proposed, to confirm with the PO: dollars, miles and whole minutes; the minimum distance is editable (exclusive, as the old "> 0"); a full change log with the staff email kept as text. Also: the fare maximum is capped at the fare reports' $500; a change applies from the next import.
+
+**Tests:** new `zones/tests/test_cleaning_rules.py` (starting values, migration vs model values, fare cap = US24 limit, labels at the starting values identical to the old ones, validation messages, database constraints, unit conversion, the cleaning with custom limits for both imports), `test_cleaning_rules_admin.py` (edit, log, messages, no add or delete) and `test_cleaning_rules_import.py` (the next import uses the new limits and saves them; a change during a run applies to the next one; run page labels). `CleaningRules` added to the admin URL check; US40's saved-limits test gains `MIN_DISTANCE_MI`. 1305 Django tests OK (4 skipped), coverage 100%, 190 Node tests OK, black and flake8 pass. Old vs new cleaning on 400,000 random edge-case trips: identical kept rows and per-rule counts for both imports.
+
+**Next step:** open the PR into `develop`. PO to confirm the proposed choices. Not tried yet: a real March 2026 import with old and new code on a laptop (identical report and statistics rows expected), and the admin pages in a browser.
+
 ### 2026-11-17 — us40-import-history (US40 #114, stacked on US39 #113)
 **What changed:**
 - `ImportRun` (`zones/models.py`, migration `zones/0005_import_run`, creates one table `zones_importrun`): import, months, who, status, start/finish, the report's totals, removed per rule (JSON), cells and small cells, `MIN_TRIP_COUNT` used, zones loaded, cleaning limits (JSON), the report text, the error.
