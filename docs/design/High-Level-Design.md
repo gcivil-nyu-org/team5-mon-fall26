@@ -365,3 +365,9 @@ The `rides_contentreport` table (`rides.ContentReport`, migration `0006_content_
 
 `GET/POST /rides/<id>/report/` reports a post the user can see and does not own; `GET/POST /rides/messages/<message-id>/report/` reports a message sent to the user. Anything else is 404. The post page and each received message in a conversation have a "Report" link. Reports are listed only in the Django admin (filters for reason and status, status editable) until Epic 5 adds moderation; the reported rider is never shown who reported them. No new dependency.
 
+## 35. Admin access and staff accounts (US39)
+
+The Django admin at `/admin/` is the staff-only area for managing data and content. Django checks on every admin page that the account is active and staff; guests and riders get the admin sign-in page, never an admin page or action. Staff accounts are normal accounts with the staff and superuser flags, created with `manage.py create_staff` (asks for the email and, twice, the password in the terminal; never an option) and demoted with `manage.py remove_staff --email`. Integration and Production share one database, so a staff account is created once, from a laptop. Staff see an "Admin" link in the site header (`accounts/_admin_link.html`).
+
+The admin shows only what staff need. Accounts: email, display name, active, staff, dates; no password or hash and no password reset; staff rights read-only; staff can deactivate or delete an account. Zones are read-only (`zones.admin.ReadOnlyModelAdmin`, also meant for US40's import history) until US42. Both AWS sites are HTTP only, so staff do not sign in to the admin on AWS until HTTPS is enabled. No migration, no new dependency, no API change.
+

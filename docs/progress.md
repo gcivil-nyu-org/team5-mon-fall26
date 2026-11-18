@@ -15,6 +15,20 @@ Entry format:
 
 ## Log
 
+### 2026-11-17 — us39-admin-staff (US39 #113)
+**What changed:**
+- `accounts/management/commands/create_staff.py` (asks for the email unless `--email`, and the password twice with no echo; validators; refuses without a terminal; `--existing` promotes an existing account) and `remove_staff.py` (`--email`; clears the staff flags, keeps the account).
+- `accounts/admin.py`: admin site titles, `StaffSignInForm` (in `accounts/forms.py`: "Email", lowercased, one error message) as the admin sign-in form, Groups unregistered, `AccountAdmin` replacing Django's User admin (no password or hash, no reset page, staff flags read-only, only "Active" editable, no add).
+- `zones/admin.py`: `ReadOnlyModelAdmin` and a read-only `ZoneAdmin`.
+- "Admin" link for active staff: `accounts/templates/accounts/_admin_link.html`, included in `zones/map.html`, `zones/compare.html`, `routes/base.html` and `accounts/base.html` (small CSS in `accounts.css`).
+- Docs: README "Staff accounts (the admin)", `decisions.md` (US39 section, HTTPS open item), HLD section 35, `CLAUDE.md` (Admin), `accounts.md` section 5, `docs/stories/US39.md`.
+
+**Decisions made (also in `decisions.md`):** proposed, to confirm with the PO: staff are superusers (no groups); our own `create_staff` command; an existing email needs `--existing`; `remove_staff` keeps the account; the Accounts admin shows only email, display name, flags and dates; no admin sign-in on AWS until HTTPS, use it on a laptop against the shared database meanwhile.
+
+**Tests:** new `accounts/tests/test_admin_access.py` (staff sign-in; guest and rider refused on all 47 admin URLs with GET and POST, plus a catch-all URL, actions and self-promotion; Admin link on the four headers; Accounts admin), `accounts/tests/test_staff_commands.py`, `zones/tests/test_zone_admin.py`. 1215 Django tests OK (4 skipped), coverage 100%, 190 Node tests OK, black and flake8 pass, no migration. Checked by hand with `runserver 8001` against the local data.
+
+**Next step:** US40 #114 (ImportRun, read-only admin via `ReadOnlyModelAdmin`) on top of this branch. PO to confirm the proposed rules. HTTPS is still needed before the admin is used on AWS. The `eb ssh` steps in the README are untried.
+
 ### 2026-11-15 — us38-report-content (US38 #101, stacked on US37 #99)
 **What changed:**
 - `ContentReport` (`rides/models.py`, migration `rides/0006_content_report`, creates one table): reporter (CASCADE), post or message (exactly one), reason, note up to 300 characters, `reported_text` snapshot, status, `created_at`; unique per reporter and item.

@@ -130,6 +130,65 @@ Integration and Production use the same RDS database, so this is done once, from
 
 If the import fails partway, the old rideshare rows stay in place (one transaction); fix the cause and run it again. Remove the IP rule even if the import failed.
 
+## Staff accounts (the admin)
+
+The Django admin at `/admin/` is for staff accounts only (US39 #113). Riders and guests get the admin sign-in page instead, and only staff see the "Admin" link in the site header. A staff account is a normal account (an email and a password) with the staff and superuser flags set. Staff sign in with their email, at `/admin/` or on the site's own sign-in page.
+
+**Never write a staff member's email, username or password into the code, settings, migrations, fixtures, docs, an issue or a commit message.** The commands below ask for the password in the terminal and never take it as an option.
+
+> **Do not sign in to the admin on Production (or Integration) until HTTPS is enabled.** Both AWS sites are plain `http://`, so a staff password and the admin session cookie would cross the internet unencrypted, and a staff account can change everything in the shared database. Until then, use the admin on your own laptop (`http://127.0.0.1:8000/admin/`). See `docs/decisions.md` (US39).
+
+### Create a staff account
+
+Locally (uses the database in `.env`):
+
+```bash
+python manage.py create_staff                 # asks for the email, then the password twice
+python manage.py create_staff --email <email> # the same, without the email prompt
+python manage.py create_staff --email <email> --existing   # make an existing account staff; its password is not changed
+```
+
+The password must pass the same rules as sign-up (at least 8 characters, not common, not all numbers, not like the email). The command stops without saving anything if the email already has an account (unless `--existing`), the two passwords differ, or the password is too weak. It refuses to run without a terminal, so a password can't be piped in from a file or a script.
+
+Django's own `python manage.py createsuperuser` also works, but enter the email in lowercase as the **Username** (accounts use the lowercased email as the username), or the account can't sign in. Prefer `create_staff`.
+
+**Integration and Production.** Recommended path: enable HTTPS on the AWS sites first, then create staff accounts there. Until HTTPS is on, staff can't safely sign in to the admin on AWS anyway (see the warning above).
+
+**Not yet tested:** the two ways below have not been run against the AWS database. Check each step as you go and update this section once one has worked.
+
+Both sites share one RDS database, so a staff account created once works on both. Create it from a laptop, the same way the rideshare data is loaded (see "Load the rideshare data into the shared AWS database" above):
+
+1. Allow your IP on port 5432 in the `taxiscope-db-sg` security group (step 1 there).
+2. Point Django at RDS in this shell only (step 2 there): `read -rs DATABASE_URL && export DATABASE_URL`.
+3. Run `python manage.py create_staff`.
+4. Remove your IP rule and `unset DATABASE_URL` (step 5 there).
+
+Alternative (**not yet tested**): run the command on an Elastic Beanstalk instance. It needs the EB CLI and an EC2 key pair on the environment.
+
+```bash
+eb ssh Taxiscope-integration-env
+sudo -s
+cd /var/app/current
+source /var/app/venv/*/bin/activate
+export $(/opt/elasticbeanstalk/bin/get-config --output YAML environment | sed -r 's/: /=/' | xargs)
+python manage.py create_staff
+exit    # leave the root shell, then exit again to close the SSH session
+```
+
+### Remove a staff account
+
+```bash
+python manage.py remove_staff --email <email>
+```
+
+This takes away the staff rights at once (Django checks them on every admin page, so a staff member who is signed in loses access on their next click). The account itself is kept as a normal rider account. To delete it completely, a staff member deletes it in the admin (Accounts → the account → Delete), or its owner deletes it from My account. Deleting it deletes everything saved in it (US12). On Integration and Production (**not yet tested**), run `remove_staff` from a laptop with the same four steps as above (step 3 becomes `remove_staff`).
+
+### What staff can do in the admin
+
+- **Accounts:** list and search by email or display name, deactivate (untick "Active") or delete an account. The password and its hash are not shown and can't be reset there, the staff flags are read-only (they change only with the commands above), and accounts can't be added there (they come from sign-up or `create_staff`).
+- **Zones:** read-only for now (US42 makes the names editable).
+- Display names, fare reports, ride posts, interest in rides and content reports, as set up by their stories (US24, US30, US31, US33, US38).
+
 ## Development checks
 
 CI (see `docs/ci.md`) runs these on every push. Install the extra tools once:
