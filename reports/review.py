@@ -2,6 +2,8 @@
 
 from datetime import datetime, time, timedelta
 
+from django.utils import timezone
+
 from zones.stats import route_stats
 from zones.views import NYC_TZ
 
@@ -40,3 +42,38 @@ def reports_today(user, now):
     return FareReport.objects.filter(
         user=user, created_at__gte=start_of_today(now)
     ).count()
+
+
+# ---- US44 #118: staff approve or remove held reports ----
+
+
+def _set_status(reports, status, staff_email, reason, now):
+    """Give every report in `reports` not already at `status` that status,
+    with who, when and the reason. Returns how many changed."""
+    return reports.exclude(status=status).update(
+        status=status,
+        reviewed_by=staff_email,
+        reviewed_at=now or timezone.now(),
+        review_reason=reason.strip(),
+    )
+
+
+def approve(reports, staff_email, reason="", now=None):
+    """Make the reports visible: they count in the rider reports summary
+    (US26) from the next request."""
+    return _set_status(reports, FareReport.VISIBLE, staff_email, reason, now)
+
+
+def remove(reports, staff_email, reason="", now=None):
+    """Hide the reports from every public view; their owners see
+    "Removed by a moderator" on My fare reports."""
+    return _set_status(reports, FareReport.REMOVED, staff_email, reason, now)
+
+
+def usual_fare(report):
+    """The route's historical average fare at the report's day of week and
+    hour (New York time), as route_stats gives it, for staff to compare."""
+    local = report.ride_at.astimezone(NYC_TZ)
+    return route_stats(
+        report.pickup_zone_id, report.dropoff_zone_id, local.weekday(), local.hour
+    )

@@ -6,7 +6,7 @@
 {% block content %}
   <h1>My fare reports</h1>
   {% if reports %}
-    <p>Reports held for review are only shown to you until they are checked.</p>
+    <p>Reports held for review are only shown to you until they are checked. Reports removed by a moderator are only shown to you, and can't be edited.</p>
     <table class="report-table">
       <thead>
         <tr>
@@ -29,10 +29,10 @@
             {% else %}
               <td>—</td>
             {% endif %}
-            <td{% if report.status == "held" %} class="report-status-held"{% endif %}>{{ report.get_status_display }}</td>
+            <td{% if report.status == "held" %} class="report-status-held"{% elif report.status == "removed" %} class="report-status-removed"{% endif %}>{{ report.get_status_display }}</td>
             <td>
               <div class="saved-route-actions">
-                <a href="{% url 'reports:edit_report' report.pk %}">Edit</a>
+                {% if report.status != "removed" %}<a href="{% url 'reports:edit_report' report.pk %}">Edit</a>{% endif %}
                 <a href="{% url 'reports:delete_report' report.pk %}">Delete</a>
               </div>
             </td>

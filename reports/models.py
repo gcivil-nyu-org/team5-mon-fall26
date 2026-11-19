@@ -11,7 +11,7 @@ MAX_FARE = Decimal("500.00")
 
 class FareReportQuerySet(models.QuerySet):
     def public(self):
-        """Reports other riders may see: held reports stay out."""
+        """Reports other riders may see: held and removed reports stay out."""
         return self.filter(status=FareReport.VISIBLE)
 
 
@@ -21,7 +21,12 @@ class FareReport(models.Model):
 
     VISIBLE = "visible"
     HELD = "held"
-    STATUS_CHOICES = [(VISIBLE, "Visible"), (HELD, "Held for review")]
+    REMOVED = "removed"  # US44 #118: by a staff member, after review
+    STATUS_CHOICES = [
+        (VISIBLE, "Visible"),
+        (HELD, "Held for review"),
+        (REMOVED, "Removed by a moderator"),
+    ]
     SERVICE_CHOICES = [("uber", "Uber"), ("lyft", "Lyft")]
 
     user = models.ForeignKey(
@@ -47,6 +52,21 @@ class FareReport(models.Model):
         max_length=7, choices=STATUS_CHOICES, default=VISIBLE, db_index=True
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    # US44 #118: the last approval or removal. db_default as well as
+    # default, so code that doesn't know these columns yet (Production,
+    # which shares the database with Integration) can still save reports.
+    reviewed_by = models.CharField(
+        max_length=150,
+        blank=True,
+        default="",
+        db_default="",
+        help_text="The staff member's email, kept even if the account is "
+        "deleted later.",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_reason = models.CharField(
+        max_length=200, blank=True, default="", db_default=""
+    )
 
     objects = FareReportQuerySet.as_manager()
 

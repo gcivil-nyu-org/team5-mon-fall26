@@ -202,7 +202,8 @@ This takes away the staff rights at once (Django checks them on every admin page
 - **Neighbour overrides:** add a pair of neighbouring zones that `zone_neighbors.json` misses, or remove a wrong one, with a reason (US43). It applies both ways and straight away to cheaper-pickup suggestions and shared-ride matching; delete the override to go back to the file. Each zone's page lists its neighbours and where each comes from.
 - **Import history:** read-only list of every `import_trips` and `import_rideshare` run (US40), filterable by import and status.
 - **Cleaning rules:** the fare, distance and duration limits of each import, and the wait limits of the rideshare import (US41). See "Cleaning rules" below.
-- Display names, fare reports, ride posts, interest in rides and content reports, as set up by their stories (US24, US30, US31, US33, US38).
+- **Fare reports:** held reports first, each next to the route's usual fare for that day and hour. Select reports and choose "Approve" (other riders see it) or "Remove" (hidden everywhere; the rider sees "Removed by a moderator"), with an optional reason (US44). Who and when are kept.
+- Display names, ride posts, interest in rides and content reports, as set up by their stories (US24, US30, US31, US33, US38).
 
 ### Cleaning rules
 

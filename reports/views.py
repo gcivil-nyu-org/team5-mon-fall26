@@ -20,6 +20,10 @@ from .models import FareReport
 SAVED = "Thanks! Your fare report was saved."
 UPDATED = "Fare report updated."
 DELETED = "Fare report deleted."
+REMOVED_NOT_EDITABLE = (
+    "This report was removed by a moderator, so it can't be edited. You can "
+    "delete it."
+)
 HELD = (
     " It is far from the usual fare for this trip, so it will be checked "
     "before other riders see it."
@@ -140,8 +144,12 @@ def _own_report(request, report_id):
 @login_required
 @require_http_methods(["GET", "POST"])
 def edit_report(request, report_id):
-    """The US24 form and rules, then the review check again."""
+    """The US24 form and rules, then the review check again. A report
+    removed by a moderator (US44) can't be edited back to visible."""
     report = _own_report(request, report_id)
+    if report.status == FareReport.REMOVED:
+        messages.error(request, REMOVED_NOT_EDITABLE)
+        return redirect("reports:my_reports")
     form = FareReportForm(
         request.user,
         request.POST if request.method == "POST" else None,

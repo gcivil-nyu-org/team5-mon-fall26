@@ -358,6 +358,12 @@ header {
   font-weight: 600;
 }
 
+/* US44: a report removed by a moderator */
+.report-status-removed {
+  color: #a11d1d;
+  font-weight: 600;
+}
+
 /* Post a shared ride (US31) */
 .field textarea {
   box-sizing: border-box;
