@@ -7,7 +7,14 @@ from django.utils.html import format_html, format_html_join
 
 from zones.importer import rules
 
-from .models import CleaningRules, CleaningRulesChange, ImportRun, Zone
+from .models import (
+    CleaningRules,
+    CleaningRulesChange,
+    ImportRun,
+    Zone,
+    ZoneAdjacencyOverride,
+)
+from .stats import neighbor_sources
 
 ERROR_START = 80
 
@@ -80,14 +87,43 @@ class ZoneAdmin(admin.ModelAdmin):
         "edited_by_admin",
         "edited_by",
         "edited_at",
+        "neighbours",
     )
-    readonly_fields = ("zone_id", "edited_by", "edited_at")
+    readonly_fields = ("zone_id", "edited_by", "edited_at", "neighbours")
 
     def has_add_permission(self, request):
         return False
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+    @admin.display(description="neighbours")
+    def neighbours(self, zone):
+        """US43 #117: the zone's neighbours, each marked as coming from
+        zone_neighbors.json, added in the admin, or removed in the admin
+        (shown struck through: no longer used)."""
+        sources = neighbor_sources(zone.zone_id)
+        if not sources:
+            return "None"
+        names = dict(
+            Zone.objects.filter(
+                zone_id__in=[other for other, _ in sources]
+            ).values_list("zone_id", "name")
+        )
+        labels = {
+            "file": "from the file",
+            "added": "added in the admin",
+            "removed": "removed in the admin",
+        }
+        items = []
+        for other, source in sources:
+            tag = "s" if source == "removed" else "span"
+            name = names.get(other, "Unknown zone")
+            items.append((tag, other, name, tag, labels[source]))
+        return format_html(
+            '<ul style="margin:0;padding-left:1.2em">{}</ul>',
+            format_html_join("", "<li><{}>{} {}</{}> ({})</li>", items),
+        )
 
     def save_model(self, request, obj, form, change):
         """A changed name or borough marks the zone as edited. Any change
@@ -341,3 +377,31 @@ def _text(value):
     if isinstance(value, Decimal):
         return f"{value:.2f}"
     return str(value)
+
+
+@admin.register(ZoneAdjacencyOverride)
+class ZoneAdjacencyOverrideAdmin(admin.ModelAdmin):
+    """US43 #117: add a pair of neighbouring zones that zone_neighbors.json
+    misses, or remove a wrong one, with a reason. Applies both ways and
+    straight away (zones.stats.load_zone_neighbors). Deleting an override
+    puts the pair back to what the file says."""
+
+    list_display = (
+        "__str__",
+        "zone_a",
+        "zone_b",
+        "action",
+        "reason",
+        "changed_by",
+        "changed_at",
+    )
+    list_filter = ("action",)
+    search_fields = ("zone_a__name", "zone_b__name", "reason")
+    autocomplete_fields = ("zone_a", "zone_b")
+    fields = ("zone_a", "zone_b", "action", "reason", "changed_by", "changed_at")
+    readonly_fields = ("changed_by", "changed_at")
+
+    def save_model(self, request, obj, form, change):
+        obj.changed_by = request.user.get_username()
+        obj.changed_at = timezone.now()
+        super().save_model(request, obj, form, change)

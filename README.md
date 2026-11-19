@@ -199,6 +199,7 @@ This takes away the staff rights at once (Django checks them on every admin page
 
 - **Accounts:** list and search by email or display name, deactivate (untick "Active") or delete an account. The password and its hash are not shown and can't be reset there, the staff flags are read-only (they change only with the commands above), and accounts can't be added there (they come from sign-up or `create_staff`).
 - **Zones:** correct a zone's name or borough (US42), search by name, filter by borough or by "edited in the admin". The zone id can't change, and zones can't be added or deleted. An edited zone keeps its name and borough when the import runs again; untick "Edited in the admin" to let the next import put back the TLC values. The list shows who last edited each zone and when.
+- **Neighbour overrides:** add a pair of neighbouring zones that `zone_neighbors.json` misses, or remove a wrong one, with a reason (US43). It applies both ways and straight away to cheaper-pickup suggestions and shared-ride matching; delete the override to go back to the file. Each zone's page lists its neighbours and where each comes from.
 - **Import history:** read-only list of every `import_trips` and `import_rideshare` run (US40), filterable by import and status.
 - **Cleaning rules:** the fare, distance and duration limits of each import, and the wait limits of the rideshare import (US41). See "Cleaning rules" below.
 - Display names, fare reports, ride posts, interest in rides and content reports, as set up by their stories (US24, US30, US31, US33, US38).
@@ -229,7 +230,7 @@ node --test zones/tests/*.test.js   # JavaScript tests
 
 ## Regenerate the adjacent zones
 
-`zones/data/zone_neighbors.json` (US18) lists, for every zone, the zones that share a border with it. It is committed, so you only need this after rebuilding `taxi_zones.geojson`. The script needs `shapely`, which the app does not use, so it is not in `requirements.txt`:
+`zones/data/zone_neighbors.json` (US18) lists, for every zone, the zones that share a border with it. It is committed, so you only need this after rebuilding `taxi_zones.geojson`. The script needs `shapely`, which the app does not use, so it is not in `requirements.txt`: Staff corrections made in the admin (Neighbour overrides, US43) are stored in the database, not in the file, so they survive a rebuild.
 
 ```bash
 pip install shapely==2.1.2

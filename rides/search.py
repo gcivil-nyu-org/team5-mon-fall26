@@ -46,9 +46,10 @@ def _label(post, pickup_id, dropoff_id):
 
 def find_rides(user, pickup, dropoff, day, at_time=None, now=None):
     """Open posts by other riders whose pickup is the same zone as `pickup`
-    or adjacent to it (zone_neighbors.json, US18), whose dropoff is the same
-    as or adjacent to `dropoff`, departing on `day` (New York time) and, with
-    `at_time`, within 1 hour of it. Same route first, then by departure."""
+    or adjacent to it (zone_neighbors.json, US18, with the admin's neighbour
+    overrides, US43), whose dropoff is the same as or adjacent to `dropoff`,
+    departing on `day` (New York time) and, with `at_time`, within 1 hour of
+    it. Same route first, then by departure."""
     now = now or timezone.now()
     posts = (
         RidePost.objects.open(now)

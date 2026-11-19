@@ -36,3 +36,4 @@ One file per user story, mirroring the ZenHub issue (story line, developer tasks
 | US40.md | #114 | Record and View Import History (copied with `gh issue view`, not by the sync script) |
 | US41.md | #115 | Edit the Data-Cleaning Rules (copied from the issue, not by the sync script) |
 | US42.md | #116 | Manage Zone Names and Boroughs (copied from the issue, not by the sync script) |
+| US43.md | #117 | Manage Zone Adjacency (copied with `gh issue view`, not by the sync script) |
