@@ -4,9 +4,10 @@ from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts.models import Profile
-from rides import reporting
+from rides import interest, messaging, reporting
 from rides.models import ContentReport, RideMessage, RidePost
 
 from .test_show_interest import PASSWORD, InterestTestData
@@ -301,6 +302,16 @@ class AdminTests(ReportTestData):
         second.refresh_from_db()
         self.assertEqual(self.ride.status, RidePost.REMOVED)
         self.assertEqual(self.ride.note, "")
+        self.assertEqual(
+            interest.blocked_reason(self.ride, self.rider, timezone.now()),
+            interest.REMOVED,
+        )
+        conversation = messaging.conversation_for(
+            self.rider, self.ride.pk, self.rider.pk
+        )
+        self.assertEqual(
+            conversation.read_only_reason(timezone.now()), messaging.REMOVED
+        )
         self.assertEqual(second.outcome, ContentReport.CONTENT_REMOVED)
         self.assertEqual(second.closed_by, "admin@example.com")
         self.client.force_login(self.rider)
