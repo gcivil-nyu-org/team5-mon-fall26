@@ -34,11 +34,13 @@ class RidePost(models.Model):
     FULL = "full"
     CLOSED = "closed"
     DELETED = "deleted"
+    REMOVED = "removed"
     STATUS_CHOICES = [
         (OPEN, "Open"),
         (FULL, "Full"),
         (CLOSED, "Closed"),
         (DELETED, "Deleted"),
+        (REMOVED, "Removed by a moderator"),
     ]
     EXPIRED = "Expired"
 
@@ -73,7 +75,9 @@ class RidePost(models.Model):
                 name="ride_post_different_zones",
             ),
             models.CheckConstraint(
-                condition=Q(status__in=["open", "full", "closed", "deleted"]),
+                condition=Q(
+                    status__in=["open", "full", "closed", "deleted", "removed"]
+                ),
                 name="ride_post_status_valid",
             ),
         ]
@@ -82,7 +86,8 @@ class RidePost(models.Model):
         """Departed and not closed by its owner."""
         now = now or timezone.now()
         return (
-            self.status not in (self.CLOSED, self.DELETED) and self.departure_at <= now
+            self.status not in (self.CLOSED, self.DELETED, self.REMOVED)
+            and self.departure_at <= now
         )
 
     def seats_left(self):
@@ -175,6 +180,7 @@ class RideMessage(models.Model):
         related_name="ride_messages_received",
     )
     text = models.CharField(max_length=MESSAGE_MAX_LENGTH)
+    hidden = models.BooleanField(default=False, db_default=False)
     sent_at = models.DateTimeField(auto_now_add=True)
     read_at = models.DateTimeField(null=True, blank=True)
 
@@ -219,6 +225,12 @@ class ContentReport(models.Model):
     OPEN = "open"
     CLOSED = "closed"
     STATUS_CHOICES = [(OPEN, "Open"), (CLOSED, "Closed")]
+    CONTENT_REMOVED = "removed"
+    NO_ACTION = "no_action"
+    OUTCOME_CHOICES = [
+        (CONTENT_REMOVED, "Content removed"),
+        (NO_ACTION, "No action needed"),
+    ]
 
     reporter = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -246,6 +258,11 @@ class ContentReport(models.Model):
     # still see it if the owner edits the note or deletes the post.
     reported_text = models.TextField(blank=True)
     status = models.CharField(max_length=6, choices=STATUS_CHOICES, default=OPEN)
+    outcome = models.CharField(
+        max_length=9, choices=OUTCOME_CHOICES, blank=True, default="", db_default=""
+    )
+    closed_by = models.CharField(max_length=150, blank=True, default="", db_default="")
+    closed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

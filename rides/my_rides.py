@@ -131,6 +131,8 @@ def asked_status(post, interest):
     back but the two have messages."""
     if post.status == RidePost.DELETED:
         return "Deleted"
+    if post.status == RidePost.REMOVED:
+        return "Removed by a moderator"
     if post.status == RidePost.CLOSED:
         return "Closed"
     if interest is None:
@@ -153,7 +155,7 @@ def my_posts(user, now, unread):
     posts = list(
         RidePost.objects.with_seat_counts()
         .filter(owner=user)
-        .exclude(status=RidePost.DELETED)
+        .exclude(status__in=[RidePost.DELETED, RidePost.REMOVED])
         .select_related("pickup_zone", "dropoff_zone")
     )
     rows = {p.pk: MyPost(p, p.status_label(now), p.seats_left()) for p in posts}
@@ -218,7 +220,7 @@ def asked_rides(user, now, unread):
                 url=_conversation_url(post.pk, user.pk),
                 detail_url=(
                     None
-                    if status in ("Deleted", WITHDRAWN)
+                    if status in ("Deleted", "Removed by a moderator", WITHDRAWN)
                     else reverse("rides:ride_detail", args=[post.pk])
                 ),
             )

@@ -273,11 +273,58 @@ class AdminTests(ReportTestData):
         response = self.client.get(url, {"status__exact": "closed"})
         self.assertEqual(response.context["cl"].result_count, 0)
 
-    def test_admin_can_close_a_report(self):
+    def test_admin_closes_a_report_with_an_outcome(self):
         report = ContentReport.objects.get(post=self.ride)
         url = reverse("admin:rides_contentreport_change", args=[report.pk])
         page = self.client.get(url)
         self.assertContains(page, "Asked for my address")
-        self.client.post(url, {"status": "closed"})
+        self.client.post(
+            reverse("admin:rides_contentreport_changelist"),
+            {"action": "no_action_needed", "_selected_action": report.pk},
+        )
         report.refresh_from_db()
         self.assertEqual(report.status, ContentReport.CLOSED)
+        self.assertEqual(report.outcome, ContentReport.NO_ACTION)
+        self.assertEqual(report.closed_by, "admin@example.com")
+        self.assertIsNotNone(report.closed_at)
+
+    def test_removing_a_post_closes_all_reports_and_hides_its_page(self):
+        second = ContentReport.objects.create(
+            reporter=self.stranger, post=self.ride, reason=ContentReport.SPAM
+        )
+        report = ContentReport.objects.get(reporter=self.rider, post=self.ride)
+        self.client.post(
+            reverse("admin:rides_contentreport_changelist"),
+            {"action": "remove_posts", "_selected_action": report.pk},
+        )
+        self.ride.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual(self.ride.status, RidePost.REMOVED)
+        self.assertEqual(self.ride.note, "")
+        self.assertEqual(second.outcome, ContentReport.CONTENT_REMOVED)
+        self.assertEqual(second.closed_by, "admin@example.com")
+        self.client.force_login(self.rider)
+        self.assertEqual(self.client.get(self.detail(self.ride)).status_code, 404)
+        self.assertContains(
+            self.client.get(reverse("rides:my_rides")), "Removed by a moderator"
+        )
+
+    def test_hiding_a_message_keeps_it_but_replaces_its_text(self):
+        report = ContentReport.objects.get(message=self.to_rider)
+        self.client.post(
+            reverse("admin:rides_contentreport_changelist"),
+            {"action": "hide_messages", "_selected_action": report.pk},
+        )
+        self.to_rider.refresh_from_db()
+        self.assertTrue(self.to_rider.hidden)
+        self.assertEqual(self.to_rider.text, "Pay me first")
+        self.client.force_login(self.rider)
+        page = self.client.get(self.chat())
+        self.assertContains(page, "This message was removed by a moderator")
+        self.assertNotContains(page, "Pay me first")
+        self.assertEqual(self.client.get(self.message_url()).status_code, 404)
+        updates = self.client.get(
+            reverse("rides:conversation_updates", args=[self.ride.pk, self.rider.pk]),
+            {"after": self.to_rider.pk},
+        ).json()
+        self.assertIn(self.to_rider.pk, updates["hidden_ids"])
