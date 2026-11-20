@@ -59,7 +59,7 @@
               {% timezone "America/New_York" %}{{ row.post.departure_at|date:"D j M Y, g:i A" }}{% endtimezone %}
               <span class="status status-{{ row.status|lower }}">{{ row.status }}</span>
             </p>
-            {% if row.status == "Deleted" %}<p>This shared ride was deleted.</p>{% elif row.status == "Closed" %}<p>This shared ride was closed.</p>{% endif %}
+            {% if row.status == "Deleted" %}<p>This shared ride was deleted.</p>{% elif row.status == "Removed by a moderator" %}<p>This shared ride was removed by a moderator.</p>{% elif row.status == "Closed" %}<p>This shared ride was closed.</p>{% endif %}
             <p>Posted by {{ row.owner_name }} · <a href="{{ row.url }}">Messages</a>{% if row.unread %} <span class="unread-count">{{ row.unread }} unread</span>{% endif %}</p>
           </li>
         {% endfor %}

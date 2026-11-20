@@ -1,5 +1,7 @@
 from django.contrib import admin
+from django.db.models import Case, IntegerField, Value, When
 
+from . import moderation
 from .models import ContentReport, RideInterest, RidePost
 
 
@@ -34,13 +36,13 @@ class RideInterestAdmin(admin.ModelAdmin):
 
 @admin.register(ContentReport)
 class ContentReportAdmin(admin.ModelAdmin):
-    """US38 #101: reports are checked here until Epic 5 adds moderation.
-    Only admins see who reported what."""
+    """Only staff see reporters and perform moderation on reported content."""
 
     list_display = (
         "created_at",
         "reason",
         "status",
+        "item_report_count",
         "kind",
         "reported_user",
         "reporter",
@@ -48,6 +50,15 @@ class ContentReportAdmin(admin.ModelAdmin):
     )
     list_filter = ("reason", "status")
     list_select_related = ("reporter", "post__owner", "message__sender")
+    ordering = (
+        Case(
+            When(status=ContentReport.OPEN, then=Value(0)),
+            default=Value(1),
+            output_field=IntegerField(),
+        ).asc(),
+        "-created_at",
+        "-pk",
+    )
     readonly_fields = (
         "reporter",
         "post",
@@ -59,9 +70,21 @@ class ContentReportAdmin(admin.ModelAdmin):
         "reason",
         "note",
         "created_at",
+        "status",
+        "outcome",
+        "closed_by",
+        "closed_at",
     )
-    fields = readonly_fields + ("status",)
-    actions = ("mark_closed", "mark_open")
+    fields = readonly_fields
+    actions = ("remove_posts", "hide_messages", "no_action_needed")
+
+    @admin.display(description="Reports on item")
+    def item_report_count(self, report):
+        return (
+            report.post.reports.count()
+            if report.post_id
+            else report.message.reports.count()
+        )
 
     @admin.display(description="Reported content (when reported)")
     def short_text(self, report):
@@ -78,10 +101,22 @@ class ContentReportAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         return False  # reports come from riders, not from the admin
 
-    @admin.action(description="Mark selected reports closed")
-    def mark_closed(self, request, queryset):
-        queryset.update(status=ContentReport.CLOSED)
+    def has_delete_permission(self, request, obj=None):
+        return False  # keep report outcomes until the reported account is deleted
 
-    @admin.action(description="Mark selected reports open")
-    def mark_open(self, request, queryset):
-        queryset.update(status=ContentReport.OPEN)
+    @admin.action(description="Remove reported posts")
+    def remove_posts(self, request, queryset):
+        count = moderation.remove_posts(queryset, request.user)
+        self.message_user(request, f"{count} post(s) removed.")
+
+    @admin.action(description="Hide reported messages")
+    def hide_messages(self, request, queryset):
+        count = moderation.hide_messages(queryset, request.user)
+        self.message_user(request, f"{count} message(s) hidden.")
+
+    @admin.action(description="Close reports: no action needed")
+    def no_action_needed(self, request, queryset):
+        count = moderation.no_action(queryset, request.user)
+        self.message_user(
+            request, f"{count} report(s) closed without removing content."
+        )

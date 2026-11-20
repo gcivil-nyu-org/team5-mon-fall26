@@ -555,3 +555,7 @@ The story asks for a "Removed" status that never appears in `FareReport.objects.
 - **The rider** sees "Removed by a moderator" (in red) and no Edit link; opening the edit page anyway redirects to My fare reports with "This report was removed by a moderator, so it can't be edited. You can delete it." Deleting it still works. The reason is for staff only and isn't shown to the rider.
 - **An approved report the rider edits** goes through the US24 hold check again, like any edit, so it can be held again.
 - **Shared database:** the new columns have database defaults (`db_default`), so Production's code, which doesn't know them yet, can still save reports.
+
+## Our choices (moderate reported content, US45 #119, 2026-11-19)
+
+Staff moderate through actions on content reports. Removing a post records a distinct `removed` status and clears its note; the post row remains so interested riders can see the moderator notice and reports can retain their target. The detail page is inaccessible to everyone, including the owner. The owner cannot edit, close, or delete the removed post through rider actions. Hiding a message keeps its original text for staff but replaces it with the moderator notice in conversation HTML and JSON; the polling endpoint also tells an already open conversation which messages were hidden. Closing a report records the outcome, staff username, and time. Removing an item closes all its open reports. Report rows cannot be deleted directly in the admin; account deletion still follows the existing cascade.

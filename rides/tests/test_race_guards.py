@@ -7,10 +7,9 @@ from unittest import mock
 from django.contrib.admin.sites import site
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404 as real_get_object_or_404
-from django.test import RequestFactory
 from django.urls import reverse
 
-from rides import reporting
+from rides import moderation, reporting
 from rides.admin import ContentReportAdmin
 from rides.forms import (
     DEPARTURE_PAST,
@@ -155,10 +154,14 @@ class ReportAdminTests(InterestTestData):
             "Note: Meet at the blue door", self.admin.current_content(on_post)
         )
 
-    def test_mark_closed_and_mark_open_actions(self):
+    def test_no_action_closes_a_report_with_an_audit_record(self):
         ContentReport.objects.create(reporter=self.rider, post=self.ride, reason="spam")
-        request = RequestFactory().post("/")
-        self.admin.mark_closed(request, ContentReport.objects.all())
-        self.assertEqual(ContentReport.objects.get().status, ContentReport.CLOSED)
-        self.admin.mark_open(request, ContentReport.objects.all())
-        self.assertEqual(ContentReport.objects.get().status, ContentReport.OPEN)
+        staff = get_user_model().objects.create_superuser(
+            "staff@example.com", password=PASSWORD
+        )
+        self.assertEqual(moderation.no_action(ContentReport.objects.all(), staff), 1)
+        report = ContentReport.objects.get()
+        self.assertEqual(report.status, ContentReport.CLOSED)
+        self.assertEqual(report.outcome, ContentReport.NO_ACTION)
+        self.assertEqual(report.closed_by, staff.username)
+        self.assertIsNotNone(report.closed_at)

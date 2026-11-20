@@ -41,7 +41,7 @@
     time.textContent = message.sent_at;
     bubble.append(who, text, time);
     // US38 #101: messages from the other rider can be reported.
-    if (!message.mine && list.dataset.reportUrl) {
+    if (!message.mine && !message.hidden && list.dataset.reportUrl) {
       const report = document.createElement("a");
       report.className = "chat-report";
       report.href = list.dataset.reportUrl.replace(/\/0\/report\/$/, `/${message.id}/report/`);
@@ -85,6 +85,14 @@
         return response.json();
       })
       .then((data) => {
+        for (const id of data.hidden_ids || []) {
+          const row = Array.from(list.children).find((item) => item.dataset.id === String(id));
+          if (!row) continue;
+          const body = row.querySelector(".chat-text");
+          if (body) body.textContent = "This message was removed by a moderator";
+          const report = row.querySelector("a.chat-report");
+          if (report) report.remove();
+        }
         let added = false;
         for (const message of data.messages) {
           if (message.id > lastId) {
