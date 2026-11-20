@@ -28,3 +28,27 @@ class Profile(models.Model):
 
     def __str__(self):
         return self.display_name
+
+
+class AccountAction(models.Model):
+    """US46: an administrator's suspension or restoration of an account."""
+
+    SUSPEND = "suspend"
+    RESTORE = "restore"
+    ACTION_CHOICES = [(SUSPEND, "Suspend"), (RESTORE, "Restore")]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="account_actions",
+    )
+    action = models.CharField(max_length=7, choices=ACTION_CHOICES)
+    reason = models.CharField(max_length=200)
+    acted_by = models.CharField(max_length=150)
+    acted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-acted_at", "-pk"]
+
+    def __str__(self):
+        return f"{self.get_action_display()} {self.user_id} by {self.acted_by}"
