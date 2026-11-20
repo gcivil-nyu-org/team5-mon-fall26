@@ -66,6 +66,7 @@ class SuspensionTests(TestCase):
             (action.acted_by, action.reason), ("staff@example.com", "Unsafe conduct")
         )
         self.assertIsNotNone(action.acted_at)
+        self.assertEqual(str(action), f"Suspend {self.rider.pk} by staff@example.com")
 
         url = reverse("accounts:signin")
         wrong = self.client.post(
@@ -128,6 +129,61 @@ class SuspensionTests(TestCase):
         )
         self.assertFalse(changed)
         self.assertIn("last active staff", detail)
+
+    def test_repeated_and_invalid_actions_do_not_create_history(self):
+        changed, detail = change_account(
+            self.rider.pk, self.staff, AccountAction.RESTORE, "Already active"
+        )
+        self.assertFalse(changed)
+        self.assertEqual(detail, "This account is already active.")
+        changed, detail = change_account(
+            self.rider.pk, self.staff, AccountAction.SUSPEND, "  "
+        )
+        self.assertFalse(changed)
+        self.assertEqual(detail, "Enter a reason before changing an account.")
+        with self.assertRaisesMessage(ValueError, "Unknown account action"):
+            change_account(self.rider.pk, self.staff, "invalid", "Reason")
+        self.assertFalse(AccountAction.objects.exists())
+
+        changed, _ = change_account(
+            self.rider.pk, self.staff, AccountAction.SUSPEND, "Unsafe conduct"
+        )
+        self.assertTrue(changed)
+        changed, detail = change_account(
+            self.rider.pk, self.staff, AccountAction.SUSPEND, "Again"
+        )
+        self.assertFalse(changed)
+        self.assertEqual(detail, "This account is already suspended.")
+        changed, _ = change_account(
+            self.rider.pk, self.staff, AccountAction.RESTORE, "Appeal accepted"
+        )
+        self.assertTrue(changed)
+        changed, detail = change_account(
+            self.rider.pk, self.staff, AccountAction.RESTORE, "Again"
+        )
+        self.assertFalse(changed)
+        self.assertEqual(detail, "This account is already active.")
+        self.assertEqual(AccountAction.objects.count(), 2)
+
+    def test_admin_restores_selected_account(self):
+        change_account(
+            self.rider.pk, self.staff, AccountAction.SUSPEND, "Unsafe conduct"
+        )
+        self.client.force_login(self.staff)
+        response = self.client.post(
+            reverse("admin:auth_user_changelist"),
+            {
+                "action": "restore_accounts",
+                "_selected_action": self.rider.pk,
+                "reason": "Appeal accepted",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.rider.refresh_from_db()
+        self.assertTrue(self.rider.is_active)
+        restored = AccountAction.objects.first()
+        self.assertEqual(restored.action, AccountAction.RESTORE)
+        self.assertEqual(restored.reason, "Appeal accepted")
 
     def edit_form(self):
         from zones.views import NYC_TZ
