@@ -105,8 +105,7 @@ def report_fare(request):
 
     if request.method == "POST":
         form = FareReportForm(request.user, request.POST)
-        if form.is_valid():
-            report = form.save()
+        if form.is_valid() and (report := form.save()) is not None:
             message = SAVED + (HELD if report.status == FareReport.HELD else "")
             messages.success(request, message)
             return redirect(request.get_full_path())
@@ -155,8 +154,11 @@ def edit_report(request, report_id):
         request.POST if request.method == "POST" else None,
         instance=report,
     )
-    if request.method == "POST" and form.is_valid():
-        report = form.save()
+    if (
+        request.method == "POST"
+        and form.is_valid()
+        and (report := form.save()) is not None
+    ):
         message = UPDATED + (HELD if report.status == FareReport.HELD else "")
         messages.success(request, message)
         return redirect("reports:my_reports")

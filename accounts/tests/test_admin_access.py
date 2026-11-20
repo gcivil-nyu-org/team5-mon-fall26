@@ -338,9 +338,14 @@ class UserAdminTests(AdminData, TestCase):
         self.assertFalse(self.rider.is_superuser)
         self.assertEqual(self.rider.email, "rider@example.com")
 
-    def test_staff_can_deactivate_an_account(self):
+    def test_staff_can_suspend_an_account_with_a_reason(self):
         response = self.client.post(
-            reverse("admin:auth_user_change", args=[self.rider.pk]), {}
+            reverse("admin:auth_user_changelist"),
+            {
+                "action": "suspend_accounts",
+                "_selected_action": self.rider.pk,
+                "reason": "Unsafe conduct",
+            },
         )
 
         self.assertEqual(response.status_code, 302)
