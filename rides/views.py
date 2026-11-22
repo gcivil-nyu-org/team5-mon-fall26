@@ -330,6 +330,7 @@ def find_rides_view(request):
         .filter(owner=request.user, departure_at__gt=now)
         .exclude(status__in=[RidePost.CLOSED, RidePost.DELETED, RidePost.REMOVED])
         .select_related("pickup_zone", "dropoff_zone")
+        .order_by("departure_at", "pk")
     )
     return render(request, "rides/find_rides.html", context)
 
