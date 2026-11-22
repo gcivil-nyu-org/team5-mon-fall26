@@ -18,7 +18,15 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
+from zones.dashboard import data_quality
+
 urlpatterns = [
+    # US48 #122: staff only (admin_view sends anyone else to the admin sign-in).
+    path(
+        "admin/data-quality/",
+        admin.site.admin_view(data_quality),
+        name="data_quality",
+    ),
     path("admin/", admin.site.urls),
     path("accounts/", include("accounts.urls")),
     path("", include("routes.urls")),

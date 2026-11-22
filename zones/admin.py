@@ -16,6 +16,9 @@ from .models import (
 )
 from .stats import neighbor_sources
 
+# US48 #122: the admin home links to the data-quality dashboard.
+admin.site.index_template = "admin/taxiscope_index.html"
+
 ERROR_START = 80
 
 
