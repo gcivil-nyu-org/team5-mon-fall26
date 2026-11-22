@@ -38,3 +38,5 @@ One file per user story, mirroring the ZenHub issue (story line, developer tasks
 | US42.md | #116 | Manage Zone Names and Boroughs (copied from the issue, not by the sync script) |
 | US43.md | #117 | Manage Zone Adjacency (copied with `gh issue view`, not by the sync script) |
 | US44.md | #118 | Review Fare Reports Held for Review (copied with `gh issue view`, not by the sync script) |
+| US45.md | #119 | Moderate Reported Posts and Messages |
+| US46.md | #120 | Suspend and Restore Accounts |

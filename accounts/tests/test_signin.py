@@ -64,13 +64,13 @@ class SignInTests(AccountData, TestCase):
             unknown_email.context["form"].errors,
         )
 
-    def test_inactive_user_gets_the_same_generic_error(self):
+    def test_inactive_user_gets_suspension_message_after_correct_password(self):
         self.user.is_active = False
         self.user.save()
 
         response = self.sign_in()
 
-        self.assertContains(response, GENERIC_ERROR)
+        self.assertContains(response, "This account is suspended.")
         self.assertNotIn("_auth_user_id", self.client.session)
 
     def test_signed_in_user_is_sent_to_the_map(self):

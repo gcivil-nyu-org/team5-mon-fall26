@@ -40,6 +40,7 @@ def message_to_report(user, message_id):
         ),
         pk=message_id,
         receiver=user,
+        hidden=False,
     )
 
 

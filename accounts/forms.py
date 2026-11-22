@@ -13,6 +13,7 @@ User = get_user_model()
 
 EMAIL_TAKEN = "An account with this email already exists."
 SIGN_IN_ERROR = "The email or password is incorrect."
+SUSPENDED_ERROR = "This account is suspended. Contact an administrator."
 
 
 class SignUpForm(forms.Form):
@@ -91,6 +92,20 @@ class SignInForm(AuthenticationForm):
 
     def clean_username(self):
         return self.cleaned_data["username"].strip().lower()
+
+    def clean(self):
+        try:
+            return super().clean()
+        except ValidationError:
+            email = self.cleaned_data.get("username")
+            password = self.cleaned_data.get("password")
+            if email and password:
+                user = User.objects.filter(
+                    username__iexact=email, is_active=False
+                ).first()
+                if user is not None and user.check_password(password):
+                    raise ValidationError(SUSPENDED_ERROR, code="suspended")
+            raise
 
 
 class StaffSignInForm(AdminAuthenticationForm):

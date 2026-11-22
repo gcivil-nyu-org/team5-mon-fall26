@@ -182,7 +182,7 @@ def close_ride(request, post_id):
         post = get_object_or_404(
             RidePost.objects.select_for_update(), pk=post_id, owner=request.user
         )
-        if post.status == RidePost.DELETED:
+        if post.status in (RidePost.DELETED, RidePost.REMOVED):
             raise Http404
         if post.status != RidePost.CLOSED:
             post.status = RidePost.CLOSED
@@ -196,14 +196,14 @@ def close_ride(request, post_id):
 @require_http_methods(["GET", "POST"])
 def delete_ride(request, post_id):
     post = get_object_or_404(RidePost, pk=post_id, owner=request.user)
-    if post.status == RidePost.DELETED:
+    if post.status in (RidePost.DELETED, RidePost.REMOVED):
         raise Http404
     if request.method == "POST":
         with transaction.atomic():
             post = get_object_or_404(
                 RidePost.objects.select_for_update(), pk=post_id, owner=request.user
             )
-            if post.status == RidePost.DELETED:
+            if post.status in (RidePost.DELETED, RidePost.REMOVED):
                 raise Http404
             post.status = RidePost.DELETED
             post.note = ""
@@ -328,8 +328,9 @@ def find_rides_view(request):
     context["my_posts"] = (
         RidePost.objects.with_seat_counts()
         .filter(owner=request.user, departure_at__gt=now)
-        .exclude(status__in=[RidePost.CLOSED, RidePost.DELETED])
+        .exclude(status__in=[RidePost.CLOSED, RidePost.DELETED, RidePost.REMOVED])
         .select_related("pickup_zone", "dropoff_zone")
+        .order_by("departure_at", "pk")
     )
     return render(request, "rides/find_rides.html", context)
 
@@ -416,6 +417,9 @@ def conversation_updates(request, post_id, rider_id):
     return JsonResponse(
         {
             "messages": [messaging.as_json(m, request.user) for m in new],
+            "hidden_ids": list(
+                talk.messages().filter(hidden=True).values_list("pk", flat=True)
+            ),
             "read_only": talk.read_only_reason(now),
         }
     )
