@@ -11,6 +11,7 @@ from django.utils import timezone
 from django.utils.http import urlencode
 from django.views.decorators.http import require_GET, require_http_methods
 
+from accounts.restriction import blocked_notice
 from zones.stats import unknown_zone_ids
 from zones.views import MAX_ZONE_ID, NYC_TZ, _parse_int
 
@@ -102,6 +103,9 @@ def report_fare(request):
         next_page = urlencode({"next": request.get_full_path()})
         signin = f"{reverse('accounts:signin')}?{next_page}"
         return render(request, "reports/report_fare.html", {"signin_url": signin})
+    # US47 #121: a restricted account sees why instead of the form.
+    if restricted := blocked_notice(request.user):
+        return render(request, "reports/report_fare.html", {"restricted": restricted})
 
     if request.method == "POST":
         form = FareReportForm(request.user, request.POST)
@@ -148,6 +152,10 @@ def edit_report(request, report_id):
     report = _own_report(request, report_id)
     if report.status == FareReport.REMOVED:
         messages.error(request, REMOVED_NOT_EDITABLE)
+        return redirect("reports:my_reports")
+    # US47 #121: editing resubmits the report, so it is blocked too.
+    if restricted := blocked_notice(request.user):
+        messages.error(request, restricted)
         return redirect("reports:my_reports")
     form = FareReportForm(
         request.user,

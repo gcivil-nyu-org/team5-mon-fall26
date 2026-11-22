@@ -8,6 +8,9 @@
       <button type="submit" class="secondary-button">Withdraw</button>
     </form>
   {% endif %}
+{% elif can_show_interest and account_restriction.notice %}
+  {# US47 #121: restricted accounts can't show interest; say why. #}
+  <p class="restricted-notice">{{ account_restriction.notice }}</p>
 {% elif can_show_interest %}
   <form method="post" action="{% url 'rides:show_interest' post.pk %}" class="interest-form">
     {% csrf_token %}

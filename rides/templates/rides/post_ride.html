@@ -19,6 +19,8 @@
       {% endfor %}
       <button type="submit">Post shared ride</button>
     </form>
+  {% elif restricted %}
+    <p id="account-restricted" class="restricted-notice">{{ restricted }}</p>
   {% else %}
     <p><a id="share-ride-signin" href="{{ signin_url }}">Sign in to share a ride</a></p>
   {% endif %}

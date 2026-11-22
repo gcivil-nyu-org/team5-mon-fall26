@@ -40,3 +40,4 @@ One file per user story, mirroring the ZenHub issue (story line, developer tasks
 | US44.md | #118 | Review Fare Reports Held for Review (copied with `gh issue view`, not by the sync script) |
 | US45.md | #119 | Moderate Reported Posts and Messages |
 | US46.md | #120 | Suspend and Restore Accounts |
+| US47.md | #121 | Restrict an Account (copied from the issue, not by the sync script) |
