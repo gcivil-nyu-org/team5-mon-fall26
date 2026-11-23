@@ -25,6 +25,10 @@ TOO_MANY = (
     "Please wait a little before sending another."
 )
 DELETED = "This conversation is read-only because the shared ride was deleted."
+REMOVED = (
+    "This conversation is read-only because the shared ride was removed by a moderator."
+)
+HIDDEN_TEXT = "This message was removed by a moderator"
 DEPARTED = (
     "This conversation is read-only because the ride left more than 24 hours ago."
 )
@@ -56,6 +60,8 @@ class Conversation:
         """Why nobody can send in this conversation any more, or None."""
         if self.post.status == RidePost.DELETED:
             return DELETED
+        if self.post.status == RidePost.REMOVED:
+            return REMOVED
         if now >= self.post.departure_at + READ_ONLY_AFTER:
             return DEPARTED
         if self.interest is None:
@@ -142,6 +148,7 @@ def as_json(message, viewer):
             if mine
             else display_name_of(message.sender) or f"Rider {message.sender_id}"
         ),
-        "text": message.text,
+        "text": HIDDEN_TEXT if message.hidden else message.text,
+        **({"hidden": True} if message.hidden else {}),
         "sent_at": sent_label(message),
     }

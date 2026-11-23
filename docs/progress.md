@@ -15,6 +15,60 @@ Entry format:
 
 ## Log
 
+### 2026-11-18 — us42-zone-names (US42 #116, stacked on US41 #115)
+**What changed:**
+- `Zone.edited_by_admin`, `edited_by`, `edited_at` (`zones/models.py`, migration `zones/0008_zone_admin_edits`, three columns with database defaults).
+- `ZoneAdmin` (`zones/admin.py`) is no longer read-only: name and borough (from the TLC boroughs) are editable, zone id read-only, no add or delete; the list shows the flag, who and when, with filters for borough and "edited in the admin"; `save_model` sets the flag and who/when.
+- `upsert_zones` (`zones/importer/load.py`) skips zones edited in the admin; both imports use it.
+- Docs: `decisions.md` (US42 section, note on the US0a re-import decision), README (Zones in the admin), HLD table and section 38, `CLAUDE.md`, `docs/stories/US42.md`.
+
+**Decisions made (also in `decisions.md`):** proposed, to confirm with the PO: the borough is picked from the TLC list; unticking the flag hands the zone back to the import. Also: only the last edit is kept (who and when); names needn't be unique.
+
+**Tests:** `zones/tests/test_zone_admin.py` rewritten (edit, trim, borough list, no change records nothing, untick, list shows who/when, no add or delete, id can't change) and new `zones/tests/test_zone_names.py` (the new name on the map API, compare page, plans, ride detail and My rides; `import_trips` and `import_rideshare` keep the edit; other zones still follow the lookup; an unticked zone gets the TLC name back). 1322 Django tests OK (4 skipped), coverage 100%, 190 Node tests OK, black and flake8 pass.
+
+**Next step:** merge US41 (#115's PR) first, then open the US42 PR and retarget it to `develop`. PO to confirm the proposed choices. Not tried yet: the admin in a browser, and a real import after an edit.
+
+### 2026-11-18 — us41-cleaning-rules (US41 #115)
+**What changed:**
+- `CleaningRules` and `CleaningRulesChange` (`zones/models.py`, migration `zones/0006_cleaning_rules`, which creates both tables and the taxi and rideshare records with today's limits). Field validators and `clean()` give a message per field; check constraints refuse the same bad values in the database.
+- `zones/importer/clean.py` and `rideshare/clean.py`: the limits are a `Limits` / `RideshareLimits` dataclass passed into `clean_trips` (defaults = the starting values); `rules(limits)` builds the labels with the limits in them. The pipelines pass the limits through.
+- `zones/importer/rules.py`: a record to `Limits` and back from the names saved in the import history. `import_trips` and `import_rideshare` read the current limits once at the start, clean with them, print them in the report labels and save them in `ImportRun` (`history.start_run` takes the limits).
+- `CleaningRulesAdmin` (`zones/admin.py`): "Cleaning rules", change only (no add or delete), wait limits on the rideshare page only, the change log on the page and the last change on the list. The import history's run page labels rules with that run's limits.
+- Docs: `decisions.md` (US41 section, notes in the US0a and US27 cleaning decisions), README ("Cleaning rules"), HLD table and section 37, `CLAUDE.md`, `docs/stories/US41.md`.
+
+**Decisions made (also in `decisions.md`):** proposed, to confirm with the PO: dollars, miles and whole minutes; the minimum distance is editable (exclusive, as the old "> 0"); a full change log with the staff email kept as text. Also: the fare maximum is capped at the fare reports' $500; a change applies from the next import.
+
+**Tests:** new `zones/tests/test_cleaning_rules.py` (starting values, migration vs model values, fare cap = US24 limit, labels at the starting values identical to the old ones, validation messages, database constraints, unit conversion, the cleaning with custom limits for both imports), `test_cleaning_rules_admin.py` (edit, log, messages, no add or delete) and `test_cleaning_rules_import.py` (the next import uses the new limits and saves them; a change during a run applies to the next one; run page labels). `CleaningRules` added to the admin URL check; US40's saved-limits test gains `MIN_DISTANCE_MI`. 1305 Django tests OK (4 skipped), coverage 100%, 190 Node tests OK, black and flake8 pass. Old vs new cleaning on 400,000 random edge-case trips: identical kept rows and per-rule counts for both imports.
+
+**Next step:** open the PR into `develop`. PO to confirm the proposed choices. Not tried yet: a real March 2026 import with old and new code on a laptop (identical report and statistics rows expected), and the admin pages in a browser.
+
+### 2026-11-17 — us40-import-history (US40 #114, stacked on US39 #113)
+**What changed:**
+- `ImportRun` (`zones/models.py`, migration `zones/0005_import_run`, creates one table `zones_importrun`): import, months, who, status, start/finish, the report's totals, removed per rule (JSON), cells and small cells, `MIN_TRIP_COUNT` used, zones loaded, cleaning limits (JSON), the report text, the error.
+- `zones/importer/history.py`: `start_run` (saves `running` before the import, closes earlier unfinished runs of the same import), `record_success`, `failure_recorded` (marks `failed` on any exception including Ctrl-C, re-raises unchanged), `--by` argument and the OS-user default. `import_trips` and `import_rideshare` call it; `report.small_cells` is shared by the report and the record. Pipelines, cleaning and loading unchanged.
+- `ImportRunAdmin` (`zones/admin.py`), a `ReadOnlyModelAdmin`: "Import history", newest first, filters for import and status, run page with removed rows per rule, limits and the report.
+- Docs: `decisions.md` (US40 section), README ("Import history", `--by` in the import and AWS-load sections, staff list), HLD table and section 36, `CLAUDE.md`, `docs/stories/US40.md`.
+
+**Decisions made (also in `decisions.md`):** proposed, to confirm with the PO: `--by` or the OS user; argument errors save no record; a failed run keeps its counts empty; an unfinished run is closed as failed by the next run of the same import; the history is kept forever.
+
+**Tests:** new `zones/tests/test_import_history.py` (both commands: success numbers equal the printed report, failures for a bad file, a failed download, a write error, an error without a message, Ctrl-C, saving the failure failing; argument errors; `--by`; stuck runs; real-commit rollback tests for both imports) and `zones/tests/test_import_run_admin.py`; `ImportRun` added to the admin URL check. Existing import tests unchanged. 1258 Django tests OK (4 skipped), coverage 100%, 190 Node tests OK, black and flake8 pass. By hand on scratch databases: March 2026 taxi and rideshare with old and new code (identical reports and row md5s, same time and memory within run-to-run noise), a `kill -9` run, a corrupt-file run, and the admin as staff, rider and guest over HTTP on `runserver 8001`.
+
+**Next step:** merge US39 (#128) first, then open the US40 PR and retarget it to `develop`. PO to confirm the proposed rules. The migration reaches the shared AWS database through the Integration deploy; not tried against AWS.
+
+### 2026-11-17 — us39-admin-staff (US39 #113)
+**What changed:**
+- `accounts/management/commands/create_staff.py` (asks for the email unless `--email`, and the password twice with no echo; validators; refuses without a terminal; `--existing` promotes an existing account) and `remove_staff.py` (`--email`; clears the staff flags, keeps the account).
+- `accounts/admin.py`: admin site titles, `StaffSignInForm` (in `accounts/forms.py`: "Email", lowercased, one error message) as the admin sign-in form, Groups unregistered, `AccountAdmin` replacing Django's User admin (no password or hash, no reset page, staff flags read-only, only "Active" editable, no add).
+- `zones/admin.py`: `ReadOnlyModelAdmin` and a read-only `ZoneAdmin`.
+- "Admin" link for active staff: `accounts/templates/accounts/_admin_link.html`, included in `zones/map.html`, `zones/compare.html`, `routes/base.html` and `accounts/base.html` (small CSS in `accounts.css`).
+- Docs: README "Staff accounts (the admin)", `decisions.md` (US39 section, HTTPS open item), HLD section 35, `CLAUDE.md` (Admin), `accounts.md` section 5, `docs/stories/US39.md`.
+
+**Decisions made (also in `decisions.md`):** proposed, to confirm with the PO: staff are superusers (no groups); our own `create_staff` command; an existing email needs `--existing`; `remove_staff` keeps the account; the Accounts admin shows only email, display name, flags and dates; no admin sign-in on AWS until HTTPS, use it on a laptop against the shared database meanwhile.
+
+**Tests:** new `accounts/tests/test_admin_access.py` (staff sign-in; guest and rider refused on all 47 admin URLs with GET and POST, plus a catch-all URL, actions and self-promotion; Admin link on the four headers; Accounts admin), `accounts/tests/test_staff_commands.py`, `zones/tests/test_zone_admin.py`. 1215 Django tests OK (4 skipped), coverage 100%, 190 Node tests OK, black and flake8 pass, no migration. Checked by hand with `runserver 8001` against the local data.
+
+**Next step:** US40 #114 (ImportRun, read-only admin via `ReadOnlyModelAdmin`) on top of this branch. PO to confirm the proposed rules. HTTPS is still needed before the admin is used on AWS. The `eb ssh` steps in the README are untried.
+
 ### 2026-11-15 — us38-report-content (US38 #101, stacked on US37 #99)
 **What changed:**
 - `ContentReport` (`rides/models.py`, migration `rides/0006_content_report`, creates one table): reporter (CASCADE), post or message (exactly one), reason, note up to 300 characters, `reported_text` snapshot, status, `created_at`; unique per reporter and item.

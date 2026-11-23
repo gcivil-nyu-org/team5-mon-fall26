@@ -2,6 +2,7 @@ import re
 
 from django import forms
 from django.contrib.auth import get_user_model, password_validation
+from django.contrib.admin.forms import AdminAuthenticationForm
 from django.contrib.auth.forms import AuthenticationForm, UsernameField
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
@@ -12,6 +13,7 @@ User = get_user_model()
 
 EMAIL_TAKEN = "An account with this email already exists."
 SIGN_IN_ERROR = "The email or password is incorrect."
+SUSPENDED_ERROR = "This account is suspended. Contact an administrator."
 
 
 class SignUpForm(forms.Form):
@@ -81,6 +83,40 @@ class SignInForm(AuthenticationForm):
     error_messages = {
         "invalid_login": SIGN_IN_ERROR,
         "inactive": SIGN_IN_ERROR,
+    }
+
+    username = UsernameField(
+        label="Email",
+        widget=forms.EmailInput(attrs={"autocomplete": "email", "autofocus": True}),
+    )
+
+    def clean_username(self):
+        return self.cleaned_data["username"].strip().lower()
+
+    def clean(self):
+        try:
+            return super().clean()
+        except ValidationError:
+            email = self.cleaned_data.get("username")
+            password = self.cleaned_data.get("password")
+            if email and password:
+                user = User.objects.filter(
+                    username__iexact=email, is_active=False
+                ).first()
+                if user is not None and user.check_password(password):
+                    raise ValidationError(SUSPENDED_ERROR, code="suspended")
+            raise
+
+
+class StaffSignInForm(AdminAuthenticationForm):
+    """US39 #113: the admin's sign-in form, asking for the email like the
+    site's sign-in (US11). Django's AdminAuthenticationForm still refuses
+    any account that is not active staff, with the same message for a
+    wrong password and for an account that is not staff."""
+
+    error_messages = {
+        **AdminAuthenticationForm.error_messages,
+        "invalid_login": "Enter the email and password of a staff account.",
     }
 
     username = UsernameField(

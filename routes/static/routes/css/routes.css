@@ -358,6 +358,12 @@ header {
   font-weight: 600;
 }
 
+/* US44: a report removed by a moderator */
+.report-status-removed {
+  color: #a11d1d;
+  font-weight: 600;
+}
+
 /* Post a shared ride (US31) */
 .field textarea {
   box-sizing: border-box;
@@ -681,4 +687,12 @@ header {
 .report-form ul {
   list-style: none;
   padding: 0;
+}
+
+/* US47 #121: why a restricted account can't use a feature. */
+.restricted-notice {
+  padding: 0.5rem 0.8rem;
+  border-left: 3px solid #b06000;
+  background: #fef7e0;
+  color: #5f3b00;
 }

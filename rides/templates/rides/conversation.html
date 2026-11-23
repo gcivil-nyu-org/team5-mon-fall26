@@ -23,7 +23,7 @@
             <span class="visually-hidden">{{ message.sender }}:</span>
             <p class="chat-text">{{ message.text }}</p>
             <p class="chat-time">{{ message.sent_at }}</p>
-            {% if not message.mine %}{% if message.reported %}<span class="chat-report">Reported</span>{% else %}<a class="chat-report" href="{% url 'rides:report_message' message.id %}">Report</a>{% endif %}{% endif %}
+            {% if not message.mine and not message.hidden %}{% if message.reported %}<span class="chat-report">Reported</span>{% else %}<a class="chat-report" href="{% url 'rides:report_message' message.id %}">Report</a>{% endif %}{% endif %}
           </div>
         </li>
       {% endfor %}

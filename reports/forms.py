@@ -1,4 +1,6 @@
 from django import forms
+from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.utils import timezone
 
 from zones.models import Zone
@@ -133,13 +135,36 @@ class FareReportForm(forms.ModelForm):
     def save(self):
         """Set the owner and run the review check, on a new report and
         again after every edit (US25 #72)."""
-        report = super().save(commit=False)
-        report.user = self.user
-        report.status = review_status(
-            report.pickup_zone_id,
-            report.dropoff_zone_id,
-            report.ride_at,
-            report.taxi_fare,
-        )
-        report.save()
+        with transaction.atomic():
+            user = get_user_model().objects.select_for_update().get(pk=self.user.pk)
+            if not user.is_active:
+                self.add_error(None, "This account is suspended.")
+                return None
+            report = super().save(commit=False)
+            if report.pk is not None:
+                current = FareReport.objects.select_for_update().get(pk=report.pk)
+                if current.status == FareReport.REMOVED:
+                    self.add_error(None, "This report was removed by a moderator.")
+                    return None
+            report.user = self.user
+            report.status = review_status(
+                report.pickup_zone_id,
+                report.dropoff_zone_id,
+                report.ride_at,
+                report.taxi_fare,
+            )
+            if report.pk is None:
+                report.save()
+            else:
+                report.save(
+                    update_fields=[
+                        "pickup_zone",
+                        "dropoff_zone",
+                        "ride_at",
+                        "taxi_fare",
+                        "rideshare_service",
+                        "rideshare_quote",
+                        "status",
+                    ]
+                )
         return report

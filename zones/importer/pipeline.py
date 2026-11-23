@@ -12,7 +12,7 @@ from zones.importer.aggregate import (
     finalize,
     partial_totals,
 )
-from zones.importer.clean import clean_trips
+from zones.importer.clean import DEFAULT_LIMITS, clean_trips
 from zones.importer.download import TRIP_URL, ensure_trip_file, trip_file_path
 from zones.importer.load import load_all
 from zones.importer.read import TripFileError, read_trips, read_zone_lookup
@@ -37,8 +37,10 @@ def _trip_file(month, data_dir, progress):
     return path
 
 
-def run_import(months, data_dir, progress=lambda message: None):
-    """Import the given months and replace all statistics with them.
+def run_import(months, data_dir, progress=lambda message: None, limits=DEFAULT_LIMITS):
+    """Import the given months and replace all statistics with them, with
+    the given cleaning limits (US41: the import command reads them from
+    the admin's CleaningRules).
 
     Only one month of raw trips is in memory at a time: each month is
     reduced to partial totals per cell before the next one is read.
@@ -50,7 +52,7 @@ def run_import(months, data_dir, progress=lambda message: None):
 
     for month in months:
         trips = read_trips(_trip_file(month, data_dir, progress))
-        kept, removed = clean_trips(trips, month, known_zone_ids)
+        kept, removed = clean_trips(trips, month, known_zone_ids, limits)
         reports.append(MonthReport(month, len(trips), removed, len(kept)))
         del trips
 

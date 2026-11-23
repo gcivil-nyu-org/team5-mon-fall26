@@ -1,0 +1,99 @@
+{% extends "admin/base_site.html" %}
+{% load tz %}
+
+{# US48 #122: data-quality dashboard. Staff only (admin_view). #}
+
+{% block extrastyle %}{{ block.super }}
+<style>
+  .dq-section { margin-bottom: 2.5rem; }
+  .dq-table { margin: 0.6rem 0 1rem; }
+  .dq-table td.num, .dq-table th.num { text-align: right; }
+  .dq-flag td { background: #fff4e5; }
+  .dq-flag-text { color: #a14b00; font-weight: bold; }
+  .dq-note { color: var(--body-quiet-color); }
+  .dq-warning { color: var(--error-fg); font-weight: bold; }
+  .dq-zones { columns: 3; margin: 0.4rem 0 0 1.2rem; }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Home</a> › Data quality</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+  <section class="dq-section" id="review-counts">
+    <h2>Waiting for review</h2>
+    <table class="dq-table">
+      {% for item in review_counts %}
+        <tr><th scope="row">{{ item.label }}</th><td class="num"><a href="{{ item.url }}">{{ item.count }}</a></td></tr>
+      {% endfor %}
+    </table>
+  </section>
+
+  {% for ds in datasets %}
+    <section class="dq-section" id="dq-{{ ds.dataset }}">
+      <h2>{{ ds.label }} import</h2>
+      {% if not ds.latest %}
+        <p>No successful {{ ds.label|lower }} import yet.</p>
+      {% else %}
+        <p>
+          Latest successful import: <a href="{% url 'admin:zones_importrun_change' ds.latest.pk %}">#{{ ds.latest.pk }}</a>,
+          months {{ ds.latest.months_text }}, run by {{ ds.latest.run_by }},
+          {% timezone "America/New_York" %}{{ ds.latest.started_at|date:"Y-m-d H:i" }}{% endtimezone %}.
+          {% if ds.previous %}
+            Compared with <a href="{% url 'admin:zones_importrun_change' ds.previous.pk %}">#{{ ds.previous.pk }}</a> (months {{ ds.previous.months_text }}).
+          {% else %}
+            <span class="dq-note">No earlier successful import to compare with.</span>
+          {% endif %}
+        </p>
+        {% if ds.last_attempt_failed %}
+          <p class="dq-warning">The newest run, <a href="{% url 'admin:zones_importrun_change' ds.last_attempt.pk %}">#{{ ds.last_attempt.pk }}</a>, is {{ ds.last_attempt.get_status_display|lower }}; the numbers below are from the last successful one.</p>
+        {% endif %}
+
+        <table class="dq-table">
+          <tr><th scope="row">Rows read</th><td class="num">{{ ds.latest.rows_read|floatformat:"0g" }}</td></tr>
+          <tr><th scope="row">Rows kept</th><td class="num">{{ ds.latest.rows_kept|floatformat:"0g" }} ({{ ds.kept_share|floatformat:2 }}%)</td></tr>
+          <tr><th scope="row">Rows removed</th><td class="num">{{ ds.latest.rows_removed|floatformat:"0g" }} ({{ ds.removed_share|floatformat:2 }}%){% if ds.previous_removed_share is not None %} <span class="dq-note">(previous {{ ds.previous_removed_share|floatformat:2 }}%)</span>{% endif %}</td></tr>
+          <tr><th scope="row">Cells below MIN_TRIP_COUNT ({{ ds.latest.min_trip_count }} trips)</th>
+              <td class="num">{{ ds.small_cell_share|floatformat:2 }}%{% if ds.previous_small_cell_share is not None %} <span class="dq-note">(previous {{ ds.previous_small_cell_share|floatformat:2 }}%)</span>{% endif %}</td></tr>
+          <tr><th scope="row">&nbsp;&nbsp;zone cells</th><td class="num">{{ ds.latest.small_zone_cells|floatformat:"0g" }} of {{ ds.latest.zone_cells|floatformat:"0g" }} ({{ ds.small_zone_share|floatformat:2 }}%)</td></tr>
+          <tr><th scope="row">&nbsp;&nbsp;route cells</th><td class="num">{{ ds.latest.small_route_cells|floatformat:"0g" }} of {{ ds.latest.route_cells|floatformat:"0g" }} ({{ ds.small_route_share|floatformat:2 }}%)</td></tr>
+          <tr><th scope="row">Zones with no trips</th><td class="num">{{ ds.zones_without_trips|length }}</td></tr>
+        </table>
+
+        <h3>Rows removed by each rule</h3>
+        {% if ds.flagged_count %}
+          <p class="dq-flag-text">{{ ds.flagged_count }} rule{{ ds.flagged_count|pluralize }} changed by more than {{ change_limit_pp|floatformat:0 }} percentage points since the previous import.</p>
+        {% endif %}
+        <table class="dq-table">
+          <thead><tr><th>Rule</th><th class="num">Removed</th><th class="num">Share of rows read</th><th class="num">Previous import</th><th class="num">Change</th></tr></thead>
+          <tbody>
+            {% for row in ds.rules %}
+              <tr class="dq-rule{% if row.flagged %} dq-flag{% endif %}" data-rule="{{ row.key }}">
+                <td>{{ row.label }}</td>
+                <td class="num">{% if row.removed is not None %}{{ row.removed|floatformat:"0g" }}{% else %}-{% endif %}</td>
+                <td class="num">{% if row.share is not None %}{{ row.share|floatformat:2 }}%{% else %}-{% endif %}</td>
+                <td class="num">{% if row.previous_share is not None %}{{ row.previous_share|floatformat:2 }}%{% else %}-{% endif %}</td>
+                <td class="num">{% if row.change is not None %}{% if row.change > 0 %}+{% endif %}{{ row.change|floatformat:2 }} pp{% if row.flagged %} <span class="dq-flag-text">(more than {{ change_limit_pp|floatformat:0 }} pp)</span>{% endif %}{% else %}-{% endif %}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="5">No rows removed.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <h3>Zones with no trips ({{ ds.zones_without_trips|length }})</h3>
+        {% if ds.zones_without_trips %}
+          <p class="dq-note">Zones with no row in the statistics the latest successful import wrote.</p>
+          <ul class="dq-zones">
+            {% for zone in ds.zones_without_trips %}<li>{{ zone.zone_id }} {{ zone.name }} ({{ zone.borough }})</li>{% endfor %}
+          </ul>
+        {% else %}
+          <p>Every zone has trips.</p>
+        {% endif %}
+      {% endif %}
+    </section>
+  {% endfor %}
+</div>
+{% endblock %}

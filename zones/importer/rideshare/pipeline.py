@@ -9,7 +9,7 @@ import pandas as pd
 from zones.importer.read import TripFileError, read_zone_lookup
 from zones.importer.report import MonthReport
 from zones.importer.rideshare.aggregate import Totals
-from zones.importer.rideshare.clean import add_removed, clean_trips
+from zones.importer.rideshare.clean import DEFAULT_LIMITS, add_removed, clean_trips
 from zones.importer.rideshare.download import (
     RIDESHARE_URL,
     ensure_rideshare_file,
@@ -37,12 +37,12 @@ def _rideshare_file(month, data_dir, progress):
     return path
 
 
-def _import_month(month, batches, known_zone_ids, totals):
+def _import_month(month, batches, known_zone_ids, totals, limits):
     """Clean every batch of one month into totals. Returns its report."""
     rows_read = rows_kept = waits_left_out = 0
     removed = add_removed()
     for trips in batches:
-        kept, batch_removed = clean_trips(trips, month, known_zone_ids)
+        kept, batch_removed = clean_trips(trips, month, known_zone_ids, limits)
         rows_read += len(trips)
         rows_kept += len(kept)
         waits_left_out += int((~kept["wait_valid"]).sum())
@@ -51,8 +51,12 @@ def _import_month(month, batches, known_zone_ids, totals):
     return MonthReport(month, rows_read, removed, rows_kept, waits_left_out)
 
 
-def run_rideshare_import(months, data_dir, progress=lambda message: None):
-    """Import the given months and replace both rideshare tables with them.
+def run_rideshare_import(
+    months, data_dir, progress=lambda message: None, limits=DEFAULT_LIMITS
+):
+    """Import the given months and replace both rideshare tables with them,
+    with the given cleaning limits (US41: the import command reads them
+    from the admin's CleaningRules).
 
     Every file is downloaded if missing and checked before any trip is
     read, so a missing month or a bad file fails before the long part.
@@ -67,7 +71,7 @@ def run_rideshare_import(months, data_dir, progress=lambda message: None):
     totals = Totals()
     reports = []
     for month, month_batches in zip(months, batches):
-        report = _import_month(month, month_batches, known_zone_ids, totals)
+        report = _import_month(month, month_batches, known_zone_ids, totals, limits)
         reports.append(report)
         progress(f"{month}: {report.rows_read:,} read, {report.rows_kept:,} kept")
 

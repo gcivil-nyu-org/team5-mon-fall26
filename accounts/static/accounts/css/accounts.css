@@ -157,3 +157,15 @@ button.danger-button:hover {
   text-align: center;
   font-size: 14px;
 }
+
+/* US39 #113: the staff-only "Admin" link on the right of the header. */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-nav a {
+  color: #fff;
+  font-size: 14px;
+}

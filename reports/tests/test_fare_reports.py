@@ -411,6 +411,10 @@ class FormPageTests(FareReportTestData):
                 "rideshare_quote",
                 "status",
                 "created_at",
+                # US44: who reviewed it, when and why (staff only).
+                "reviewed_by",
+                "reviewed_at",
+                "review_reason",
             },
         )
 

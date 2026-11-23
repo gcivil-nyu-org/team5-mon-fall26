@@ -32,3 +32,13 @@ One file per user story, mirroring the ZenHub issue (story line, developer tasks
 | US36.md | #98 | Message Riders About a Shared Ride (written by hand, not by the sync script) |
 | US37.md | #99 | My Rides (written by hand, not by the sync script) |
 | US38.md | #101 | Report a Post or Message (written by hand, not by the sync script) |
+| US39.md | #113 | Admin Access and Staff Accounts (copied with `gh issue view`, not by the sync script) |
+| US40.md | #114 | Record and View Import History (copied with `gh issue view`, not by the sync script) |
+| US41.md | #115 | Edit the Data-Cleaning Rules (copied from the issue, not by the sync script) |
+| US42.md | #116 | Manage Zone Names and Boroughs (copied from the issue, not by the sync script) |
+| US43.md | #117 | Manage Zone Adjacency (copied with `gh issue view`, not by the sync script) |
+| US44.md | #118 | Review Fare Reports Held for Review (copied with `gh issue view`, not by the sync script) |
+| US45.md | #119 | Moderate Reported Posts and Messages |
+| US46.md | #120 | Suspend and Restore Accounts |
+| US47.md | #121 | Restrict an Account (copied from the issue, not by the sync script) |
+| US48.md | #122 | Data-Quality Dashboard (copied from the issue, not by the sync script) |

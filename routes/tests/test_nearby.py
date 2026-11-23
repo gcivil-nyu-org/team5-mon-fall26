@@ -159,11 +159,13 @@ class CheaperNearbyTests(NearbyTestCase):
         self.row(MIDTOWN_SOUTH, "55.00")
         self.assertEqual(self.suggested(self.nearby()), [MIDTOWN_SOUTH, TIMES_SQ])
 
-    def test_two_queries_for_all_neighbours(self):
+    def test_three_queries_for_all_neighbours(self):
+        """The neighbour overrides (US43), the current route, then every
+        neighbour at once."""
         self.row(MIDTOWN_CENTER, "62.10")
         for zone_id in (MIDTOWN_EAST, MIDTOWN_NORTH, MIDTOWN_SOUTH, TIMES_SQ):
             self.row(zone_id, "50.00")
-        with self.assertNumQueries(2):
+        with self.assertNumQueries(3):
             self.nearby()
 
     def test_current_route_too_few_trips(self):

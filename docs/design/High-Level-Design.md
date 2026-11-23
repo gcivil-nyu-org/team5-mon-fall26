@@ -78,11 +78,15 @@ Fare ranges (minimum, average, maximum) are computed after cleaning outliers (ze
 
 | Table | Key columns |
 |---|---|
-| `zone` | `zone_id`, `name`, `borough` (the boundary shape lives in the GeoJSON file, keyed by `zone_id`) |
+| `zone` | `zone_id`, `name`, `borough`, `edited_by_admin`, `edited_by`, `edited_at` (the boundary shape lives in the GeoJSON file, keyed by `zone_id`; the last three record US42's admin edits) |
 | `zone_hour_stats` | `zone_id`, `day_of_week`, `hour`, `trip_count`, `avg_duration_min`, `fare_min`, `fare_avg`, `fare_max` |
 | `route_hour_stats` | `pickup_zone_id`, `dropoff_zone_id`, `day_of_week`, `hour`, `trip_count`, `avg_duration_min`, `fare_min`, `fare_avg`, `fare_max` |
 | `rideshare_zone_hour_stats` | `zone_id` (pickup), `day_of_week`, `hour`, `trip_count`, `avg_duration_min`, `fare_min`, `fare_avg`, `fare_max`, `avg_wait_min` (null if no valid wait), `wait_count`, `fare_per_mile` (null if the miles round to 0) |
 | `rideshare_route_hour_stats` | `pickup_zone_id`, `dropoff_zone_id`, `day_of_week`, `hour`, and the same statistics as `rideshare_zone_hour_stats` |
+| `import_run` (US40) | `dataset` (taxi or rideshare), `months`, `run_by`, `status` (running, succeeded, failed), `started_at`, `finished_at`, `rows_read`, `removed_by_rule`, `rows_removed`, `rows_kept`, `waits_left_out`, `zone_cells`, `route_cells`, `small_zone_cells`, `small_route_cells`, `min_trip_count`, `zones_loaded`, `cleaning_limits`, `report`, `error` |
+| `cleaning_rules` (US41) | `dataset` (taxi or rideshare, unique), `max_fare`, `min_distance_mi`, `max_distance_mi`, `min_duration_min`, `max_duration_min`, `min_wait_min`, `max_wait_min` (rideshare only) |
+| `zone_adjacency_override` (US43) | `zone_a_id` (the lower id), `zone_b_id`, `action` (add or remove), `reason`, `changed_by` (email), `changed_at`; one row per pair |
+| `cleaning_rules_change` (US41) | `rules_id`, `changed_by` (email), `changed_at`, `changes` (each changed limit's old and new value) |
 
 The two rideshare tables (US27 #74, Uber and Lyft combined, from the TLC High Volume FHV files) feed US28 #75 and US29 #76. They use the taxi units: fares before tip in dollars rounded half up to the cent, durations and waits in minutes. `avg_wait_min` averages only the `wait_count` trips whose wait (pickup minus request) is 0 to 60 minutes. `fare_per_mile` is the cell's total fare over its total miles. Each table has one unique constraint on its key columns and no separate index on the same columns. They are written by `python manage.py import_rideshare --month YYYY-MM [--month ...]` through `zones/importer/rideshare/load.py`: one transaction that upserts the zones, empties both rideshare tables with `TRUNCATE` (the taxi import uses `DELETE`) and fills them with PostgreSQL `COPY`, then `ANALYZE`. The taxi tables are never touched. March 2026 alone gives 42,931 zone cells and 3,062,385 route cells (497 MB on disk after a first load).
 
@@ -246,7 +250,7 @@ A signed-in rider can see, correct and delete their own fare reports (US24).
 
 | Page | What it does |
 |---|---|
-| `GET /reports/` | My fare reports: route, ride date and time, taxi fare, rideshare quote, status ("Visible" or "Held for review"), newest first |
+| `GET /reports/` | My fare reports: route, ride date and time, taxi fare, rideshare quote, status ("Visible", "Held for review" or, since US44, "Removed by a moderator"), newest first |
 | `GET/POST /reports/<id>/edit/` | The US24 form with the same rules; the review check runs again after the edit |
 | `GET/POST /reports/<id>/delete/` | Confirm, then delete; the report is removed everywhere, including the community summary |
 
@@ -364,4 +368,38 @@ Unread counts come from `RideMessage.read_at` (US36), which is set when the conv
 The `rides_contentreport` table (`rides.ContentReport`, migration `0006_content_report`) stores the reporter (`on_delete=CASCADE`), exactly one of the reported post or message (database check), the reason (spam, unsafe, offensive or other), an optional note up to 300 characters, a snapshot of the reported text, the status (open or closed) and the created time. Conditional unique indexes allow one report per user per post and per message.
 
 `GET/POST /rides/<id>/report/` reports a post the user can see and does not own; `GET/POST /rides/messages/<message-id>/report/` reports a message sent to the user. Anything else is 404. The post page and each received message in a conversation have a "Report" link. Reports are listed only in the Django admin (filters for reason and status, status editable) until Epic 5 adds moderation; the reported rider is never shown who reported them. No new dependency.
+
+## 35. Admin access and staff accounts (US39)
+
+The Django admin at `/admin/` is the staff-only area for managing data and content. Django checks on every admin page that the account is active and staff; guests and riders get the admin sign-in page, never an admin page or action. Staff accounts are normal accounts with the staff and superuser flags, created with `manage.py create_staff` (asks for the email and, twice, the password in the terminal; never an option) and demoted with `manage.py remove_staff --email`. Integration and Production share one database, so a staff account is created once, from a laptop. Staff see an "Admin" link in the site header (`accounts/_admin_link.html`).
+
+The admin shows only what staff need. Accounts: email, display name, active, staff, dates; no password or hash and no password reset; staff rights read-only; staff can deactivate or delete an account. Zones are read-only (`zones.admin.ReadOnlyModelAdmin`, also meant for US40's import history) until US42. Both AWS sites are HTTP only, so staff do not sign in to the admin on AWS until HTTPS is enabled. No migration, no new dependency, no API change.
+
+## 36. Import history (US40)
+
+Every run of `import_trips` or `import_rideshare` saves one row in the `zones_importrun` table (`zones.ImportRun`, migration `0005_import_run`), in whichever database the command runs against. `zones/importer/history.py` saves it as `running` before the import starts, outside the import's own transaction, then fills in the totals of the printed report (rows read, removed per rule, kept, waits left out for rideshare, cells written and small cells, zones loaded), the cleaning limits and the report text once the data has committed, or marks it `failed` with the error after the import's transaction has rolled back. Who ran it comes from `--by NAME` or the operating-system user. A run killed before it finished is closed as failed by the next run of the same import. Staff see the history read-only in the admin ("Import history", newest first, filters for import and status). No new dependency, no API change.
+
+## 37. Edit the cleaning rules (US41)
+
+The cleaning limits are no longer constants in the code. `zones.CleaningRules` (migration `0006_cleaning_rules`) holds one record per import, taxi and rideshare, created with the limits from before US41; staff change them in the admin ("Cleaning rules"), which refuses negative values, a minimum not below its maximum, and a maximum fare above $500 (the fare reports' limit), and the database checks the same. Every change is saved in `zones.CleaningRulesChange` (who, when, old and new values) and shown on the page. `import_trips` and `import_rideshare` read the current limits once when they start (`zones/importer/rules.py`), pass them to the cleaning code as a `Limits` dataclass, print them in the report's rule labels and save them in the run's import history (US40). A change applies from the next import. No new dependency, no API change.
+
+## 38. Manage zone names and boroughs (US42)
+
+Staff correct a zone's name and borough in the admin (Zones → Zones): the zone id is read-only, the borough is picked from the TLC boroughs, and zones can't be added or deleted. Saving a changed name or borough sets `edited_by_admin`, `edited_by` and `edited_at` on `zones_zone` (migration `0008_zone_admin_edits`), shown in the list with a filter. `upsert_zones` in `zones/importer/load.py`, used by both imports, skips edited zones, so a re-import never undoes an edit; unticking the flag lets the next import restore the TLC values. Every page reads names from the table when it is shown, so a change appears after a reload. No new dependency, no API change.
+
+## 39. Manage zone adjacency (US43)
+
+Staff add a pair of neighbouring zones that `zone_neighbors.json` (US18) misses, or remove a wrong one, with a reason, in the admin (Zones → Neighbour overrides). Each pair is one `zones.ZoneAdjacencyOverride` row (migration `0009_zone_adjacency_override`), stored lower zone id first, so it always applies both ways. A zone can't be paired with itself, "add" must be a pair the file doesn't have, and "remove" one it does. `load_zone_neighbors()` in `zones/stats.py` combines the cached file with the overrides, read on every call (one small query), so cheaper-pickup suggestions (US19, `routes/planning.py`) and ride matching (US32, `rides/search.py`) use a change on the next request, in every server process, with no restart. Deleting an override puts the pair back to what the file says. The overrides live in the database, so rebuilding the file with `scripts/build_zone_neighbors.py` keeps them. Each zone's admin page lists its neighbours, marked "from the file", "added in the admin" or "removed in the admin". No new dependency, no API change.
+
+## 40. Review fare reports held for review (US44)
+
+Staff review fare reports in the admin (Reports → Fare reports). Held reports are listed first, each with the route's usual fare: the historical average at the ride's day of week and hour in New York time (`route_stats`, the same number the hold rule uses), or "Not enough data". Staff select reports and choose "Approve: show to other riders" or "Remove: hide from every public view", with an optional reason in the box next to the action menu (`reports/review.py`). Each change records `reviewed_by` (email), `reviewed_at` and `review_reason` on `reports_farereport` (migration `reports/0002_fare_report_review`, which also adds the `removed` status). The status changes only through these actions, and reports can't be added in the admin. `FareReport.objects.public()` keeps only visible reports, so an approved report counts in the rider reports summary (US26) on the next request and a removed one disappears from it. On My fare reports (`/reports/`) the owner sees "Removed by a moderator", with no Edit link (editing is refused with a message), and can still delete it. No new dependency, no API change.
+
+## 41. Restrict an account (US47)
+
+Restrictions and lifts are rows in US46's `accounts_accountaction` (action `restrict` or `lift`, reason, `acted_by`, `acted_at`), plus `ends_at` for a restriction with an end date (migration `accounts/0003_account_restriction`). `accounts.restriction.active_restriction(user)` reads the account's latest restrict-or-lift row; if its `ends_at` has passed it records an automatic lift and returns nothing. A restricted user gets the notice (reason and end date) instead of posting a ride, editing a post, showing interest, sending a message, or submitting or editing a fare report; everything else works. Templates get it through the `accounts.restriction.restriction_context` context processor, checked only when a page shows an "I'm interested" button. Admin: "Restrict" and "Lift restriction" actions on the Accounts list, a "Restricted" column and the history on each account. No new dependency, no API change.
+
+## 42. Data-quality dashboard (US48)
+
+`GET /admin/data-quality/` (staff only, through `admin.site.admin_view`; linked from the admin home) shows, for the taxi and rideshare imports, the latest successful `ImportRun` and the one before it (`zones/dashboard.py`): rows read, kept and removed; rows removed by each cleaning rule with its share of rows read, the previous share and the change in percentage points, highlighted above 2 points; the share of cells below `MIN_TRIP_COUNT`; and the zones with no row in the dataset's zone statistics. It also counts held fare reports and open content reports, each linking to its filtered admin list. Read-only; no new table or dependency.
 

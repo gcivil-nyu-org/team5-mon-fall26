@@ -11,6 +11,7 @@ from django.utils import timezone
 from django.utils.http import urlencode
 from django.views.decorators.http import require_GET, require_http_methods
 
+from accounts.restriction import blocked_notice
 from zones.stats import unknown_zone_ids
 from zones.views import MAX_ZONE_ID, NYC_TZ, _parse_int
 
@@ -20,6 +21,10 @@ from .models import FareReport
 SAVED = "Thanks! Your fare report was saved."
 UPDATED = "Fare report updated."
 DELETED = "Fare report deleted."
+REMOVED_NOT_EDITABLE = (
+    "This report was removed by a moderator, so it can't be edited. You can "
+    "delete it."
+)
 HELD = (
     " It is far from the usual fare for this trip, so it will be checked "
     "before other riders see it."
@@ -98,11 +103,13 @@ def report_fare(request):
         next_page = urlencode({"next": request.get_full_path()})
         signin = f"{reverse('accounts:signin')}?{next_page}"
         return render(request, "reports/report_fare.html", {"signin_url": signin})
+    # US47 #121: a restricted account sees why instead of the form.
+    if restricted := blocked_notice(request.user):
+        return render(request, "reports/report_fare.html", {"restricted": restricted})
 
     if request.method == "POST":
         form = FareReportForm(request.user, request.POST)
-        if form.is_valid():
-            report = form.save()
+        if form.is_valid() and (report := form.save()) is not None:
             message = SAVED + (HELD if report.status == FareReport.HELD else "")
             messages.success(request, message)
             return redirect(request.get_full_path())
@@ -140,15 +147,26 @@ def _own_report(request, report_id):
 @login_required
 @require_http_methods(["GET", "POST"])
 def edit_report(request, report_id):
-    """The US24 form and rules, then the review check again."""
+    """The US24 form and rules, then the review check again. A report
+    removed by a moderator (US44) can't be edited back to visible."""
     report = _own_report(request, report_id)
+    if report.status == FareReport.REMOVED:
+        messages.error(request, REMOVED_NOT_EDITABLE)
+        return redirect("reports:my_reports")
+    # US47 #121: editing resubmits the report, so it is blocked too.
+    if restricted := blocked_notice(request.user):
+        messages.error(request, restricted)
+        return redirect("reports:my_reports")
     form = FareReportForm(
         request.user,
         request.POST if request.method == "POST" else None,
         instance=report,
     )
-    if request.method == "POST" and form.is_valid():
-        report = form.save()
+    if (
+        request.method == "POST"
+        and form.is_valid()
+        and (report := form.save()) is not None
+    ):
         message = UPDATED + (HELD if report.status == FareReport.HELD else "")
         messages.success(request, message)
         return redirect("reports:my_reports")
