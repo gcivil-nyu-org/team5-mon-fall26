@@ -341,9 +341,6 @@ def find_rides_view(request):
         .filter(owner=request.user, departure_at__gt=now)
         .exclude(status__in=[RidePost.CLOSED, RidePost.DELETED, RidePost.REMOVED])
         .select_related("pickup_zone", "dropoff_zone")
-        # Explicit: Django drops Meta.ordering in a GROUP BY query (the seat
-        # count), so without this the order of equal departures was up to
-        # the database (it differed between PostgreSQL 14 on Travis and 16).
         .order_by("departure_at", "pk")
     )
     return render(request, "rides/find_rides.html", context)
