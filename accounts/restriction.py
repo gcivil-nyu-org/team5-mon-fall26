@@ -80,7 +80,7 @@ def notice(restriction):
     until = f" until the end of {end:%a} {end.day} {end:%b %Y}" if end else ""
     return (
         f"Your account is restricted{until}, so you can't {BLOCKED_FEATURES}. "
-        f"Reason: {restriction.reason} "
+        f"Reason: {restriction.reason.rstrip('.')}. "
         "You can still browse and use your saved routes and plans."
     )
 
