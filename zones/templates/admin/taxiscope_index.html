@@ -1,0 +1,11 @@
+{% extends "admin/index.html" %}
+{# US48 #122: the admin home links to the data-quality dashboard. #}
+{% block content %}
+<div class="module" id="data-quality-link">
+  <table>
+    <caption>Monitoring</caption>
+    <tr><th scope="row"><a href="{% url 'data_quality' %}">Data-quality dashboard</a></th><td>Latest taxi and rideshare imports, and reports waiting for review</td></tr>
+  </table>
+</div>
+{{ block.super }}
+{% endblock %}

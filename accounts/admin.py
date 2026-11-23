@@ -19,6 +19,8 @@ User = get_user_model()
 admin.site.site_header = "TaxiScope NYC admin"
 admin.site.site_title = "TaxiScope NYC admin"
 admin.site.index_title = "Manage data and content"
+# US48 #122: the admin home links to the data-quality dashboard.
+admin.site.index_template = "admin/taxiscope_index.html"
 admin.site.login_form = StaffSignInForm
 
 # Staff accounts are superusers, so groups and per-model permissions are not
