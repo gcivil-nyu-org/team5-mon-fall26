@@ -13,6 +13,7 @@ from django.views.decorators.http import (
 )
 
 from accounts.display_name import display_name_of, display_name_required
+from accounts.restriction import blocked_notice
 from zones.views import MAX_ZONE_ID, NYC_TZ, _parse_int
 
 from . import interest, messaging, my_rides, reporting
@@ -44,6 +45,9 @@ def post_ride(request):
         next_page = urlencode({"next": request.get_full_path()})
         signin = f"{reverse('accounts:signin')}?{next_page}"
         return render(request, "rides/post_ride.html", {"signin_url": signin})
+    # US47 #121: a restricted account sees why instead of the form.
+    if restricted := blocked_notice(request.user):
+        return render(request, "rides/post_ride.html", {"restricted": restricted})
 
     if request.method == "POST":
         form = RidePostForm(request.user, request.POST)
@@ -164,6 +168,10 @@ def edit_ride(request, post_id):
         status=RidePost.OPEN,
         departure_at__gt=timezone.now(),
     )
+    # US47 #121: editing a post changes what other riders read, like posting.
+    if restricted := blocked_notice(request.user):
+        messages.error(request, restricted)
+        return redirect("rides:ride_detail", post_id=post.pk)
     if request.method == "POST":
         form = RidePostEditForm(request.user, request.POST, instance=post)
         if form.is_valid() and (saved := form.save()) is not None:
@@ -220,6 +228,9 @@ def delete_ride(request, post_id):
 @display_name_required
 @require_POST
 def show_interest(request, post_id):
+    if restricted := blocked_notice(request.user):  # US47 #121
+        messages.error(request, restricted)
+        return redirect(_safe_next(request, reverse("rides:find_rides")))
     post, saved, message = interest.show_interest(request.user, post_id, timezone.now())
     if message in interest.BLOCKED:
         messages.error(request, message)
@@ -367,9 +378,13 @@ def conversation(request, post_id, rider_id):
     seconds while it is visible (rides/js/conversation.js)."""
     talk = messaging.conversation_for(request.user, post_id, rider_id)
     now = timezone.now()
+    # US47 #121: a restricted account can read but not send.
+    restricted = blocked_notice(request.user, now)
     if request.method == "POST":
         form = RideMessageForm(request.POST)
-        if form.is_valid():
+        if restricted:
+            form.add_error(None, restricted)
+        elif form.is_valid():
             sent, message = messaging.send(
                 request.user, talk, form.cleaned_data["text"], now
             )
@@ -395,7 +410,7 @@ def conversation(request, post_id, rider_id):
             # The page script swaps the 0 for each new message's id.
             "report_url": reverse("rides:report_message", args=[0]),
             "last_id": thread[-1].pk if thread else 0,
-            "read_only": talk.read_only_reason(now),
+            "read_only": talk.read_only_reason(now) or restricted,
             "form": form,
             "poll_url": reverse("rides:conversation_updates", args=[post_id, rider_id]),
             "poll_ms": messaging.POLL_SECONDS * 1000,
@@ -420,7 +435,8 @@ def conversation_updates(request, post_id, rider_id):
             "hidden_ids": list(
                 talk.messages().filter(hidden=True).values_list("pk", flat=True)
             ),
-            "read_only": talk.read_only_reason(now),
+            "read_only": talk.read_only_reason(now)
+            or blocked_notice(request.user, now),
         }
     )
 

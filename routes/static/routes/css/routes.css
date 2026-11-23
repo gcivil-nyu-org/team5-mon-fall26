@@ -688,3 +688,11 @@ header {
   list-style: none;
   padding: 0;
 }
+
+/* US47 #121: why a restricted account can't use a feature. */
+.restricted-notice {
+  padding: 0.5rem 0.8rem;
+  border-left: 3px solid #b06000;
+  background: #fef7e0;
+  color: #5f3b00;
+}

@@ -494,6 +494,9 @@ class MyRidesListTests(FindRidesTestData):
         client.force_login(self.rider)
         response = client.get(reverse("rides:find_rides"))
         self.assertEqual(list(response.context["my_posts"]), [mine, full])
+        # Ordered in SQL, not by chance (the seat count's GROUP BY drops
+        # Meta.ordering), so it holds on every PostgreSQL version.
+        self.assertIn("ORDER BY", str(response.context["my_posts"].query))
         self.assertContains(
             response, f'href="{reverse("rides:ride_detail", args=[mine.pk])}"'
         )
