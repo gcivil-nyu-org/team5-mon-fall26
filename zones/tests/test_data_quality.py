@@ -53,7 +53,14 @@ class DashboardTestData(TestCase):
             zone_id=161, name="Midtown Center", borough="Manhattan"
         )
         cls.jfk = Zone.objects.create(zone_id=132, name="JFK Airport", borough="Queens")
-        cls.empty = Zone.objects.create(zone_id=264, name="Unknown", borough="Unknown")
+        cls.empty = Zone.objects.create(zone_id=1, name="Newark Airport", borough="EWR")
+        # Cleaning removes every trip in these two, so they never have trips.
+        cls.unknown = Zone.objects.create(
+            zone_id=264, name="Unknown", borough="Unknown"
+        )
+        cls.outside = Zone.objects.create(
+            zone_id=265, name="Outside of NYC", borough="N/A"
+        )
 
     def setUp(self):
         self.client.force_login(self.staff)
@@ -305,9 +312,11 @@ class EmptyAndZonesTests(DashboardTestData):
         self.assertEqual(self.section(response).zones_without_trips, [self.empty])
         self.assertEqual(
             self.section(response, "rideshare").zones_without_trips,
-            [self.jfk, self.empty],
+            [self.empty, self.jfk],
         )
-        self.assertContains(response, "264 Unknown (Unknown)")
+        self.assertContains(response, "1 Newark Airport (EWR)")
+        self.assertNotContains(response, "264 Unknown")
+        self.assertNotContains(response, "265 Outside of NYC")
 
     def test_every_zone_has_trips(self):
         make_run(self.now)

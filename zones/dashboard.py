@@ -13,6 +13,7 @@ from django.urls import reverse
 from reports.models import FareReport
 from rides.models import ContentReport
 from zones.importer import rules
+from zones.importer.clean import UNKNOWN_ZONE_IDS
 
 from .models import ImportRun, RideshareZoneHourStats, Zone, ZoneHourStats
 
@@ -139,9 +140,15 @@ def rule_rows(latest, previous):
 
 def zones_without_trips(dataset):
     """Zones with no row in the dataset's zone statistics, which the latest
-    successful import wrote (each import replaces them)."""
+    successful import wrote (each import replaces them). Zones 264 (Unknown)
+    and 265 (Outside of NYC) are left out: cleaning removes every trip that
+    uses them, so they never have trips."""
     stats = ZONE_STATS[dataset].objects.values("zone_id")
-    return list(Zone.objects.exclude(zone_id__in=stats).order_by("zone_id"))
+    return list(
+        Zone.objects.exclude(zone_id__in=stats)
+        .exclude(zone_id__in=UNKNOWN_ZONE_IDS)
+        .order_by("zone_id")
+    )
 
 
 def summary(dataset):
