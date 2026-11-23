@@ -43,7 +43,7 @@ class AccountActionForm(ActionForm):
     reason = forms.CharField(
         required=False,
         max_length=200,
-        label="Reason",
+        label="Reason (shown to the user when restricting)",
         widget=forms.TextInput(attrs={"size": 45}),
     )
     # US47 #121: only for "Restrict"; the last restricted day (New York time).
@@ -144,14 +144,14 @@ class AccountAdmin(admin.ModelAdmin):
     def account_history(self, user):
         lines = []
         for entry in user.account_actions.all():
+            acted = timezone.localtime(entry.acted_at, restriction.NYC_TZ)
             until = ""
             if entry.action == AccountAction.RESTRICT:
                 end = restriction.last_day(entry)
                 until = f" until {end:%Y-%m-%d}" if end else " (no end date)"
             lines.append(
                 f"{entry.get_action_display()}{until}: {entry.reason} "
-                f"({entry.acted_by}, "
-                f"{timezone.localtime(entry.acted_at):%Y-%m-%d %H:%M})"
+                f"({entry.acted_by}, {acted:%Y-%m-%d %H:%M})"
             )
         return "\n".join(lines) or "No suspension or restriction actions"
 
@@ -213,6 +213,14 @@ class AccountAdmin(admin.ModelAdmin):
         except forms.ValidationError:
             self.message_user(
                 request, "Enter the end date as YYYY-MM-DD.", messages.ERROR
+            )
+            return
+        # Checked once here, not once per selected account (restrict() still
+        # checks too, as a backstop).
+        today = timezone.localtime(timezone.now(), restriction.NYC_TZ).date()
+        if end is not None and end < today:
+            self.message_user(
+                request, "The end date can't be in the past.", messages.ERROR
             )
             return
         self._restriction(

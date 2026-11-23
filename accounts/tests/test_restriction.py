@@ -1,6 +1,6 @@
 """US47 #121: Restrict an Account."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from unittest import mock
 
@@ -98,9 +98,14 @@ class RestrictedUserIsBlockedTests(RestrictionTestData):
         self.notice = restriction.blocked_notice(self.rider)
 
     def test_notice_says_why_and_until_when(self):
-        self.assertIn("Spam in messages", self.notice)
+        self.assertIn("Reason: Spam in messages. You can still browse", self.notice)
         self.assertIn("until the end of Fri 20 Nov 2026", self.notice)
         self.assertIn("post rides, show interest, send messages", self.notice)
+
+    def test_reason_ending_in_a_full_stop_is_not_doubled(self):
+        self.restrict(reason="Abusive notes.")
+        notice = restriction.blocked_notice(self.rider)
+        self.assertIn("Reason: Abusive notes. You can still browse", notice)
 
     def test_notice_without_an_end_date(self):
         self.restrict(reason="Abusive notes")
@@ -156,6 +161,17 @@ class RestrictedUserIsBlockedTests(RestrictionTestData):
         response = self.show(self.ride)
         self.assertEqual(self.messages(response), [self.notice])
         self.assertFalse(RideInterest.objects.exists())
+
+    def test_find_rides_shows_the_notice_once_above_the_results(self):
+        self.post(departure=at(TOMORROW, 10))  # a second matching ride
+        page = self.client.get(
+            reverse("rides:find_rides"),
+            {"from": self.midtown.pk, "to": self.jfk.pk, "date": TOMORROW.isoformat()},
+        )
+        self.assertEqual(len(page.context["matches"]), 2)
+        self.assertEqual(page.content.decode().count("Spam in messages"), 1)
+        self.assertContains(page, 'id="account-restricted"')
+        self.assertNotContains(page, "I'm interested</button>")
 
     def test_interest_button_is_replaced_by_the_notice(self):
         for url in (reverse("rides:find_rides"), self.detail(self.ride)):
@@ -401,6 +417,34 @@ class AdminActionTests(RestrictionTestData):
         response = self.admin_action("restrict_accounts", reason=" ")
         self.assertContains(response, "Enter a reason before restricting or lifting.")
         self.assertFalse(AccountAction.objects.exists())
+
+    def test_reason_box_says_it_is_shown_to_the_user(self):
+        page = self.staff_client.get(CHANGELIST)
+        self.assertContains(page, "Reason (shown to the user when restricting)")
+
+    def test_past_date_is_reported_once_for_many_accounts(self):
+        response = self.staff_client.post(
+            CHANGELIST,
+            {
+                "action": "restrict_accounts",
+                "_selected_action": [self.rider.pk, self.owner.pk],
+                "reason": "Spam",
+                "restriction_end": "2026-11-01",
+            },
+            follow=True,
+        )
+        texts = [str(m) for m in response.context["messages"]]
+        self.assertEqual(texts, ["The end date can't be in the past."])
+        self.assertFalse(AccountAction.objects.exists())
+
+    def test_history_times_are_new_york_time(self):
+        # 02:30 UTC on 23 Nov is 21:30 on 22 Nov in New York.
+        self.set_now(datetime(2026, 11, 23, 2, 30, tzinfo=timezone.utc))
+        self.restrict(reason="Spam", end=date(2026, 11, 30))
+        page = self.staff_client.get(
+            reverse("admin:auth_user_change", args=[self.rider.pk])
+        )
+        self.assertContains(page, "(staff@example.com, 2026-11-22 21:30)")
 
     def test_restrict_action_refuses_a_bad_or_past_date(self):
         response = self.admin_action(
